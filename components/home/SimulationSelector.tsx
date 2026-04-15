@@ -37,7 +37,7 @@ export default function SimulationSelector({ simulations }: Props) {
         <label htmlFor="simulation-select" className="text-sm font-medium text-text-primary">
           Choose a simulation
         </label>
-        <Select onValueChange={setSelectedId}>
+        <Select onValueChange={(value: string | null) => setSelectedId(value ?? '')}>
           <SelectTrigger id="simulation-select" className="w-full">
             <SelectValue placeholder="Select a simulation…" />
           </SelectTrigger>
