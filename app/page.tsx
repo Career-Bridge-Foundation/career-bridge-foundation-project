@@ -1,4 +1,5 @@
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import SimulationCard from "@/components/home/SimulationCard";
 import type { Metadata } from "next";
 import type { Simulation } from "@/lib/types";
@@ -27,32 +28,49 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
+    <div className="min-h-screen bg-warm-white flex flex-col">
       <Navbar />
 
-      <main className="flex-1">
-        {/* ── Hero ──────────────────────────────────────────────── */}
-        <section className="bg-brand-primary">
-          <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold uppercase tracking-widest text-brand-accent mb-4">
-                Career Bridge Foundation
-              </p>
-              <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight mb-5">
+      <main className="flex-1 pt-16">
+
+        {/* ── Hero — dark ink section, matches reference site ──── */}
+        <section className="cb-hero cb-dot-pattern">
+          <div className="mx-auto max-w-5xl px-4 py-20 sm:px-6 lg:px-8 sm:py-28">
+            <div className="max-w-3xl">
+
+              {/* Eyebrow */}
+              <div className="cb-eyebrow">
+                <span className="cb-eyebrow-text">Workforce Activation Infrastructure</span>
+              </div>
+
+              {/* Heading */}
+              <h1 className="text-white mb-6">
                 Prove your skills.
                 <br />
-                Earn your credential.
+                <span className="text-accent-teal">Earn your credential.</span>
               </h1>
-              <p className="text-lg text-white/75 leading-relaxed">
+
+              {/* Body */}
+              <p className="text-[rgba(250,250,249,0.6)] text-lg leading-relaxed mb-10 max-w-2xl">
                 Portfolio simulations put you inside a real role at a real
                 company. Work through genuine challenges, submit your thinking,
                 and walk away with a verified credential that shows what you can
                 actually do — not just what you studied.
               </p>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-4">
+                <a href="#simulations" className="cb-btn cb-btn-primary">
+                  Apply to the Pathway
+                </a>
+                <a href="#simulations" className="cb-btn cb-btn-secondary">
+                  Partner with Career Bridge
+                </a>
+              </div>
             </div>
 
             {/* Stats row */}
-            <div className="flex flex-wrap gap-8 mt-12 pt-10 border-t border-white/15">
+            <div className="flex flex-wrap gap-10 mt-16 pt-10 border-t border-[rgba(250,250,249,0.05)]">
               {[
                 {
                   value: "Real briefs",
@@ -64,10 +82,8 @@ export default async function Home() {
                 },
               ].map((stat) => (
                 <div key={stat.value}>
-                  <p className="text-xl font-semibold text-white">
-                    {stat.value}
-                  </p>
-                  <p className="text-sm text-white/60 mt-0.5">{stat.label}</p>
+                  <p className="text-xl font-semibold text-warm-white">{stat.value}</p>
+                  <p className="text-sm text-cool mt-1">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -75,12 +91,19 @@ export default async function Home() {
         </section>
 
         {/* ── Simulations ───────────────────────────────────────── */}
-        <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-text-primary">
+        <section
+          id="simulations"
+          className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8"
+        >
+          {/* Section header */}
+          <div className="mb-10">
+            <div className="cb-eyebrow">
+              <span className="cb-eyebrow-text">Available Now</span>
+            </div>
+            <h2 className="text-ink text-2xl sm:text-3xl font-semibold mb-3">
               Available simulations
             </h2>
-            <p className="text-text-muted mt-1.5">
+            <p className="text-cool text-base max-w-xl">
               Select a simulation, read the brief, and begin when you&apos;re
               ready. Each one is self-contained and takes under two hours.
             </p>
@@ -102,8 +125,8 @@ export default async function Home() {
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-white px-8 py-12 text-center">
-              <p className="text-text-muted text-sm">
+            <div className="border border-subtle bg-warm-white px-8 py-12 text-center">
+              <p className="text-cool text-sm">
                 No simulations available yet. Check back soon.
               </p>
             </div>
@@ -111,15 +134,7 @@ export default async function Home() {
         </section>
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-          <p className="text-xs text-text-muted">
-            © {new Date().getFullYear()} Career Bridge Foundation. All
-            simulations are fictional and created for assessment purposes only.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

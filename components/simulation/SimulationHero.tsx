@@ -4,7 +4,7 @@ import type { SimulationHeroProps } from '@/lib/types'
 export default function SimulationHero({ simulation }: SimulationHeroProps) {
   return (
     <header className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <Badge variant="outline" className="border-brand-primary text-brand-primary">
           {simulation.discipline}
         </Badge>

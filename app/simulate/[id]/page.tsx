@@ -33,6 +33,19 @@ export default async function SimulatePage({ params }: SimulatePageProps) {
   return (
     <main className="min-h-screen bg-surface">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="cb-btn cb-btn-primary text-xs py-2 px-5"
+            aria-label="Go back"
+          >
+            <span className="mr-2 inline-flex items-center align-middle">
+              <FaArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            </span>
+            Back
+          </Link>
+        </div>
+
         <SimulationHero simulation={simulation} />
 
         <VideoPlayerWrapper src={introVideo} className="mt-6 rounded-lg overflow-hidden" />
@@ -46,5 +59,5 @@ export default async function SimulatePage({ params }: SimulatePageProps) {
         </div>
       </div>
     </main>
-  )
+  );
 }

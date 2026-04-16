@@ -4,7 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   THEME TOKENS — exposed as Tailwind utility classes
+   ============================================================ */
 @theme inline {
+  /* shadcn / base tokens (keep intact) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
@@ -47,7 +51,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Career Bridge brand tokens */
+  /* ── Career Bridge brand tokens (semantic) ── */
   --color-brand-primary: var(--brand-primary);
   --color-brand-accent: var(--brand-accent);
   --color-brand-success: var(--brand-success);
@@ -57,20 +61,47 @@
   --color-surface-card: var(--surface-card);
   --color-text-primary: var(--text-primary);
   --color-text-muted: var(--text-muted);
+
+  /* ── Career Bridge reference site design tokens ── */
+  /* Exposes: bg-ink, text-ink, bg-accent-teal, text-accent-teal, etc. */
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-light);
+  --color-accent-teal: var(--cb-accent-teal);
+  --color-warm-white: var(--warm-white);
+  --color-warm-grey: var(--warm-grey);
+  --color-cool: var(--cool);
+  --color-subtle: var(--subtle);
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', monospace;
 }
 
+/* ============================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================ */
 :root {
-  /* Career Bridge brand values */
-  --brand-primary: #1E3A5F;
-  --brand-accent: #F4A726;
+  /* ── Career Bridge reference site — exact extracted values ── */
+  --ink:           #0f172a;   /* slate-900  — dark hero / primary text   */
+  --ink-light:     #1e293b;   /* slate-800  — secondary dark surface     */
+  --cb-accent-teal:#0d9488;   /* teal-600   — primary accent / CTA       */
+  --warm-white:    #fafaf9;   /* stone-50   — main page background        */
+  --warm-grey:     #f5f5f4;   /* stone-100  — alternate section bg        */
+  --cool:          #94a3b8;   /* slate-400  — muted / secondary text      */
+  --subtle:        #e5e5e5;   /* neutral-200 — borders / dividers         */
+
+  /* ── Career Bridge brand tokens (mapped to reference site) ── */
+  --brand-primary: #0f172a;   /* updated → ink (was #1E3A5F)             */
+  --brand-accent:  #0d9488;   /* updated → accent-teal (was #F4A726)     */
   --brand-success: #16A34A;
   --brand-warning: #D97706;
-  --brand-danger: #DC2626;
-  --surface: #F8FAFC;
-  --surface-card: #FFFFFF;
-  --text-primary: #0F172A;
-  --text-muted: #64748B;
+  --brand-danger:  #DC2626;
+  --surface:       #fafaf9;   /* updated → warm-white (was #F8FAFC)      */
+  --surface-card:  #ffffff;
+  --text-primary:  #0f172a;   /* updated → ink                           */
+  --text-muted:    #94a3b8;   /* updated → cool (was #64748B)            */
 
+  /* ── shadcn/ui base tokens ── */
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -94,7 +125,7 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -139,14 +170,69 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ============================================================
+   BASE LAYER — typography & resets
+   ============================================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-background text-foreground;
+    background-color: var(--warm-white);
+    color: var(--ink);
   }
-  html {
-    @apply font-sans;
+
+  /* Heading scale — matches reference site exactly */
+  h1 {
+    font-size: 72px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: 48px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.375;
+    letter-spacing: -0.025em;
+  }
+  p {
+    font-size: 17px;
+    line-height: 1.7;
+  }
+}
+
+/* ============================================================
+   COMPONENT LAYER — reusable CB design patterns
+   ============================================================ */
+@layer components {
+
+  /* ── Buttons ── */
+  .cb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 2px solid transparent;
+    transition: all 300ms ease;
+    cursor: pointer;
+    outline: none;
   }
 }
