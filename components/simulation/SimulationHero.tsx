@@ -8,7 +8,7 @@ type Props = {
 export default function SimulationHero({ simulation }: Props) {
   return (
     <header className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <Badge variant="outline" className="border-brand-primary text-brand-primary">
           {simulation.discipline}
         </Badge>
