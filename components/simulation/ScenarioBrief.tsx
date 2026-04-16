@@ -1,8 +1,6 @@
-type Props = {
-  brief: string
-}
+import type { ScenarioBriefProps } from '@/lib/types'
 
-export default function ScenarioBrief({ brief }: Props) {
+export default function ScenarioBrief({ brief }: ScenarioBriefProps) {
   const paragraphs = brief.split('\n\n').filter(Boolean)
 
   return (

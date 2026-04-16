@@ -2,13 +2,16 @@
 export type Simulation = {
   id: string;
   title: string;
-  discipline: string;
   company_name: string;
+  discipline: string;
+  industry: string | null;
+  candidate_role: string | null;
+  estimated_minutes: string | null;
+  video_urls: VideoUrls | null;
+  passing_score: number;
   scenario_brief: string;
   prompts: Prompt[];
   rubric: Rubric;
-  video_urls: VideoUrls | null;
-  passing_score: number;
   created_at: string;
 };
 
@@ -55,4 +58,34 @@ export type VideoUrls = {
   results_development?: string;
 };
 
-// Matches the attempts ta
+export type SimulationCardProps = Pick<
+  Simulation,
+  | "id"
+  | "title"
+  | "discipline"
+  | "company_name"
+  | "industry"
+  | "candidate_role"
+  | "estimated_minutes"
+>;
+
+export type SimulationHeroProps = {
+  simulation: Simulation;
+};
+
+export type ScenarioBriefProps = {
+  brief: string;
+};
+
+export type CandidateGateProps = {
+  simulationId: string;
+};
+
+export type VideoPlayerProps = {
+  src: string | null;
+  className?: string;
+};
+
+export type SimulatePageProps = {
+  params: Promise<{ id: string }>;
+};

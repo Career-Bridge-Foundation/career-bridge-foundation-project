@@ -62,7 +62,6 @@ export default async function Home() {
                   value: "Verified credentials",
                   label: "Issued on successful completion",
                 },
-                { value: "60–90 min", label: "Average time to complete" },
               ].map((stat) => (
                 <div key={stat.value}>
                   <p className="text-xl font-semibold text-white">
@@ -95,10 +94,10 @@ export default async function Home() {
                   id={sim.id}
                   title={sim.title}
                   discipline={sim.discipline}
-                  company={sim.company_name}
-                  // industry={sim.industry}
-                  // candidateRole={sim.candidateRole}
-                  // estimatedMinutes={sim.estimatedMinutes}
+                  company_name={sim.company_name}
+                  industry={sim.industry}
+                  candidate_role={sim.candidate_role}
+                  estimated_minutes={sim.estimated_minutes}
                 />
               ))}
             </div>

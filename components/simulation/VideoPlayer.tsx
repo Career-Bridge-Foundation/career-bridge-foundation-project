@@ -3,13 +3,9 @@
 import { useEffect, useRef } from 'react'
 import Plyr from 'plyr'
 import 'plyr/dist/plyr.css'
+import type { VideoPlayerProps } from '@/lib/types'
 
-type Props = {
-  src: string | null
-  className?: string
-}
-
-export default function VideoPlayer({ src, className }: Props) {
+export default function VideoPlayer({ src, className }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {

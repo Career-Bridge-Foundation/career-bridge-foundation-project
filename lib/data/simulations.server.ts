@@ -2,23 +2,43 @@ import "server-only";
 
 import { cache } from "react";
 import { supabaseAdmin } from "@/lib/supabase";
-import type { Simulation } from "@/types/simulation";
+import type { Prompt, Rubric, Simulation, VideoUrls } from "@/lib/types";
 
 type SimulationRecord = Record<string, unknown>;
+
+const EMPTY_RUBRIC: Rubric = {
+  prompt_1: {
+    title: "",
+    description: "",
+    criteria: [],
+  },
+  prompt_2: {
+    title: "",
+    description: "",
+    criteria: [],
+  },
+  prompt_3: {
+    title: "",
+    description: "",
+    criteria: [],
+  },
+};
 
 function normalizeSimulation(row: SimulationRecord): Simulation {
   return {
     id: String(row.id ?? ""),
     title: String(row.title ?? ""),
-    company: String(row.company ?? ""),
+    company_name: String(row.company_name ?? row.company ?? ""),
     discipline: String(row.discipline ?? ""),
-    industry: String(row.industry ?? ""),
-    candidateRole: String(row.candidateRole ?? row.candidate_role ?? ""),
-    estimatedMinutes: String(row.estimatedMinutes ?? row.estimated_minutes ?? ""),
-    scenarioBrief: String(row.scenarioBrief ?? row.scenario_brief ?? ""),
-    prompts: Array.isArray(row.prompts) ? (row.prompts as Simulation["prompts"]) : [],
-    videoUrl: (row.videoUrl ?? row.video_url ?? null) as string | null,
-    passingScore: Number(row.passingScore ?? row.passing_score ?? 55),
+    industry: (row.industry ?? null) as string | null,
+    candidate_role: (row.candidate_role ?? row.candidateRole ?? null) as string | null,
+    estimated_minutes: (row.estimated_minutes ?? row.estimatedMinutes ?? null) as string | null,
+    video_urls: (row.video_urls ?? row.videoUrls ?? null) as VideoUrls | null,
+    passing_score: Number(row.passing_score ?? row.passingScore ?? 55),
+    scenario_brief: String(row.scenario_brief ?? row.scenarioBrief ?? ""),
+    prompts: Array.isArray(row.prompts) ? (row.prompts as Prompt[]) : [],
+    rubric: (row.rubric ?? EMPTY_RUBRIC) as Rubric,
+    created_at: String(row.created_at ?? new Date().toISOString()),
   };
 }
 

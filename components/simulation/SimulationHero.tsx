@@ -1,11 +1,7 @@
 import { Badge } from '@/components/ui/badge'
-import type { Simulation } from '@/types/simulation'
+import type { SimulationHeroProps } from '@/lib/types'
 
-type Props = {
-  simulation: Simulation
-}
-
-export default function SimulationHero({ simulation }: Props) {
+export default function SimulationHero({ simulation }: SimulationHeroProps) {
   return (
     <header className="space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -13,7 +9,7 @@ export default function SimulationHero({ simulation }: Props) {
           {simulation.discipline}
         </Badge>
         <Badge variant="outline" className="border-brand-primary text-brand-primary">
-          {simulation.company}
+          {simulation.company_name}
         </Badge>
       </div>
 
@@ -22,7 +18,7 @@ export default function SimulationHero({ simulation }: Props) {
       </h1>
 
       <p className="text-sm text-text-muted">
-        Role: {simulation.candidateRole} &middot; Est. {simulation.estimatedMinutes}
+        Role: {simulation.candidate_role ?? 'N/A'} &middot; Est. {simulation.estimated_minutes ?? 'N/A'}
       </p>
     </header>
   )

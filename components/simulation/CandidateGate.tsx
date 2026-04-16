@@ -12,12 +12,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import type { CandidateGateProps } from '@/lib/types'
 
-type Props = {
-  simulationId: string
-}
-
-export default function CandidateGate({ simulationId }: Props) {
+export default function CandidateGate({ simulationId }: CandidateGateProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
