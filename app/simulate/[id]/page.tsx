@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
+import { FaArrowLeft } from 'react-icons/fa'
 import { getSimulationById } from '@/lib/data/simulations.server'
 import SimulationHero from '@/components/simulation/SimulationHero'
 import VideoPlayerWrapper from '@/components/simulation/VideoPlayerWrapper'

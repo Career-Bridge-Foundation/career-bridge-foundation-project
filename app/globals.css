@@ -1,8 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+
 
 /* ============================================================
    THEME TOKENS — exposed as Tailwind utility classes
@@ -220,6 +222,39 @@
    ============================================================ */
 @layer components {
 
+  /* ── Hero section ── */
+  .cb-hero {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--ink);
+  }
+
+  .cb-dot-pattern {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(250, 250, 249, 0.1) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 1) 100%);
+    background-size: 18px 18px, 100% 100%;
+    background-position: 0 0, 0 0;
+  }
+
+  /* ── Eyebrow label ── */
+  .cb-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(250, 250, 249, 0.18);
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 1.25rem;
+    background: rgba(250, 250, 249, 0.04);
+  }
+
+  .cb-eyebrow-text {
+    color: rgba(250, 250, 249, 0.78);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
   /* ── Buttons ── */
   .cb-btn {
     display: inline-flex;
@@ -234,5 +269,42 @@
     transition: all 300ms ease;
     cursor: pointer;
     outline: none;
+  }
+
+  .cb-btn-primary {
+    background-color: var(--cb-accent-teal);
+    border-color: var(--cb-accent-teal);
+    color: var(--warm-white);
+  }
+
+  .cb-btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  .cb-btn-primary-light {
+    background-color: rgba(13, 148, 136, 0.1);
+    border-color: rgba(13, 148, 136, 0.25);
+    color: var(--cb-accent-teal);
+  }
+
+  .cb-btn-primary-light:hover {
+    background-color: rgba(13, 148, 136, 0.16);
+    border-color: rgba(13, 148, 136, 0.35);
+  }
+
+  .cb-accent-line {
+    height: 3px;
+    background: linear-gradient(90deg, var(--cb-accent-teal) 0%, rgba(13, 148, 136, 0.35) 100%);
+  }
+
+  .cb-btn-secondary {
+    background-color: transparent;
+    border-color: rgba(250, 250, 249, 0.35);
+    color: var(--warm-white);
+  }
+
+  .cb-btn-secondary:hover {
+    background-color: rgba(250, 250, 249, 0.08);
+    border-color: rgba(250, 250, 249, 0.5);
   }
 }
