@@ -31,7 +31,7 @@ export default async function PromptPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-surface">
-      <Navbar />
+      <Navbar showBack backHref="/" />
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
         <PromptProgress current={stepNumber} total={simulation.prompts.length} />
 
