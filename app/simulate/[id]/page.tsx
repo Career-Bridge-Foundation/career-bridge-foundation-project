@@ -1,36 +1,21 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { FaArrowLeft } from 'react-icons/fa'
-import { getSimulationByIdOrSlug } from '@/lib/data/simulations.server'
-import SimulationHero from '@/components/simulation/SimulationHero'
-import VideoPlayerWrapper from '@/components/simulation/VideoPlayerWrapper'
-import ScenarioBrief from '@/components/simulation/ScenarioBrief'
-import CandidateGate from '@/components/simulation/CandidateGate'
-import { Separator } from '@/components/ui/separator'
-import type { Metadata } from 'next'
-import type { SimulatePageProps } from '@/lib/types'
+"use client";
 
-export async function generateMetadata({ params }: SimulatePageProps): Promise<Metadata> {
-  const { id } = await params
-  const simulation = await getSimulationByIdOrSlug(id)
+import { cn } from "@/lib/cn";
+import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
+import { useSimulation } from "@/hooks/useSimulation";
+import { Header } from "@/components/layout/Header";
+import { LeftSidebar } from "@/components/simulation/LeftSidebar";
+import { RightSidebar } from "@/components/simulation/RightSidebar";
+import { TaskPrompt } from "@/components/simulation/TaskPrompt";
+import { ResponseForm } from "@/components/simulation/ResponseForm";
+import { SupportingEvidence } from "@/components/simulation/SupportingEvidence";
+import { ChatWidget } from "@/components/simulation/ChatWidget";
 
-  if (!simulation) return { title: 'Simulation not found' }
+export default function SimulationExecutionPage() {
+  const sim = useSimulation();
 
-  const estimatedTime = simulation.estimated_minutes ?? 'an estimated time to complete'
-
-  return {
-    title: `${simulation.title} — Career Bridge`,
-    description: `A ${simulation.discipline} simulation set at ${simulation.company_name}. Estimated time: ${estimatedTime}.`,
-  }
-}
-
-export default async function SimulatePage({ params }: SimulatePageProps) {
-  const { id } = await params
-  const simulation = await getSimulationByIdOrSlug(id)
-
-  if (!simulation) notFound()
-
-  const introVideo = simulation.video_urls?.scenario_intro ?? null
+  const prompt = PROMPTS[sim.currentStep];
+  const response = sim.responses[sim.currentStep] ?? {};
 
   return (
     <div className="min-h-screen bg-white">
