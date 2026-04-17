@@ -93,6 +93,7 @@ export const getApiDocs = async () => {
             type: "object",
             properties: {
               id: { type: "string" },
+              slug: { type: "string", nullable: true },
               title: { type: "string" },
               discipline: { type: "string" },
               company_name: { type: "string" },
@@ -178,6 +179,11 @@ export const getApiDocs = async () => {
             required: ["attempt_id"],
             properties: {
               attempt_id: { type: "string" },
+              run_inline: {
+                type: "boolean",
+                description:
+                  "Internal worker flag. When true, evaluates immediately; otherwise queues and returns 202.",
+              },
             },
           },
           PromptCriterion: {
@@ -249,6 +255,7 @@ export const getApiDocs = async () => {
                 additionalProperties: true,
               },
               status: { type: "string" },
+              evaluation_status: { type: "string", nullable: true },
               current_step: { type: "integer", nullable: true },
               last_saved_at: { type: "string", format: "date-time", nullable: true },
             },
@@ -313,6 +320,94 @@ export const getApiDocs = async () => {
                 type: "array",
                 items: { $ref: "#/components/schemas/ChatMessage" },
               },
+            },
+          },
+          AttemptAttachment: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              attempt_id: { type: "string" },
+              prompt_index: { type: "integer" },
+              attachment_type: { type: "string", enum: ["file", "url"] },
+              file_name: { type: "string", nullable: true },
+              file_mime_type: { type: "string", nullable: true },
+              file_size_bytes: { type: "number", nullable: true },
+              storage_path: { type: "string", nullable: true },
+              external_url: { type: "string", nullable: true },
+              virus_scan_status: { type: "string" },
+              virus_scan_details: {
+                type: "object",
+                additionalProperties: true,
+              },
+              created_at: { type: "string", format: "date-time" },
+            },
+          },
+          AttemptAttachmentResponse: {
+            type: "object",
+            properties: {
+              success: { type: "boolean" },
+              attachment: { $ref: "#/components/schemas/AttemptAttachment" },
+              signed_url: { type: "string", nullable: true },
+            },
+          },
+          AttemptSubmitResponse: {
+            type: "object",
+            properties: {
+              success: { type: "boolean" },
+              attempt_id: { type: "string" },
+              evaluation_status: { type: "string" },
+              message: { type: "string" },
+            },
+          },
+          EvaluateQueueResponse: {
+            type: "object",
+            properties: {
+              success: { type: "boolean" },
+              attempt_id: { type: "string" },
+              evaluation_status: { type: "string" },
+              message: { type: "string" },
+            },
+          },
+          Discipline: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              name: { type: "string" },
+              slug: { type: "string" },
+              description: { type: "string", nullable: true },
+            },
+          },
+          DisciplineListResponse: {
+            type: "object",
+            properties: {
+              disciplines: {
+                type: "array",
+                items: { $ref: "#/components/schemas/Discipline" },
+              },
+            },
+          },
+          Credential: {
+            type: "object",
+            properties: {
+              verification_code: { type: "string" },
+              candidate_name: { type: "string" },
+              discipline: { type: "string" },
+              credential_title: { type: "string" },
+              issued_at: { type: "string", format: "date-time" },
+              expires_at: { type: "string", format: "date-time", nullable: true },
+              status: { type: "string" },
+              certifier_credential_id: { type: "string", nullable: true },
+              metadata: {
+                type: "object",
+                additionalProperties: true,
+              },
+            },
+          },
+          CredentialVerificationResponse: {
+            type: "object",
+            properties: {
+              verified: { type: "boolean" },
+              credential: { $ref: "#/components/schemas/Credential" },
             },
           },
         },

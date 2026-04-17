@@ -2,8 +2,8 @@
  * @swagger
  * /api/evaluate:
  *   post:
- *     summary: Evaluate a completed attempt
- *     description: Evaluates all three prompt responses for an attempt, calculates the overall score, and stores the final result.
+ *     summary: Queue or run evaluation for a completed attempt
+ *     description: Queues evaluation by default to avoid request timeouts. Internal workers can set run_inline=true to execute immediately.
  *     tags:
  *       - Evaluation
  *     requestBody:
@@ -20,7 +20,7 @@
  *             schema:
  *               $ref: '#/components/schemas/EvaluateSuccessResponse'
  *       202:
- *         description: Evaluation saved but queued for manual review or email follow-up
+ *         description: Evaluation queued (default mode) or queued for manual review follow-up
  *         content:
  *           application/json:
  *             schema:
@@ -51,6 +51,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+
+export const maxDuration = 300;
 
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 const CLAUDE_TIMEOUT_MS = 30000;
@@ -547,12 +549,49 @@ export async function POST(request: NextRequest) {
   let attemptIdForLogs = "unknown";
 
   try {
-    const body = (await request.json()) as { attempt_id?: string };
+    const body = (await request.json()) as { attempt_id?: string; run_inline?: boolean };
     const attemptId = (body.attempt_id || "").trim();
+    const runInline = body.run_inline === true;
     attemptIdForLogs = attemptId || "missing";
 
     if (!attemptId) {
       return NextResponse.json({ error: "attempt_id is required" }, { status: 400 });
+    }
+
+    if (!runInline) {
+      const now = new Date().toISOString();
+
+      const { error: queueError } = await supabaseAdmin.from("evaluation_jobs").upsert(
+        {
+          attempt_id: attemptId,
+          status: "queued",
+          queued_at: now,
+          started_at: null,
+          completed_at: null,
+          error_message: null,
+        },
+        { onConflict: "attempt_id" }
+      );
+
+      if (queueError) {
+        console.error("Failed to queue evaluation:", queueError);
+        return NextResponse.json({ error: "Failed to queue evaluation" }, { status: 500 });
+      }
+
+      await supabaseAdmin
+        .from("attempts")
+        .update({ evaluation_status: "queued" })
+        .eq("id", attemptId);
+
+      return NextResponse.json(
+        {
+          success: true,
+          attempt_id: attemptId,
+          evaluation_status: "queued",
+          message: "Evaluation queued. Poll attempt.evaluation_status for updates.",
+        },
+        { status: 202 }
+      );
     }
 
     const { data: attempt, error: attemptError } = await supabaseAdmin
@@ -616,7 +655,7 @@ export async function POST(request: NextRequest) {
 
         await supabaseAdmin
           .from("attempts")
-          .update({ responses: failureResponses })
+          .update({ responses: failureResponses, evaluation_status: "manual_review_required" })
           .eq("id", attemptId);
 
         console.error("Evaluation data missing", {
@@ -675,7 +714,7 @@ export async function POST(request: NextRequest) {
 
         await supabaseAdmin
           .from("attempts")
-          .update({ responses: failureResponses })
+          .update({ responses: failureResponses, evaluation_status: "manual_review_required" })
           .eq("id", attemptId);
 
         console.error("Evaluation failed", {
@@ -738,7 +777,7 @@ export async function POST(request: NextRequest) {
 
     const { error: finalSaveError } = await supabaseAdmin
       .from("attempts")
-      .update({ responses: finalResponses })
+      .update({ responses: finalResponses, evaluation_status: "complete" })
       .eq("id", attemptId);
 
     if (finalSaveError) {

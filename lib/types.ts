@@ -1,6 +1,7 @@
 // Matches the simulations table in Supabase
 export type Simulation = {
   id: string;
+  slug?: string | null;
   title: string;
   company_name: string;
   discipline: string;
