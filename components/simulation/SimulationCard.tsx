@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
+import { TypeBadge, DifficultyBadge } from "@/components/ui/badge";
 import type { Simulation } from "@/types";
 
 interface SimulationCardProps {
