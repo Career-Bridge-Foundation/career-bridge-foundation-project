@@ -15,18 +15,14 @@ export const disciplines: Discipline[] = [
     name: "Project Management",
     description:
       "Stand out from the crowd with verified evidence of your project management capability. Real scenarios, real skills, real proof that goes beyond your CV.",
-    status: "available",
-    count: "Foundation to Advanced",
-    href: "/simulations/project-management",
+    status: "coming-soon",
   },
   {
     id: 3,
     name: "Cyber Security",
     description:
       "Simulations aligned to the UK Cyber Security Council Career Framework and verified by expert consultants. Build credible evidence for roles across the cyber security sector.",
-    status: "available",
-    count: "Foundation to Advanced",
-    href: "/simulations/cyber-security",
+    status: "coming-soon",
   },
   {
     id: 4,
@@ -40,9 +36,7 @@ export const disciplines: Discipline[] = [
     name: "Customer Service",
     description:
       "Develop the customer facing capabilities organisations are actively hiring for. Go beyond knowledge and demonstrate the skills that make you the candidate they want.",
-    status: "available",
-    count: "Foundation to Advanced",
-    href: "/simulations/customer-service",
+    status: "coming-soon",
   },
   {
     id: 6,
