@@ -1,4 +1,4 @@
-import { StatusBadge } from "@/components/ui/Badge";
+import { StatusBadge } from "@/components/ui/badge";
 import type { Discipline } from "@/types";
 
 interface DisciplineCardProps {
