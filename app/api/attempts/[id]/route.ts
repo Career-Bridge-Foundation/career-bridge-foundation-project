@@ -90,7 +90,7 @@ export async function GET(
     const { data, error } = await supabaseAdmin
       .from("attempts")
       .select(
-        "id, simulation_id, candidate_name, candidate_email, responses, status, current_step, last_saved_at"
+        "id, simulation_id, candidate_name, candidate_email, responses, status, evaluation_status, current_step, last_saved_at"
       )
       .eq("id", id)
       .single();
@@ -180,7 +180,7 @@ export async function PATCH(
       .update(updatePayload)
       .eq("id", id)
       .select(
-        "id, simulation_id, candidate_name, candidate_email, responses, status, current_step, last_saved_at"
+        "id, simulation_id, candidate_name, candidate_email, responses, status, evaluation_status, current_step, last_saved_at"
       )
       .single();
 
