@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { FaArrowLeft } from 'react-icons/fa'
-import { getSimulationById } from '@/lib/data/simulations.server'
+import { getSimulationByIdOrSlug } from '@/lib/data/simulations.server'
 import SimulationHero from '@/components/simulation/SimulationHero'
 import VideoPlayerWrapper from '@/components/simulation/VideoPlayerWrapper'
 import ScenarioBrief from '@/components/simulation/ScenarioBrief'
@@ -12,7 +12,7 @@ import type { SimulatePageProps } from '@/lib/types'
 
 export async function generateMetadata({ params }: SimulatePageProps): Promise<Metadata> {
   const { id } = await params
-  const simulation = await getSimulationById(id)
+  const simulation = await getSimulationByIdOrSlug(id)
 
   if (!simulation) return { title: 'Simulation not found' }
 
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: SimulatePageProps): Promise<M
 
 export default async function SimulatePage({ params }: SimulatePageProps) {
   const { id } = await params
-  const simulation = await getSimulationById(id)
+  const simulation = await getSimulationByIdOrSlug(id)
 
   if (!simulation) notFound()
 

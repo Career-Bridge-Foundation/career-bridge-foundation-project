@@ -27,6 +27,7 @@ const EMPTY_RUBRIC: Rubric = {
 function normalizeSimulation(row: SimulationRecord): Simulation {
   return {
     id: String(row.id ?? ""),
+    slug: (row.slug ?? null) as string | null,
     title: String(row.title ?? ""),
     company_name: String(row.company_name ?? row.company ?? ""),
     discipline: String(row.discipline ?? ""),
@@ -51,6 +52,28 @@ export const getSimulationById = cache(async (id: string): Promise<Simulation | 
 
   if (error) {
     throw new Error(`Failed to fetch simulation by id: ${error.message}`);
+  }
+
+  if (!data) return null;
+
+  return normalizeSimulation(data as SimulationRecord);
+});
+
+export const getSimulationByIdOrSlug = cache(async (identifier: string): Promise<Simulation | null> => {
+  const normalized = identifier.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("simulations")
+    .select("*")
+    .or(`id.eq.${normalized},slug.eq.${normalized}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch simulation by id/slug: ${error.message}`);
   }
 
   if (!data) return null;
