@@ -1,7 +1,11 @@
 import { cn } from "@/lib/cn";
-import { SIM, PROMPTS } from "@/lib/simulation-prompts";
+import type { Prompt } from "@/types";
 
 interface LeftSidebarProps {
+  simulationTitle: string;
+  simulationCompany: string;
+  simulationIndustry: string;
+  prompts: Prompt[];
   currentStep: number;
   lastSavedText: () => string;
 }
@@ -22,7 +26,14 @@ function CheckCircleIcon() {
   );
 }
 
-export function LeftSidebar({ currentStep, lastSavedText }: LeftSidebarProps) {
+export function LeftSidebar({
+  simulationTitle,
+  simulationCompany,
+  simulationIndustry,
+  prompts,
+  currentStep,
+  lastSavedText,
+}: LeftSidebarProps) {
   return (
     <aside className="hidden lg:flex flex-col w-[280px] shrink-0 sticky self-start overflow-y-auto top-[73px] h-[calc(100vh-73px)] border-r border-border-light">
       <div className="p-6 flex flex-col gap-6 h-full">
@@ -32,9 +43,9 @@ export function LeftSidebar({ currentStep, lastSavedText }: LeftSidebarProps) {
           <span className="text-xs font-semibold uppercase text-teal tracking-brand-md block mb-2">
             This Assessment
           </span>
-          <h2 className="text-base font-bold text-navy mb-1">{SIM.title}</h2>
+          <h2 className="text-base font-bold text-navy mb-1">{simulationTitle}</h2>
           <p className="text-xs text-[#888] mb-3">
-            {SIM.company} · {SIM.industry}
+            {simulationCompany} · {simulationIndustry}
           </p>
           {/* Credential badge */}
           <div className="flex items-center gap-1.5">
@@ -53,7 +64,7 @@ export function LeftSidebar({ currentStep, lastSavedText }: LeftSidebarProps) {
             Assessment Tasks
           </span>
           <div className="flex flex-col gap-4">
-            {PROMPTS.map((p, i) => {
+            {prompts.map((p, i) => {
               const isCompleted = i < currentStep;
               const isCurrent = i === currentStep;
               return (

@@ -1,5 +1,5 @@
-// import type { Metadata } from "next";
-import type { Simulation } from "@/lib/types";
+import type { Metadata } from "next";
+import { getDisciplines } from "@/lib/requests";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { HeroSection } from "@/components/home/HeroSection";
@@ -16,27 +16,14 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  let simulations: Simulation[] = [];
-
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/api/simulations`, {
-      cache: "no-store",
-    });
-
-    if (res.ok) {
-      const json = await res.json();
-      simulations = json.simulations || [];
-    }
-  } catch (error) {
-    console.error("Failed to fetch simulations:", error);
-  }
+  const disciplines = await getDisciplines();
 
   return (
     <div className="min-h-screen">
       <Header homeMode />
       <HeroSection />
       <HowItWorks />
-      <DisciplinePills />
+      <DisciplinePills disciplines={disciplines} />
       <Testimonials />
       <PartnersSection />
       <Footer />

@@ -1,12 +1,11 @@
-import { TIME_REMAINING } from "@/lib/simulation-prompts";
 import type { Prompt } from "@/types";
 
 interface RightSidebarProps {
   prompt: Prompt;
-  currentStep: number;
+  minutesRemaining: number;
 }
 
-export function RightSidebar({ prompt, currentStep }: RightSidebarProps) {
+export function RightSidebar({ prompt, minutesRemaining }: RightSidebarProps) {
   return (
     <aside className="hidden xl:flex flex-col w-[240px] shrink-0 sticky self-start overflow-y-auto top-[73px] h-[calc(100vh-73px)] border-l border-border-light">
       <div className="p-5 flex flex-col gap-4">
@@ -51,7 +50,7 @@ export function RightSidebar({ prompt, currentStep }: RightSidebarProps) {
             <polyline points="12 6 12 12 16 14" />
           </svg>
           <span className="text-xs text-[#888]">
-            Approx {TIME_REMAINING[currentStep]} mins remaining
+            Approx {minutesRemaining} mins remaining
           </span>
         </div>
 

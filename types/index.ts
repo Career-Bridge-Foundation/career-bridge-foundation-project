@@ -1,27 +1,6 @@
-// ── Simulation list ──────────────────────────────────────
+// ── Canonical simulation + discipline types ──────────────
 
-export interface Simulation {
-  id: number;
-  slug: string;
-  title: string;
-  company: string;
-  industry: string;
-  type: string;
-  difficulty: "Foundation" | "Practitioner" | "Advanced";
-  time: string;
-  description: string;
-}
-
-// ── Disciplines ──────────────────────────────────────────
-
-export interface Discipline {
-  id: number;
-  name: string;
-  description: string;
-  status: "available" | "coming-soon";
-  count?: string;
-  href?: string;
-}
+export type { Simulation, Discipline } from "./simulation";
 
 // ── Simulation execution ─────────────────────────────────
 

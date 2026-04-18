@@ -6,6 +6,8 @@ interface DisciplineCardProps {
 }
 
 export function DisciplineCard({ discipline: d }: DisciplineCardProps) {
+
+
   return (
     <div className="discipline-card bg-white p-8 flex flex-col">
       {/* Status badge */}
@@ -22,7 +24,7 @@ export function DisciplineCard({ discipline: d }: DisciplineCardProps) {
         {d.status === "available" ? (
           <>
             <span className="text-sm text-[#999]">{d.count}</span>
-            <a href={d.href} className="text-sm font-medium text-teal hover:underline">
+            <a href={`/simulations/${d.slug}`} className="text-sm font-medium text-teal hover:underline">
               Start Practicing →
             </a>
           </>

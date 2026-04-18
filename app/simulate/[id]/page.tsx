@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
 import { useSimulation } from "@/hooks/useSimulation";
+import { useParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { LeftSidebar } from "@/components/simulation/LeftSidebar";
 import { RightSidebar } from "@/components/simulation/RightSidebar";
@@ -12,10 +12,34 @@ import { SupportingEvidence } from "@/components/simulation/SupportingEvidence";
 import { ChatWidget } from "@/components/simulation/ChatWidget";
 
 export default function SimulationExecutionPage() {
-  const sim = useSimulation();
+  const params = useParams<{ id: string }>();
+  const sim = useSimulation(params?.id);
 
-  const prompt = PROMPTS[sim.currentStep];
-  const response = sim.responses[sim.currentStep] ?? {};
+  // console.log("Sims: ", sim)
+
+  const promptCount = sim.prompts.length;
+  const safeStep = Math.min(sim.currentStep, Math.max(promptCount - 1, 0));
+  const prompt = sim.prompts[safeStep];
+  const response = sim.responses[safeStep] ?? {};
+  const minutesRemaining = sim.timeRemaining[safeStep] ?? 0;
+
+  if (sim.loading) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header variant="solid" />
+        <div className="pt-[120px] px-6 text-center text-sm text-[#666]">Loading simulation...</div>
+      </div>
+    );
+  }
+
+  if (!prompt) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Header variant="solid" />
+        <div className="pt-[120px] px-6 text-center text-sm text-[#666]">Simulation data unavailable.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -25,16 +49,16 @@ export default function SimulationExecutionPage() {
       <div className="lg:hidden fixed z-40 left-0 right-0 top-[73px] bg-white px-5 py-3 border-b border-border-light">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-navy">
-            Task {sim.currentStep + 1} of 5 · {prompt.title}
+            Task {safeStep + 1} of {promptCount} · {prompt.title}
           </span>
           <span className="text-xs text-[#999]">
-            ~{TIME_REMAINING[sim.currentStep]} mins left
+            ~{minutesRemaining} mins left
           </span>
         </div>
         <div className="w-full h-1 rounded-full bg-border-light">
           <div
             className="h-1 rounded-full bg-teal transition-all duration-300"
-            style={{ width: `${((sim.currentStep + 1) / 5) * 100}%` }}
+            style={{ width: `${((safeStep + 1) / promptCount) * 100}%` }}
           />
         </div>
       </div>
@@ -43,7 +67,11 @@ export default function SimulationExecutionPage() {
       <div className="flex pt-[73px]">
 
         <LeftSidebar
-          currentStep={sim.currentStep}
+          simulationTitle={sim.context.title}
+          simulationCompany={sim.context.company}
+          simulationIndustry={sim.context.industry}
+          prompts={sim.prompts}
+          currentStep={safeStep}
           lastSavedText={sim.lastSavedText}
         />
 
@@ -53,7 +81,7 @@ export default function SimulationExecutionPage() {
 
             {/* Top bar */}
             <div className="flex items-center justify-between mb-7">
-              <span className="text-xs text-[#999]">Task {sim.currentStep + 1} of 5</span>
+              <span className="text-xs text-[#999]">Task {safeStep + 1} of {promptCount}</span>
               <div className="flex items-center gap-3">
                 {sim.saveStatus === "saving" && (
                   <span className="text-xs italic text-[#bbb]">Saving…</span>
@@ -77,7 +105,14 @@ export default function SimulationExecutionPage() {
 
             <TaskPrompt
               prompt={prompt}
-              currentStep={sim.currentStep}
+              currentStep={safeStep}
+              simulationRole={sim.context.role}
+              simulationCompany={sim.context.company}
+              briefShort={sim.context.briefShort}
+              briefFull={sim.context.briefFull}
+              videoTranscript={sim.context.videoTranscript}
+              videoPresenterName={sim.context.videoPresenterName}
+              videoPresenterTitle={sim.context.videoPresenterTitle}
               briefExpanded={sim.briefExpanded}
               onToggleBrief={() => sim.setBriefExpanded(!sim.briefExpanded)}
               transcriptOpen={sim.transcriptOpen}
@@ -113,20 +148,21 @@ export default function SimulationExecutionPage() {
                 )}
               </div>
               <button
-                onClick={sim.currentStep < 4 ? sim.goNext : sim.saveToStorage}
+                onClick={safeStep < promptCount - 1 ? sim.goNext : sim.saveToStorage}
                 className={cn(
                   "text-sm font-semibold px-7 py-3 text-white",
-                  sim.currentStep === 4 ? "bg-teal text-[0.9375rem]" : "bg-navy"
+                  safeStep === promptCount - 1 ? "bg-teal text-[0.9375rem]" : "bg-navy"
                 )}
               >
-                {sim.currentStep < 4 ? "Save and Continue →" : "Submit Simulation →"}
+                {safeStep < promptCount - 1 ? "Save and Continue →" : "Submit Simulation →"}
               </button>
             </div>
 
           </div>
         </main>
 
-        <RightSidebar prompt={prompt} currentStep={sim.currentStep} />
+        {/* <RightSidebar prompt={prompt} currentStep={sim.currentStep} /> */}
+        <RightSidebar prompt={prompt} minutesRemaining={minutesRemaining} />
 
       </div>
 

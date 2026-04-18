@@ -1,11 +1,29 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { StepResponse } from "@/types";
+import type { Prompt, StepResponse } from "@/types";
+import type { Simulation, SimulationPrompt } from "@/types/simulation";
+import { getSimulation } from "@/lib/requests";
 
 const STORAGE_KEY = "sim-product-strategy";
 
+type SimulationContext = {
+  title: string;
+  company: string;
+  industry: string;
+  role: string;
+  briefShort: string;
+  briefFull: string;
+  videoTranscript: string;
+  videoPresenterName: string;
+  videoPresenterTitle: string;
+};
+
 interface UseSimulationReturn {
+  loading: boolean;
+  prompts: Prompt[];
+  timeRemaining: number[];
+  context: SimulationContext;
   currentStep: number;
   responses: Record<number, StepResponse>;
   saveStatus: "idle" | "saving" | "saved";
@@ -16,7 +34,7 @@ interface UseSimulationReturn {
   briefExpanded: boolean;
   muted: boolean;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
-  setTranscriptOpen: (open: boolean) => void;
+  setTranscriptOpen: (open: boolean) => void; 
   setBriefExpanded: (expanded: boolean) => void;
   setMuted: (muted: boolean) => void;
   setUploadedFiles: React.Dispatch<React.SetStateAction<File[]>>;
@@ -28,7 +46,100 @@ interface UseSimulationReturn {
   lastSavedText: () => string;
 }
 
-export function useSimulation(): UseSimulationReturn {
+const EMPTY_CONTEXT: SimulationContext = {
+  title: "",
+  company: "",
+  industry: "",
+  role: "",
+  briefShort: "",
+  briefFull: "",
+  videoTranscript: "",
+  videoPresenterName: "",
+  videoPresenterTitle: "",
+};
+
+function parseEstimatedMinutes(estimatedMinutes: string, promptCount: number): number {
+  const numbers = estimatedMinutes.match(/\d+/g)?.map((n) => Number.parseInt(n, 10)) ?? [];
+  if (numbers.length === 0) return Math.max(promptCount * 10, 10);
+  if (numbers.length === 1) return Math.max(numbers[0], 10);
+  return Math.max(Math.round((numbers[0] + numbers[1]) / 2), 10);
+}
+
+function buildTimeRemaining(totalMinutes: number, promptCount: number): number[] {
+  if (promptCount <= 0) return [];
+
+  const perStep = Math.max(Math.ceil(totalMinutes / promptCount), 1);
+  return Array.from({ length: promptCount }, (_, index) => {
+    return Math.max(totalMinutes - (index * perStep), 1);
+  });
+}
+
+function buildPromptGuidance(prompt: SimulationPrompt): string[] {
+  const guidance: string[] = [];
+
+  if (prompt.wordMin > 0) {
+    if (prompt.wordMax > prompt.wordMin) {
+      guidance.push(`Target ${prompt.wordMin} to ${prompt.wordMax} words.`);
+    } else {
+      guidance.push(`Write at least ${prompt.wordMin} words.`);
+    }
+  }
+
+  if (prompt.submissionType === "typed") {
+    guidance.push("Respond in clear written form.");
+  } else if (prompt.submissionType === "either") {
+    guidance.push("You may submit a typed response or upload a document.");
+  } else if (prompt.submissionType === "url") {
+    guidance.push("Provide a public URL and explain your rationale.");
+  }
+
+  return guidance.length > 0
+    ? guidance
+    : ["Answer with a clear structure and practical reasoning."];
+}
+
+function toBriefShort(fullBrief: string): string {
+  const trimmed = fullBrief.trim();
+  if (trimmed.length <= 260) return trimmed;
+  return `${trimmed.slice(0, 257).trimEnd()}...`;
+}
+
+function mapSimulationPromptToPrompt(prompt: SimulationPrompt, index: number): Prompt {
+  const promptType = prompt.submissionType === "typed" || prompt.submissionType === "either" || prompt.submissionType === "url"
+    ? prompt.submissionType
+    : "typed";
+
+  return {
+    id: index + 1,
+    type: promptType,
+    title: prompt.title,
+    question: prompt.body,
+    guidance: buildPromptGuidance(prompt),
+    minWords: prompt.wordMin,
+  };
+}
+
+function mapSimulationToContext(simulation: Simulation): SimulationContext {
+  const briefFull = simulation.scenarioBriefFull ?? simulation.scenarioBrief ?? "";
+
+  return {
+    title: simulation.title,
+    company: simulation.company,
+    industry: simulation.industry,
+    role: simulation.candidateRole,
+    briefShort: toBriefShort(briefFull),
+    briefFull,
+    videoTranscript: simulation.videoTranscript ?? "",
+    videoPresenterName: simulation.videoPresenterName ?? "",
+    videoPresenterTitle: simulation.videoPresenterTitle ?? "",
+  };
+}
+
+export function useSimulation(simulationId?: string): UseSimulationReturn {
+  const [loading, setLoading] = useState(true);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState<number[]>([]);
+  const [context, setContext] = useState<SimulationContext>(EMPTY_CONTEXT);
   const [currentStep, setCurrentStep] = useState(0);
   const [responses, setResponses] = useState<Record<number, StepResponse>>({});
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
@@ -39,6 +150,52 @@ export function useSimulation(): UseSimulationReturn {
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [muted, setMuted] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSimulation() {
+      setLoading(true);
+      if (!simulationId) {
+        if (isMounted) {
+          setPrompts([]);
+          setTimeRemaining([]);
+          setContext(EMPTY_CONTEXT);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const simulation = await getSimulation(simulationId);
+      if (!simulation || !Array.isArray(simulation.prompts) || simulation.prompts.length === 0) {
+        if (isMounted) {
+          setPrompts([]);
+          setTimeRemaining([]);
+          setContext(EMPTY_CONTEXT);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const mappedPrompts = simulation.prompts.map(mapSimulationPromptToPrompt);
+      const estimatedTotal = parseEstimatedMinutes(simulation.estimatedMinutes, mappedPrompts.length);
+      const mappedTimeRemaining = buildTimeRemaining(estimatedTotal, mappedPrompts.length);
+
+      if (isMounted) {
+        setPrompts(mappedPrompts);
+        setTimeRemaining(mappedTimeRemaining);
+        setContext(mapSimulationToContext(simulation));
+        setCurrentStep((prev) => Math.min(prev, mappedPrompts.length - 1));
+        setLoading(false);
+      }
+    }
+
+    void loadSimulation();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [simulationId]);
 
   // Restore from localStorage on mount
   useEffect(() => {
@@ -86,7 +243,7 @@ export function useSimulation(): UseSimulationReturn {
 
   function goNext() {
     saveToStorage();
-    if (currentStep < 4) setCurrentStep((s) => s + 1);
+    if (currentStep < prompts.length - 1) setCurrentStep((s) => s + 1);
   }
 
   function goPrev() {
@@ -102,6 +259,10 @@ export function useSimulation(): UseSimulationReturn {
   }
 
   return {
+    loading,
+    prompts,
+    timeRemaining,
+    context,
     currentStep,
     responses,
     saveStatus,

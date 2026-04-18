@@ -1,9 +1,21 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DisciplineCard } from "@/components/simulation/DisciplineCard";
-import { disciplines } from "@/lib/disciplines-data";
+import { getDisciplines } from "@/lib/requests";
+import type { Discipline as CardDiscipline } from "@/types";
 
-export default function SimulationsPage() {
+export default async function SimulationsPage() {
+  const disciplines = await getDisciplines();
+  const disciplineCards: CardDiscipline[] = disciplines.map((discipline) => ({
+    id: String(discipline.id),
+    name: discipline.name,
+    slug: discipline.slug,
+    description: discipline.description,
+    status: discipline.status,
+    count: discipline.count ?? null,
+    href: `/simulations?discipline=${discipline.slug}`,
+  }));
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -35,8 +47,8 @@ export default function SimulationsPage() {
             Prove Your Capabilities by Job Role
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border-light">
-            {disciplines.map((d) => (
-              <DisciplineCard key={d.id} discipline={d} />
+            {disciplineCards.map((discipline) => (
+              <DisciplineCard key={discipline.id} discipline={discipline} />
             ))}
           </div>
         </div>
