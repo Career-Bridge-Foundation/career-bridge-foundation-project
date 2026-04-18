@@ -11,7 +11,7 @@ interface HeaderProps {
   homeMode?: boolean;
 }
 
-const NAV_LINKS = ["Simulations", "For Coaches", "About", "Blog"];
+const NAV_LINKS = ["Simulations", "For Coaches", "Pricing", "About", "Blog"];
 
 export function Header({ variant = "transparent", homeMode = false }: HeaderProps) {
   const scrolled = useScrolled();
