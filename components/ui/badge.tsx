@@ -1,25 +1,5 @@
 import { cn } from "@/lib/cn";
 
-interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "outline";
-}
-
-/** Generic badge component with variant support. */
-export function Badge({ variant = "default", className, ...props }: BadgeProps) {
-  const baseClasses = "text-xs font-semibold uppercase px-2.5 py-1 tracking-brand-sm";
-  const variantClasses =
-    variant === "outline"
-      ? "border border-current"
-      : "bg-teal text-white border border-teal";
-
-  return (
-    <span
-      className={cn(baseClasses, variantClasses, className)}
-      {...props}
-    />
-  );
-}
-
 interface DifficultyBadgeProps {
   level: "Foundation" | "Practitioner" | "Advanced";
 }
@@ -30,9 +10,10 @@ export function DifficultyBadge({ level }: DifficultyBadgeProps) {
     level === "Foundation"
       ? "text-green-600 border-green-600"
       : level === "Practitioner"
-        ? "text-amber-600 border-amber-600"
-        : "text-navy border-navy";
-    return (
+      ? "text-amber-600 border-amber-600"
+      : "text-navy border-navy";
+
+  return (
     <span
       className={cn(
         "text-xs font-semibold uppercase px-2.5 py-1 border tracking-brand-sm",
@@ -45,7 +26,7 @@ export function DifficultyBadge({ level }: DifficultyBadgeProps) {
 }
 
 interface StatusBadgeProps {
-  status: string //"available" | "coming-soon";
+  status: "available" | "coming-soon";
 }
 
 /** Teal "Available Now" / grey "Coming Soon" badge for discipline cards. */
