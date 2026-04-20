@@ -38,13 +38,22 @@ export const getApiDocs = async () => {
           SimulationPrompt: {
             type: "object",
             properties: {
+              number: { type: "integer" },
               prompt_number: { type: "integer" },
+              promptNumber: { type: "integer" },
               title: { type: "string" },
+              body: { type: "string" },
               text: { type: "string" },
+              submissionType: {
+                type: "string",
+                enum: ["typed", "either", "url"],
+              },
               submission_type: {
                 type: "string",
-                enum: ["typed", "either"],
+                enum: ["typed", "either", "url"],
               },
+              wordMin: { type: "integer" },
+              wordMax: { type: "integer" },
               word_guidance: { type: "string" },
               typed_word_guidance: { type: "string" },
               upload_formats: {
@@ -82,10 +91,15 @@ export const getApiDocs = async () => {
           VideoUrls: {
             type: "object",
             properties: {
+              scenarioIntro: { type: "string" },
               scenario_intro: { type: "string" },
+              resultsDistinction: { type: "string" },
               results_distinction: { type: "string" },
+              resultsMerit: { type: "string" },
               results_merit: { type: "string" },
+              resultsPass: { type: "string" },
               results_pass: { type: "string" },
+              resultsDevelopment: { type: "string" },
               results_development: { type: "string" },
             },
           },
@@ -96,26 +110,65 @@ export const getApiDocs = async () => {
               slug: { type: "string", nullable: true },
               title: { type: "string" },
               discipline: { type: "string" },
+              company: { type: "string" },
               company_name: { type: "string" },
+              companyName: { type: "string", nullable: true },
+              industry: { type: "string" },
+              candidateRole: { type: "string" },
+              candidate_role: { type: "string", nullable: true },
+              estimatedMinutes: { type: "string" },
+              estimated_minutes: { type: "string", nullable: true },
+              difficulty: { type: "string", enum: ["Foundation", "Practitioner", "Advanced"] },
+              simulationType: { type: "string" },
+              simulation_type: { type: "string", nullable: true },
+              type: { type: "string" },
+              time: { type: "string" },
+              description: { type: "string" },
+              scenarioBrief: { type: "string" },
               scenario_brief: { type: "string" },
+              scenarioBriefFull: { type: "string", nullable: true },
+              scenario_brief_full: { type: "string", nullable: true },
               prompts: {
                 type: "array",
                 items: { $ref: "#/components/schemas/SimulationPrompt" },
               },
-              rubric: { $ref: "#/components/schemas/Rubric" },
+              rubric: {
+                oneOf: [
+                  { $ref: "#/components/schemas/Rubric" },
+                  { type: "null" },
+                ],
+              },
+              videoUrl: { type: "string", nullable: true },
+              videoUrls: {
+                oneOf: [
+                  { $ref: "#/components/schemas/VideoUrls" },
+                  { type: "null" },
+                ],
+              },
               video_urls: {
                 oneOf: [
                   { $ref: "#/components/schemas/VideoUrls" },
                   { type: "null" },
                 ],
               },
+              videoTranscript: { type: "string", nullable: true },
+              video_transcript: { type: "string", nullable: true },
+              videoPresenterName: { type: "string", nullable: true },
+              video_presenter_name: { type: "string", nullable: true },
+              videoPresenterTitle: { type: "string", nullable: true },
+              video_presenter_title: { type: "string", nullable: true },
+              passingScore: { type: "integer" },
               passing_score: { type: "integer" },
+              createdAt: { type: "string", format: "date-time" },
               created_at: { type: "string", format: "date-time" },
             },
           },
           Rubric: {
             type: "object",
             properties: {
+              prompt1: { $ref: "#/components/schemas/RubricPrompt" },
+              prompt2: { $ref: "#/components/schemas/RubricPrompt" },
+              prompt3: { $ref: "#/components/schemas/RubricPrompt" },
               prompt_1: { $ref: "#/components/schemas/RubricPrompt" },
               prompt_2: { $ref: "#/components/schemas/RubricPrompt" },
               prompt_3: { $ref: "#/components/schemas/RubricPrompt" },
@@ -143,7 +196,10 @@ export const getApiDocs = async () => {
               attempt_id: { type: "string" },
               prompt_number: { type: "integer" },
               submission_type: { type: "string", enum: ["typed"] },
-              text: { type: "string" },
+              text: {
+                type: "string",
+                description: "Candidate typed response. Must contain at least 50 words.",
+              },
             },
           },
           UrlSubmissionRequest: {
@@ -154,7 +210,10 @@ export const getApiDocs = async () => {
               prompt_number: { type: "integer" },
               submission_type: { type: "string", enum: ["url"] },
               url: { type: "string", format: "uri" },
-              rationale: { type: "string" },
+              rationale: {
+                type: "string",
+                description: "Candidate rationale. Must contain at least 50 words.",
+              },
             },
           },
           FileSubmissionRequest: {
@@ -163,6 +222,12 @@ export const getApiDocs = async () => {
             properties: {
               attempt_id: { type: "string" },
               prompt_number: { type: "integer" },
+              submission_type: {
+                type: "string",
+                enum: ["file"],
+                nullable: true,
+                description: "Optional. Multipart uploads are treated as file submissions.",
+              },
               file: { type: "string", format: "binary" },
             },
           },
@@ -311,6 +376,17 @@ export const getApiDocs = async () => {
               created_at: { type: "string", format: "date-time" },
             },
           },
+          ChatSseEvent: {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["start", "delta", "done", "error"],
+              },
+              text: { type: "string" },
+              message: { type: "string" },
+            },
+          },
           AttemptChatHistoryResponse: {
             type: "object",
             properties: {
@@ -334,10 +410,11 @@ export const getApiDocs = async () => {
               file_size_bytes: { type: "number", nullable: true },
               storage_path: { type: "string", nullable: true },
               external_url: { type: "string", nullable: true },
-              virus_scan_status: { type: "string" },
+              virus_scan_status: { type: "string", nullable: true },
               virus_scan_details: {
                 type: "object",
                 additionalProperties: true,
+                nullable: true,
               },
               created_at: { type: "string", format: "date-time" },
             },
@@ -359,12 +436,37 @@ export const getApiDocs = async () => {
               message: { type: "string" },
             },
           },
+          AttemptSubmitValidationError: {
+            type: "object",
+            properties: {
+              error: { type: "string" },
+              missing_prompt_indexes: {
+                type: "array",
+                items: { type: "integer" },
+              },
+            },
+          },
           EvaluateQueueResponse: {
             type: "object",
             properties: {
               success: { type: "boolean" },
               attempt_id: { type: "string" },
               evaluation_status: { type: "string" },
+              message: { type: "string" },
+            },
+          },
+          EvaluateProcessResponse: {
+            type: "object",
+            properties: {
+              success: { type: "boolean" },
+              attempt_id: { type: "string" },
+              message: { type: "string" },
+            },
+          },
+          ManualReviewResponse: {
+            type: "object",
+            properties: {
+              success: { type: "boolean" },
               message: { type: "string" },
             },
           },
@@ -375,6 +477,8 @@ export const getApiDocs = async () => {
               name: { type: "string" },
               slug: { type: "string" },
               description: { type: "string", nullable: true },
+              status: { type: "string" },
+              count: { type: "string", nullable: true },
             },
           },
           DisciplineListResponse: {

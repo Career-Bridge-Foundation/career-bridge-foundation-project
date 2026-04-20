@@ -20,12 +20,28 @@ type DynamicObject = Record<string, unknown>;
  *     responses:
  *       202:
  *         description: Attempt submitted and evaluation queued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AttemptSubmitResponse'
  *       400:
  *         description: Missing required prompt responses
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AttemptSubmitValidationError'
  *       404:
  *         description: Attempt not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 export async function POST(
   request: NextRequest,

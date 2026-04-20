@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { useSimulation } from "@/hooks/useSimulation";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { LeftSidebar } from "@/components/simulation/LeftSidebar";
 import { RightSidebar } from "@/components/simulation/RightSidebar";
@@ -12,6 +12,7 @@ import { SupportingEvidence } from "@/components/simulation/SupportingEvidence";
 import { ChatWidget } from "@/components/simulation/ChatWidget";
 
 export default function SimulationExecutionPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const sim = useSimulation(params?.id);
 
@@ -22,6 +23,14 @@ export default function SimulationExecutionPage() {
   const prompt = sim.prompts[safeStep];
   const response = sim.responses[safeStep] ?? {};
   const minutesRemaining = sim.timeRemaining[safeStep] ?? 0;
+
+  const handleSubmit = async () => {
+    const success = await sim.submitAttempt();
+    if (success) {
+      // Redirect to results page after successful submission
+      router.push("/simulate/success");
+    }
+  };
 
   if (sim.loading) {
     return (

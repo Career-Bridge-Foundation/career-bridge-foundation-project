@@ -23,8 +23,18 @@ export const maxDuration = 300;
  *     responses:
  *       200:
  *         description: Job processing outcome
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EvaluateProcessResponse'
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/EvaluateProcessResponse'
+ *                 - $ref: '#/components/schemas/Error'
  */
 export async function POST(request: NextRequest) {
   try {

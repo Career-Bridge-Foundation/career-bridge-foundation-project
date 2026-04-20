@@ -24,12 +24,9 @@
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 message:
- *                   type: string
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/EvaluateQueueResponse'
+ *                 - $ref: '#/components/schemas/ManualReviewResponse'
  *       400:
  *         description: Missing attempt id or simulation context
  *         content:

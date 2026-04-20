@@ -60,19 +60,42 @@ export function useChat({ prompt }: UseChatOptions): UseChatReturn {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const text = decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const updated = [...prev];
-          updated[updated.length - 1] = {
-            ...updated[updated.length - 1],
-            content: updated[updated.length - 1].content + text,
-          };
-          return updated;
-        });
+        buffer += decoder.decode(value, { stream: true });
+
+        let delimIdx = buffer.indexOf("\n\n");
+        while (delimIdx !== -1) {
+          const rawEvent = buffer.slice(0, delimIdx);
+          buffer = buffer.slice(delimIdx + 2);
+          delimIdx = buffer.indexOf("\n\n");
+
+          for (const line of rawEvent.split("\n")) {
+            if (!line.startsWith("data:")) continue;
+            const payload = line.slice(5).trim();
+            if (!payload || payload === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(payload) as { type?: string; text?: string; message?: string };
+              if (parsed.type === "error") throw new Error(parsed.message || "Stream error");
+              if (parsed.type === "delta" && parsed.text) {
+                setMessages((prev) => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    ...updated[updated.length - 1],
+                    content: updated[updated.length - 1].content + parsed.text,
+                  };
+                  return updated;
+                });
+              }
+            } catch (e) {
+              if ((e as Error).message !== "Stream error") continue;
+              throw e;
+            }
+          }
+        }
       }
     } catch {
       setMessages((prev) => {

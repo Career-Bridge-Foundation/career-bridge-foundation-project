@@ -8,7 +8,7 @@ import { supabaseAdmin } from "@/lib/supabase";
  *     summary: List disciplines
  *     description: Returns all disciplines from the disciplines table.
  *     tags:
- *       - Simulations
+ *       - Disciplines
  *     responses:
  *       200:
  *         description: Discipline list

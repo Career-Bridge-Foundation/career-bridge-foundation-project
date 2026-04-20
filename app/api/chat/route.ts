@@ -22,7 +22,7 @@ type ChatRequestBody = {
   message?: string;
   taskTitle?: string;
   taskDescription?: string;
-  taskGuidance?: string;
+  taskGuidance?: string | string[];
   attempt_id?: string;
   prompt_index?: number;
 };
@@ -43,7 +43,7 @@ type MessageStreamDelta = {
  * /api/chat:
  *   post:
  *     summary: Stream coaching chat response
- *     description: Streams Claude coaching feedback for a prompt using Server-Sent Events and persists both user and assistant messages.
+ *     description: Streams Claude coaching feedback for a prompt using Server-Sent Events and persists both user and assistant messages. Enforces 8 messages/minute and 120 messages/day per candidate identity.
  *     tags:
  *       - Chat
  *     requestBody:
@@ -58,7 +58,7 @@ type MessageStreamDelta = {
  *         content:
  *           text/event-stream:
  *             schema:
- *               type: string
+ *               $ref: '#/components/schemas/ChatSseEvent'
  *               example: |
  *                 data: {"type":"start"}
  *
@@ -91,54 +91,62 @@ export async function POST(request: NextRequest) {
     const message = body.message?.trim() || "";
     const taskTitle = body.taskTitle?.trim() || "";
     const taskDescription = body.taskDescription?.trim() || "";
-    const taskGuidance = body.taskGuidance?.trim() || "";
+    const taskGuidance = Array.isArray(body.taskGuidance)
+      ? body.taskGuidance.join(" ")
+      : body.taskGuidance?.trim() || "";
     const attemptId = body.attempt_id?.trim() || "";
     const promptIndex = Number(body.prompt_index);
 
-    if (!message || !attemptId || Number.isNaN(promptIndex)) {
-      return NextResponse.json(
-        { error: "message, attempt_id, and prompt_index are required" },
-        { status: 400 }
-      );
+    if (!message) {
+      return NextResponse.json({ error: "message is required" }, { status: 400 });
     }
 
-    const { data: attempt, error: attemptError } = await supabaseAdmin
-      .from("attempts")
-      .select("id, candidate_email")
-      .eq("id", attemptId)
-      .single();
+    const hasAttempt = !!attemptId && !Number.isNaN(promptIndex);
 
-    if (attemptError || !attempt) {
-      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    let userIdentifier =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+    if (hasAttempt) {
+      const { data: attempt, error: attemptError } = await supabaseAdmin
+        .from("attempts")
+        .select("id, candidate_email")
+        .eq("id", attemptId)
+        .single();
+
+      if (attemptError || !attempt) {
+        return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+      }
+
+      userIdentifier =
+        (attempt.candidate_email as string | null)?.toLowerCase().trim() || userIdentifier;
     }
 
-    const userIdentifier =
-      (attempt.candidate_email as string | null)?.toLowerCase().trim() ||
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      "unknown";
-
-    const limitCheck = await checkRateLimit(userIdentifier);
-    if (!limitCheck.allowed) {
-      return NextResponse.json(
-        { error: limitCheck.message || "Rate limit exceeded" },
-        { status: 429 }
-      );
+    if (hasAttempt) {
+      const limitCheck = await checkRateLimit(userIdentifier);
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          { error: limitCheck.message || "Rate limit exceeded" },
+          { status: 429 }
+        );
+      }
     }
 
-    const { error: userInsertError } = await supabaseAdmin.from("chat_messages").insert({
-      attempt_id: attemptId,
-      prompt_index: promptIndex,
-      role: "user",
-      content: message,
-      task_title: taskTitle || null,
-      task_description: taskDescription || null,
-      task_guidance: taskGuidance || null,
-      user_identifier: userIdentifier,
-    });
+    if (hasAttempt) {
+      const { error: userInsertError } = await supabaseAdmin.from("chat_messages").insert({
+        attempt_id: attemptId,
+        prompt_index: promptIndex,
+        role: "user",
+        content: message,
+        task_title: taskTitle || null,
+        task_description: taskDescription || null,
+        task_guidance: taskGuidance || null,
+        user_identifier: userIdentifier,
+      });
 
-    if (userInsertError) {
-      console.error("Failed to persist user chat message:", userInsertError);
-      return NextResponse.json({ error: "Failed to save chat message" }, { status: 500 });
+      if (userInsertError) {
+        console.error("Failed to persist user chat message:", userInsertError);
+        return NextResponse.json({ error: "Failed to save chat message" }, { status: 500 });
+      }
     }
 
     const encoder = new TextEncoder();
@@ -271,21 +279,23 @@ export async function POST(request: NextRequest) {
             throw new Error("Claude returned an empty assistant response");
           }
 
-          const { error: assistantInsertError } = await supabaseAdmin
-            .from("chat_messages")
-            .insert({
-              attempt_id: attemptId,
-              prompt_index: promptIndex,
-              role: "assistant",
-              content: trimmedAssistantText,
-              task_title: taskTitle || null,
-              task_description: taskDescription || null,
-              task_guidance: taskGuidance || null,
-              user_identifier: userIdentifier,
-            });
+          if (hasAttempt) {
+            const { error: assistantInsertError } = await supabaseAdmin
+              .from("chat_messages")
+              .insert({
+                attempt_id: attemptId,
+                prompt_index: promptIndex,
+                role: "assistant",
+                content: trimmedAssistantText,
+                task_title: taskTitle || null,
+                task_description: taskDescription || null,
+                task_guidance: taskGuidance || null,
+                user_identifier: userIdentifier,
+              });
 
-          if (assistantInsertError) {
-            throw new Error(`Failed to save assistant message: ${assistantInsertError.message}`);
+            if (assistantInsertError) {
+              throw new Error(`Failed to save assistant message: ${assistantInsertError.message}`);
+            }
           }
 
           emit({ type: "done" });

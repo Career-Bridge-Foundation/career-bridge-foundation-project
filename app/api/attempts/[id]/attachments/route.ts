@@ -34,7 +34,7 @@ type AttachmentInsertRow = {
  * /api/attempts/{id}/attachments:
  *   post:
  *     summary: Add supporting evidence attachment
- *     description: Adds a supporting evidence file (multipart upload) or URL (JSON payload) scoped to a prompt index.
+ *     description: Adds a supporting evidence file (multipart upload) or URL (JSON payload) scoped to a prompt index. Maximum 3 attachments per prompt.
  *     tags:
  *       - Attempts
  *     parameters:
@@ -69,12 +69,28 @@ type AttachmentInsertRow = {
  *     responses:
  *       200:
  *         description: Attachment saved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AttemptAttachmentResponse'
  *       400:
  *         description: Invalid payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       404:
  *         description: Attempt not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 export async function POST(
   request: NextRequest,
