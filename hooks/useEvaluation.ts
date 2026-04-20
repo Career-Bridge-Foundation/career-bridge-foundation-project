@@ -86,7 +86,7 @@ export function useEvaluation() {
       const result: EvaluationResult = await res.json();
       localStorage.setItem(storageKey(simulationId), JSON.stringify(result));
 
-      return `/simulate/${simulationId}/results`;
+      return `/simulations/product-management/${simulationId}/results`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluation failed. Please try again.");
       return null;

@@ -35,7 +35,7 @@ export function SimulationCard({ simulation: sim }: SimulationCardProps) {
           {sim.time}
         </span>
         <Link
-          href={`/simulate/${sim.slug}`}
+          href={`/simulations/product-management/${sim.slug}`}
           className="text-sm font-medium text-teal hover:underline"
         >
           Start Simulation →
