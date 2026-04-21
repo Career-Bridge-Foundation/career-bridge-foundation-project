@@ -1,7 +1,28 @@
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import type { PriceType } from "@/types/database";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+// Simulation credits granted per price type
+const CREDIT_MAP: Record<PriceType, number> = {
+  single:    1,
+  bundle:    3,
+  portfolio: 14,
+  coach:     999, // effectively unlimited
+};
+
+// The webhook runs outside a user auth session, so we use the service role key
+// to bypass RLS. SUPABASE_SERVICE_ROLE_KEY must be set in your environment.
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL is not set");
+  }
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
@@ -15,13 +36,14 @@ export async function POST(request: NextRequest) {
       event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      return new Response(JSON.stringify({ error: "Webhook signature verification failed", details: message }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      console.error("[webhook] Signature verification failed:", message);
+      return new Response(
+        JSON.stringify({ error: "Webhook signature verification failed", details: message }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
   } else {
-    // Skip verification in local development when secret is not set
+    // Dev fallback: skip verification when STRIPE_WEBHOOK_SECRET is absent
     try {
       event = JSON.parse(rawBody) as Stripe.Event;
     } catch {
@@ -34,9 +56,82 @@ export async function POST(request: NextRequest) {
 
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const { priceType, simulationId } = session.metadata ?? {};
-    console.log(`Payment successful — priceType: ${priceType}, simulationId: ${simulationId}, sessionId: ${session.id}`);
-    // TODO: connect to Supabase to grant candidate access
+
+    // user_id is set in metadata by the checkout route; client_reference_id is
+    // a fallback in case metadata is ever dropped by Stripe.
+    const userId = session.metadata?.user_id ?? session.client_reference_id;
+    const priceType = (session.metadata?.price_type ?? "single") as PriceType;
+
+    if (!userId) {
+      console.error("[webhook] checkout.session.completed — no user_id in metadata, session:", session.id);
+      // Return 200 so Stripe doesn't retry; log for manual reconciliation.
+      return new Response(JSON.stringify({ received: true, warning: "no user_id" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const simulationCredits = CREDIT_MAP[priceType] ?? 1;
+
+    try {
+      const admin = getAdminClient();
+
+      // ── 1. Record the purchase ────────────────────────────────
+      const { error: purchaseError } = await admin.from("purchases").insert({
+        user_id: userId,
+        stripe_checkout_session_id: session.id,
+        stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+        price_type: priceType,
+        amount_paid: session.amount_total ?? 0,
+        currency: session.currency ?? "gbp",
+        simulation_credits: simulationCredits,
+        simulations_used: 0,
+        status: "active",
+      });
+
+      if (purchaseError) {
+        console.error("[webhook] Failed to insert purchase:", purchaseError);
+      } else {
+        console.log(`[webhook] Purchase recorded — user: ${userId}, type: ${priceType}, credits: ${simulationCredits}`);
+      }
+
+      // ── 2. Coach purchase: promote user + create coach record ──
+      if (priceType === "coach") {
+        await admin
+          .from("profiles")
+          .update({ user_type: "coach" })
+          .eq("id", userId);
+
+        const { data: existingCoach } = await admin
+          .from("coaches")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!existingCoach) {
+          await admin.from("coaches").insert({
+            user_id: userId,
+            max_seats: 10,
+            stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+          });
+        } else {
+          // Update stripe_customer_id if we now have it
+          if (typeof session.customer === "string") {
+            await admin
+              .from("coaches")
+              .update({ stripe_customer_id: session.customer })
+              .eq("user_id", userId);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[webhook] Supabase operation failed:", err);
+      // Return 500 so Stripe retries the webhook delivery
+      return new Response(JSON.stringify({ error: "Database write failed" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
   return new Response(JSON.stringify({ received: true }), {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
@@ -13,7 +13,60 @@ import { TaskPrompt } from "@/components/simulation/TaskPrompt";
 import { ResponseForm } from "@/components/simulation/ResponseForm";
 import { SupportingEvidence } from "@/components/simulation/SupportingEvidence";
 import { ChatWidget } from "@/components/simulation/ChatWidget";
+import { createClient } from "@/lib/supabase/client";
+import { checkSimulationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
+
+// ── Access gate states ────────────────────────────────────────
+type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated";
+
+// ── Paywall screen ────────────────────────────────────────────
+function PaywallScreen() {
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header variant="solid" />
+      <div
+        className="flex-1 flex flex-col items-center justify-center gap-6 px-6 text-center"
+        style={{ paddingTop: "120px", paddingBottom: "80px" }}
+      >
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#003359"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+          Simulation Credit Required
+        </h1>
+        <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
+          You need at least one simulation credit to access and submit this simulation.
+          Purchase a plan to get started.
+        </p>
+        <a
+          href="/pricing"
+          className="text-sm font-semibold px-8 py-3.5 text-white"
+          style={{ backgroundColor: "#003359" }}
+        >
+          View Plans →
+        </a>
+        <a
+          href="/simulations"
+          className="text-sm font-medium"
+          style={{ color: "#003359" }}
+        >
+          Back to Simulations
+        </a>
+      </div>
+    </div>
+  );
+}
 
 function buildResponseText(resp: StepResponse | undefined): string {
   if (!resp) return "";
@@ -35,6 +88,25 @@ export default function SimulationExecutionPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
+
+  // ── Access check on mount ────────────────────────────────────
+  useEffect(() => {
+    async function checkAccess() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setAccessStatus("unauthenticated");
+        return;
+      }
+
+      const { hasAccess } = await checkSimulationAccess(user.id);
+      setAccessStatus(hasAccess ? "granted" : "denied");
+    }
+
+    checkAccess().catch(() => setAccessStatus("unauthenticated"));
+  }, []);
 
   function handleSubmitClick() {
     // Validate all tasks have content
@@ -55,6 +127,14 @@ export default function SimulationExecutionPage() {
 
     // Save all responses and flip session status to 'submitted' before calling the API
     await sim.markSubmitted();
+
+    // Consume one simulation credit (server-side, uses service role key)
+    const consumeRes = await fetch("/api/purchases/consume", { method: "POST" });
+    if (!consumeRes.ok && consumeRes.status !== 403) {
+      // 403 means no credits — extremely unlikely here since we already checked on load,
+      // but guard against it. For other errors, continue anyway (don't block the user).
+      console.warn("[simulate] Credit consume returned", consumeRes.status);
+    }
 
     const responses = PROMPTS.map((p, i) => ({
       taskId: p.id,
@@ -77,6 +157,25 @@ export default function SimulationExecutionPage() {
 
   const prompt = PROMPTS[sim.currentStep];
   const response = sim.responses[sim.currentStep] ?? {};
+
+  // ── Access gate ───────────────────────────────────────────────
+  if (accessStatus === "unauthenticated") {
+    // Redirect to login; preserve the current URL as the redirect target
+    router.replace(`/auth/login?redirect=/simulate/${simulationId}`);
+    return null;
+  }
+
+  if (accessStatus === "loading") {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <span className="text-sm text-gray-400">Loading…</span>
+      </div>
+    );
+  }
+
+  if (accessStatus === "denied") {
+    return <PaywallScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-white">

@@ -14,7 +14,10 @@
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\(Object.keys\\(l\\).filter\\(k => /social|share|link/i.test\\(k\\)\\).slice\\(0,20\\)\\)\")",
       "Bash(node -e \"console.log\\(require\\('lucide-react/package.json'\\).version\\)\")",
       "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\(l['Bell'] ? 'Bell: yes' : 'Bell: no'\\)\")",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(cp app/api/stripe/checkout/route.ts app/api/stripe/checkout/route.ts.bak)",
+      "Bash(cp app/api/stripe/webhook/route.ts app/api/stripe/webhook/route.ts.bak)",
+      "Bash(mkdir -p app/api/purchases/consume)"
     ]
   }
 }
