@@ -12,6 +12,8 @@ import {
   type EvaluationCriterion,
 } from "@/hooks/useEvaluation";
 import { SIM, PROMPTS } from "@/lib/simulation-prompts";
+import { claimCredential } from "@/lib/certifier";
+import { createClient } from "@/lib/supabase/client";
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -589,6 +591,9 @@ export default function ResultsPage() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [credentialState, setCredentialState] = useState<"idle" | "claiming" | "claimed" | "error">("idle");
+  const [credentialUrl, setCredentialUrl] = useState<string | null>(null);
+  const [credentialError, setCredentialError] = useState<string | null>(null);
 
   useEffect(() => {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -601,6 +606,22 @@ export default function ResultsPage() {
         if (data) {
           setResult(data);
           setLoading(false);
+
+          // Check for an existing credential issuance
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: issuance } = await supabase
+              .from("credential_issuances")
+              .select("certifier_credential_url, status")
+              .eq("candidate_user_id", user.id)
+              .eq("simulation_id", simulationId)
+              .maybeSingle();
+            if (issuance?.status === "issued" && issuance.certifier_credential_url) {
+              setCredentialUrl(issuance.certifier_credential_url);
+              setCredentialState("claimed");
+            }
+          }
           return;
         }
       }
@@ -636,6 +657,20 @@ export default function ResultsPage() {
       if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [simulationId, sessionId]);
+
+  async function handleClaimCredential() {
+    if (!sessionId) return;
+    setCredentialState("claiming");
+    setCredentialError(null);
+    try {
+      const url = await claimCredential(sessionId);
+      setCredentialUrl(url);
+      setCredentialState("claimed");
+    } catch (err) {
+      setCredentialError(err instanceof Error ? err.message : "Something went wrong.");
+      setCredentialState("error");
+    }
+  }
 
   async function copyLink() {
     try {
@@ -761,20 +796,64 @@ export default function ResultsPage() {
                       level. You may also choose to retake the simulation to aim for a
                       higher band.
                     </p>
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        className="text-sm font-semibold px-6 py-3 text-white"
-                        style={{ backgroundColor: TEAL }}
-                      >
-                        Claim My Credential →
-                      </button>
-                      <a
-                        href={`/simulate/${simulationId}`}
-                        className="text-sm font-medium px-6 py-3"
-                        style={{ border: `1px solid ${NAVY}`, color: NAVY }}
-                      >
-                        Retake Simulation
-                      </a>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-wrap gap-3">
+                        {!sessionId ? (
+                          <span className="text-sm" style={{ color: "#888" }}>
+                            Sign in to claim your credential.
+                          </span>
+                        ) : credentialState === "claimed" && credentialUrl ? (
+                          <>
+                            <a
+                              href={credentialUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-semibold px-6 py-3 text-white"
+                              style={{ backgroundColor: TEAL }}
+                            >
+                              View My Credential →
+                            </a>
+                          </>
+                        ) : (
+                          <button
+                            onClick={handleClaimCredential}
+                            disabled={credentialState === "claiming"}
+                            className="text-sm font-semibold px-6 py-3 text-white flex items-center gap-2"
+                            style={{
+                              backgroundColor: TEAL,
+                              opacity: credentialState === "claiming" ? 0.7 : 1,
+                              cursor: credentialState === "claiming" ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {credentialState === "claiming" ? (
+                              <>
+                                <svg
+                                  width="13" height="13" viewBox="0 0 24 24" fill="none"
+                                  stroke="white" strokeWidth="2.5" strokeLinecap="round"
+                                  style={{ animation: "spin 0.8s linear infinite" }}
+                                >
+                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                </svg>
+                                Issuing…
+                              </>
+                            ) : credentialState === "error" ? (
+                              "Try Again →"
+                            ) : (
+                              "Claim My Credential →"
+                            )}
+                          </button>
+                        )}
+                        <a
+                          href={`/simulate/${simulationId}`}
+                          className="text-sm font-medium px-6 py-3"
+                          style={{ border: `1px solid ${NAVY}`, color: NAVY }}
+                        >
+                          Retake Simulation
+                        </a>
+                      </div>
+                      {credentialState === "error" && credentialError && (
+                        <p className="text-xs" style={{ color: "#EF4444" }}>{credentialError}</p>
+                      )}
                     </div>
                   </>
                 ) : (
