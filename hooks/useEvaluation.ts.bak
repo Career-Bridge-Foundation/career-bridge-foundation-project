@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
-// ── Evaluation result types (frontend shape — matches Claude API output) ──
+// ── Evaluation result types ───────────────────────────────────────
 
 export interface EvaluationCriterion {
   name: string;
@@ -31,7 +30,7 @@ export interface EvaluationResult {
   tasks: EvaluationTask[];
 }
 
-// ── localStorage helpers (unauthenticated users) ──────────────────
+// ── Storage helpers ───────────────────────────────────────────────
 
 export function storageKey(simulationId: string): string {
   return `evaluation-result-${simulationId}`;
@@ -41,28 +40,6 @@ export function loadEvaluationResult(simulationId: string): EvaluationResult | n
   try {
     const raw = localStorage.getItem(storageKey(simulationId));
     return raw ? (JSON.parse(raw) as EvaluationResult) : null;
-  } catch {
-    return null;
-  }
-}
-
-// ── Supabase loader (authenticated users) ────────────────────────
-// The API route writes the full Claude response as raw_evaluation, so we
-// read it back directly — no reshape needed.
-
-export async function loadEvaluationResultFromSupabase(
-  sessionId: string
-): Promise<EvaluationResult | null> {
-  try {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("evaluation_results")
-      .select("raw_evaluation")
-      .eq("session_id", sessionId)
-      .maybeSingle();
-
-    if (!data?.raw_evaluation) return null;
-    return data.raw_evaluation as EvaluationResult;
   } catch {
     return null;
   }
@@ -81,22 +58,13 @@ export function useEvaluation() {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * POSTs task responses to /api/evaluate.
-   *
-   * For authenticated users (sessionId + userId provided):
-   *   - sends session_id, user_id, simulation_slug to the API
-   *   - API route writes the result to Supabase
-   *   - redirect URL includes ?session_id= so the results page loads from Supabase
-   *
-   * For unauthenticated users (sessionId / userId absent):
-   *   - persists the result to localStorage (existing behaviour)
-   *   - redirect URL has no session_id; results page polls localStorage
+   * POSTs formatted task responses to /api/evaluate, persists the result
+   * to localStorage, and returns the redirect URL for the results page.
+   * Returns null and sets error state if the request fails.
    */
   async function submitForEvaluation(
     simulationId: string,
-    responses: TaskInput[],
-    sessionId?: string | null,
-    userId?: string | null
+    responses: TaskInput[]
   ): Promise<string | null> {
     setIsSubmitting(true);
     setError(null);
@@ -105,11 +73,7 @@ export function useEvaluation() {
       const res = await fetch("/api/evaluate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          responses,
-          session_id: sessionId ?? null,
-          simulation_slug: simulationId,
-        }),
+        body: JSON.stringify({ responses }),
       });
 
       if (!res.ok) {
@@ -120,16 +84,9 @@ export function useEvaluation() {
       }
 
       const result: EvaluationResult = await res.json();
+      localStorage.setItem(storageKey(simulationId), JSON.stringify(result));
 
-      // Unauthenticated path: persist to localStorage so the results page can read it
-      if (!sessionId || !userId) {
-        localStorage.setItem(storageKey(simulationId), JSON.stringify(result));
-      }
-
-      const redirectBase = `/simulate/${simulationId}/results`;
-      return sessionId
-        ? `${redirectBase}?session_id=${encodeURIComponent(sessionId)}`
-        : redirectBase;
+      return `/simulations/product-management/${simulationId}/results`;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluation failed. Please try again.");
       return null;

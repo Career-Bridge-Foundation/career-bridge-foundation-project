@@ -29,7 +29,7 @@ export default function SimulationExecutionPage() {
   const simulationId = params?.id ?? "product-strategy";
   const router = useRouter();
 
-  const sim = useSimulation();
+  const sim = useSimulation(simulationId);
   const { submitForEvaluation, isSubmitting } = useEvaluation();
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -52,7 +52,9 @@ export default function SimulationExecutionPage() {
 
   async function handleConfirmSubmit() {
     setShowConfirm(false);
-    sim.saveToStorage();
+
+    // Save all responses and flip session status to 'submitted' before calling the API
+    await sim.markSubmitted();
 
     const responses = PROMPTS.map((p, i) => ({
       taskId: p.id,
@@ -60,7 +62,12 @@ export default function SimulationExecutionPage() {
       response: buildResponseText(sim.responses[i]),
     }));
 
-    const redirectUrl = await submitForEvaluation(simulationId, responses);
+    const redirectUrl = await submitForEvaluation(
+      simulationId,
+      responses,
+      sim.sessionId,
+      sim.userId
+    );
     if (redirectUrl) {
       router.push(redirectUrl);
     } else {

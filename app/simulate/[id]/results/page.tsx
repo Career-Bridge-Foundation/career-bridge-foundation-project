@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import {
   loadEvaluationResult,
+  loadEvaluationResultFromSupabase,
   type EvaluationResult,
   type EvaluationTask,
   type EvaluationCriterion,
@@ -581,47 +582,60 @@ function ShareSection({ result }: { result: EvaluationResult }) {
 
 export default function ResultsPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const simulationId = params?.id ?? "product-strategy";
+  const sessionId = searchParams?.get("session_id") ?? null;
 
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Small delay so the "evaluating" animation shows briefly on fresh load
-    const check = () => {
-      const data = loadEvaluationResult(simulationId);
-      if (data) {
-        setResult(data);
-        setLoading(false);
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let pollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    async function load() {
+      // Authenticated path: load directly from Supabase using session_id
+      if (sessionId) {
+        const data = await loadEvaluationResultFromSupabase(sessionId);
+        if (data) {
+          setResult(data);
+          setLoading(false);
+          return;
+        }
       }
-    };
 
-    // Try immediately
-    check();
+      // Unauthenticated path: try localStorage immediately
+      const localData = loadEvaluationResult(simulationId);
+      if (localData) {
+        setResult(localData);
+        setLoading(false);
+        return;
+      }
 
-    // If not found, poll briefly (handles redirect race)
-    if (!result) {
-      const poll = setInterval(() => {
+      // Poll localStorage briefly to handle redirect race for unauthenticated users
+      pollInterval = setInterval(() => {
         const data = loadEvaluationResult(simulationId);
         if (data) {
           setResult(data);
           setLoading(false);
-          clearInterval(poll);
+          if (pollInterval) clearInterval(pollInterval);
         }
       }, 500);
-      // Stop polling after 60 s
-      const timeout = setTimeout(() => {
-        clearInterval(poll);
+
+      pollTimeout = setTimeout(() => {
+        if (pollInterval) clearInterval(pollInterval);
         setLoading(false);
       }, 60000);
-      return () => {
-        clearInterval(poll);
-        clearTimeout(timeout);
-      };
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulationId]);
+
+    load().catch(console.error);
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+      if (pollTimeout) clearTimeout(pollTimeout);
+    };
+  }, [simulationId, sessionId]);
 
   async function copyLink() {
     try {
