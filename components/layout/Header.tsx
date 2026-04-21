@@ -57,7 +57,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
 
         {/* Apply button */}
         <a
-          href={homeMode ? "#simulations" : "#"}
+          href={homeMode ? "#simulations" : "/auth/signup"}
           className={cn(
             "text-xs font-medium uppercase px-5 py-2.5",
             isSolid ? "btn-apply" : "btn-apply-inverted"
