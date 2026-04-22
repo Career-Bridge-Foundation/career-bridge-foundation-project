@@ -65,7 +65,7 @@ export function HeroSection() {
           {user ? (
             <>
               <a
-                href="/simulations"
+                href="#simulations"
                 className="btn-hero-primary inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium uppercase"
               >
                 Go to Simulations

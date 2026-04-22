@@ -1,12 +1,25 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
 import type { Simulation } from "@/types";
 
 interface SimulationCardProps {
   simulation: Simulation;
+  hasAccess: boolean | null;
 }
 
-export function SimulationCard({ simulation: sim }: SimulationCardProps) {
+export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardProps) {
+  const router = useRouter();
+
+  function handleStart() {
+    if (hasAccess === null) return;
+    router.push(hasAccess
+      ? `/simulations/product-management/${sim.slug}`
+      : "/pricing"
+    );
+  }
+
   return (
     <div className="bg-white flex flex-col p-8">
       {/* Top badges */}
@@ -27,19 +40,19 @@ export function SimulationCard({ simulation: sim }: SimulationCardProps) {
       {/* Divider + bottom row */}
       <div className="mt-6 pt-5 flex items-center justify-between border-t border-border-light">
         <span className="flex items-center gap-1.5 text-xs text-[#999]">
-          {/* Clock icon */}
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
           {sim.time}
         </span>
-        <Link
-          href={`/simulations/product-management/${sim.slug}`}
-          className="text-sm font-medium text-teal hover:underline"
+        <button
+          onClick={handleStart}
+          disabled={hasAccess === null}
+          className="text-sm font-medium text-teal hover:underline disabled:opacity-40 cursor-pointer"
         >
           Start Simulation →
-        </Link>
+        </button>
       </div>
     </div>
   );

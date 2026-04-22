@@ -1,14 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { FilterBar } from "@/components/simulation/FilterBar";
 import { SimulationCard } from "@/components/simulation/SimulationCard";
 import { simulations } from "@/lib/simulations-data";
+import { createClient } from "@/lib/supabase/client";
+import { checkSimulationAccess } from "@/lib/access-control";
 
 export default function ProductManagementPage() {
   const [typeFilter, setTypeFilter] = useState("All");
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function fetchAccess() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setHasAccess(false); return; }
+      const { hasAccess } = await checkSimulationAccess(user.id);
+      setHasAccess(hasAccess);
+    }
+    fetchAccess();
+  }, []);
   const [diffFilter, setDiffFilter] = useState("All");
   const [industryFilter, setIndustryFilter] = useState("All");
 
@@ -94,7 +108,7 @@ export default function ProductManagementPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border-light">
               {filtered.map((sim) => (
-                <SimulationCard key={sim.id} simulation={sim} />
+                <SimulationCard key={sim.id} simulation={sim} hasAccess={hasAccess} />
               ))}
             </div>
           )}

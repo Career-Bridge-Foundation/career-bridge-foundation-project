@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  let body: { priceType?: PriceType; simulationId?: string };
+  let body: { priceType?: PriceType; simulationId?: string; cancelUrl?: string };
 
   try {
     body = await request.json();
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { priceType, simulationId = "" } = body;
+  const { priceType, simulationId = "", cancelUrl } = body;
 
   if (!priceType || !(priceType in PRICES)) {
     return new Response(JSON.stringify({ error: "Invalid or missing priceType" }), {
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       success_url: `${origin}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/simulate`,
+      cancel_url: cancelUrl ?? `${origin}/pricing`,
       client_reference_id: user.id,
       metadata: { price_type: priceType, simulation_id: simulationId, user_id: user.id },
     });

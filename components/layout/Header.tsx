@@ -29,12 +29,17 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
   const scrolled = useScrolled();
   const isSolid = variant === "solid" || scrolled;
   const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setReady(true);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      setReady(true);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -86,7 +91,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
           })}
         </nav>
 
-        {user ? (
+        {!ready ? null : user ? (
           /* Logged-in state */
           <div className="flex items-center gap-5">
             {/* Avatar + Name */}
