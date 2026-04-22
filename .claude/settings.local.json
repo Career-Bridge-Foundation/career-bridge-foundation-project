@@ -17,7 +17,9 @@
       "Bash(npx tsc *)",
       "Bash(cp app/api/stripe/checkout/route.ts app/api/stripe/checkout/route.ts.bak)",
       "Bash(cp app/api/stripe/webhook/route.ts app/api/stripe/webhook/route.ts.bak)",
-      "Bash(mkdir -p app/api/purchases/consume)"
+      "Bash(mkdir -p app/api/purchases/consume)",
+      "Bash(cp \"C:/Users/groww/Desktop/career-bridge-foundation-project/hooks/useSimulation.ts\" \"C:/Users/groww/Desktop/career-bridge-foundation-project/hooks/useSimulation.ts.bak\")",
+      "Bash(cp \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts\" \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts.bak\")"
     ]
   }
 }

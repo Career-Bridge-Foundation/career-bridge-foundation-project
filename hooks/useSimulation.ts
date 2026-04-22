@@ -159,12 +159,15 @@ export function useSimulation(
       if (!sid) {
         const { data: newSession, error } = await supabase
           .from("simulation_sessions")
-          .insert({
-            user_id: uid,
-            simulation_slug: slug,
-            discipline: disc,
-            status: "in_progress",
-          })
+          .upsert(
+            {
+              user_id: uid,
+              simulation_slug: slug,
+              discipline: disc,
+              status: "in_progress",
+            },
+            { onConflict: "user_id,simulation_slug" }
+          )
           .select("id")
           .single();
 
@@ -183,22 +186,17 @@ export function useSimulation(
           link_urls: stepResp.url ? [stepResp.url] : null,
         };
 
-        // Update existing row; insert if none exists (avoids needing a unique constraint)
-        const { data: updated } = await supabase
+        await supabase
           .from("simulation_responses")
-          .update(payload)
-          .eq("session_id", sid)
-          .eq("task_number", taskNumber)
-          .select("id");
-
-        if (!updated || updated.length === 0) {
-          await supabase.from("simulation_responses").insert({
-            ...payload,
-            session_id: sid,
-            user_id: uid,
-            task_number: taskNumber,
-          });
-        }
+          .upsert(
+            {
+              ...payload,
+              session_id: sid,
+              user_id: uid,
+              task_number: taskNumber,
+            },
+            { onConflict: "session_id,task_number" }
+          );
       }
 
       setLastSaved(new Date());
@@ -237,12 +235,15 @@ export function useSimulation(
     if (!sid) {
       const { data: newSession } = await supabase
         .from("simulation_sessions")
-        .insert({
-          user_id: uid,
-          simulation_slug: simulationSlugRef.current,
-          discipline: disciplineRef.current,
-          status: "in_progress",
-        })
+        .upsert(
+          {
+            user_id: uid,
+            simulation_slug: simulationSlugRef.current,
+            discipline: disciplineRef.current,
+            status: "in_progress",
+          },
+          { onConflict: "user_id,simulation_slug" }
+        )
         .select("id")
         .single();
 
@@ -261,21 +262,17 @@ export function useSimulation(
         link_urls: stepResp.url ? [stepResp.url] : null,
       };
 
-      const { data: updated } = await supabase
+      await supabase
         .from("simulation_responses")
-        .update(payload)
-        .eq("session_id", sid)
-        .eq("task_number", taskNumber)
-        .select("id");
-
-      if (!updated || updated.length === 0) {
-        await supabase.from("simulation_responses").insert({
-          ...payload,
-          session_id: sid,
-          user_id: uid,
-          task_number: taskNumber,
-        });
-      }
+        .upsert(
+          {
+            ...payload,
+            session_id: sid,
+            user_id: uid,
+            task_number: taskNumber,
+          },
+          { onConflict: "session_id,task_number" }
+        );
     }
 
     await supabase

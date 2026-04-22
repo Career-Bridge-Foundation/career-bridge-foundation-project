@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
+import type { VerdictBand } from "@/types/database";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -157,8 +159,14 @@ interface TaskInput {
   response: string;
 }
 
+// Maps Claude's frontend verdict to the DB VerdictBand enum
+function toVerdictBand(verdict: string): VerdictBand {
+  if (verdict === "Pass with Merit") return "Merit";
+  return verdict as VerdictBand;
+}
+
 export async function POST(request: NextRequest) {
-  let body: { responses?: TaskInput[] };
+  let body: { responses?: TaskInput[]; session_id?: string; simulation_slug?: string };
 
   try {
     body = await request.json();
@@ -169,7 +177,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { responses } = body;
+  const { responses, session_id, simulation_slug } = body;
 
   if (!responses || !Array.isArray(responses) || responses.length === 0) {
     return new Response(
@@ -218,19 +226,80 @@ export async function POST(request: NextRequest) {
   }
 
   // Parse Claude's JSON response
+  let evaluation: Record<string, unknown>;
   try {
-    const evaluation = JSON.parse(rawContent);
-    return new Response(JSON.stringify(evaluation), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    evaluation = JSON.parse(rawContent);
   } catch {
     return new Response(
-      JSON.stringify({
-        error: "Failed to parse evaluation JSON",
-        raw: rawContent,
-      }),
+      JSON.stringify({ error: "Failed to parse evaluation JSON", raw: rawContent }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
+
+  // ── Persist to Supabase (authenticated requests only) ──────────
+  if (session_id && simulation_slug) {
+    try {
+      const supabase = await createSupabaseServerClient();
+
+      // Use the server-side session to get the real user ID — never trust client-provided IDs
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        type EvalTask = {
+          taskId: number;
+          title: string;
+          score: number;
+          maxScore: number;
+          summary: string;
+          criteria: Array<{ name: string; score: 1 | 2 | 3; level: string; feedback: string }>;
+        };
+
+        const tasks = (evaluation.tasks as EvalTask[]) ?? [];
+
+        const task_scores = tasks.map((t) => ({
+          taskId: t.taskId,
+          title: t.title,
+          score: t.score,
+          maxScore: t.maxScore,
+          summary: t.summary,
+        }));
+
+        const criteria_scores = tasks.flatMap((t) =>
+          t.criteria.map((c) => ({
+            taskId: t.taskId,
+            name: c.name,
+            score: c.score,
+            level: c.level,
+            feedback: c.feedback,
+          }))
+        );
+
+        await supabase.from("evaluation_results").insert({
+          session_id,
+          user_id: user.id,
+          simulation_slug,
+          verdict_band: toVerdictBand(evaluation.verdict as string),
+          overall_score: (evaluation.overallScore as number) ?? null,
+          task_scores,
+          criteria_scores,
+          feedback_text: (evaluation.verdictDescription as string) ?? null,
+          raw_evaluation: evaluation,
+        });
+
+        await supabase
+          .from("simulation_sessions")
+          .update({ status: "evaluated" })
+          .eq("id", session_id)
+          .eq("user_id", user.id); // RLS double-check
+      }
+    } catch (dbErr) {
+      // Log but don't fail the response — client still gets the evaluation
+      console.error("[evaluate] Supabase write failed:", dbErr);
+    }
+  }
+
+  return new Response(JSON.stringify(evaluation), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }

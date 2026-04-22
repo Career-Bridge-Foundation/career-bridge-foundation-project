@@ -179,6 +179,18 @@ export async function POST(request: NextRequest) {
 
   const { responses, session_id, simulation_slug } = body;
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("[evaluate] ANTHROPIC_API_KEY is not set");
+    return new Response(JSON.stringify({ error: "Server configuration error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!session_id) {
+    console.warn("[evaluate] session_id missing — evaluation will run but result will not be persisted");
+  }
+
   if (!responses || !Array.isArray(responses) || responses.length === 0) {
     return new Response(
       JSON.stringify({ error: "Missing or empty 'responses' array" }),
@@ -218,6 +230,7 @@ export async function POST(request: NextRequest) {
     }
     rawContent = block.text;
   } catch (err) {
+    console.error("[evaluate] Claude API call failed:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: "Claude API call failed", details: message }),
