@@ -31,7 +31,7 @@ function LoginForm() {
       setLoading(false)
       return
     }
-    router.push('/simulations')
+    router.push('/')
   }
 
   async function handleOAuth(provider: 'google' | 'linkedin_oidc') {
