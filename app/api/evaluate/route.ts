@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const message = await client.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: "claude-opus-4-7",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [
@@ -238,10 +238,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Parse Claude's JSON response
+  // Parse Claude's JSON response — strip markdown fences Claude sometimes wraps output in
   let evaluation: Record<string, unknown>;
   try {
-    evaluation = JSON.parse(rawContent);
+    const jsonStr = rawContent
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim();
+    evaluation = JSON.parse(jsonStr);
   } catch {
     return new Response(
       JSON.stringify({ error: "Failed to parse evaluation JSON", raw: rawContent }),
@@ -287,17 +291,20 @@ export async function POST(request: NextRequest) {
           }))
         );
 
-        await supabase.from("evaluation_results").insert({
-          session_id,
-          user_id: user.id,
-          simulation_slug,
-          verdict_band: toVerdictBand(evaluation.verdict as string),
-          overall_score: (evaluation.overallScore as number) ?? null,
-          task_scores,
-          criteria_scores,
-          feedback_text: (evaluation.verdictDescription as string) ?? null,
-          raw_evaluation: evaluation,
-        });
+        await supabase.from("evaluation_results").upsert(
+          {
+            session_id,
+            user_id: user.id,
+            simulation_slug,
+            verdict_band: toVerdictBand(evaluation.verdict as string),
+            overall_score: (evaluation.overallScore as number) ?? null,
+            task_scores,
+            criteria_scores,
+            feedback_text: (evaluation.verdictDescription as string) ?? null,
+            raw_evaluation: evaluation,
+          },
+          { onConflict: "session_id" }
+        );
 
         await supabase
           .from("simulation_sessions")

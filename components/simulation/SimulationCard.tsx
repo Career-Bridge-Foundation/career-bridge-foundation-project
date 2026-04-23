@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
+// import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
 import type { Simulation } from "@/types";
 
 interface SimulationCardProps {
@@ -23,10 +23,10 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
   return (
     <div className="bg-white flex flex-col p-8">
       {/* Top badges */}
-      <div className="flex flex-wrap gap-2 mb-5">
+      {/* <div className="flex flex-wrap gap-2 mb-5">
         <TypeBadge type={sim.type} />
         <DifficultyBadge level={sim.difficulty} />
-      </div>
+      </div> */}
 
       {/* Title + company */}
       <h3 className="text-base font-bold text-navy leading-[1.35] mb-1">{sim.title}</h3>

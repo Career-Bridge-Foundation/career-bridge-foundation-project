@@ -1,4 +1,4 @@
-import { StatusBadge } from "@/components/ui/Badge";
+// import { StatusBadge } from "@/components/ui/Badge";
 import type { Discipline } from "@/types";
 
 interface DisciplineCardProps {
@@ -9,9 +9,9 @@ export function DisciplineCard({ discipline: d }: DisciplineCardProps) {
   return (
     <div className="discipline-card bg-white p-8 flex flex-col">
       {/* Status badge */}
-      <div className="mb-5">
+      {/* <div className="mb-5">
         <StatusBadge status={d.status} />
-      </div>
+      </div> */}
 
       {/* Name + description */}
       <h3 className="text-lg font-bold text-navy leading-[1.3] mb-3">{d.name}</h3>

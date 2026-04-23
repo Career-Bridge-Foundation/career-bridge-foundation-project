@@ -5,7 +5,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
   let body: {
-    message?: string;
+    messages?: { role: "user" | "assistant"; content: string }[];
     taskTitle?: string;
     taskDescription?: string;
     taskGuidance?: string[];
@@ -20,11 +20,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { message, taskTitle, taskDescription = "", taskGuidance = [] } = body;
+  const { messages, taskTitle, taskDescription = "", taskGuidance = [] } = body;
 
-  if (!message || !taskTitle) {
+  if (!messages || messages.length === 0 || !taskTitle) {
     return new Response(
-      JSON.stringify({ error: "Missing required fields: message and taskTitle" }),
+      JSON.stringify({ error: "Missing required fields: messages and taskTitle" }),
       {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -55,10 +55,10 @@ Rules:
     async start(controller) {
       try {
         const anthropicStream = client.messages.stream({
-          model: "claude-3-5-sonnet-20241022",
+          model: "claude-opus-4-7",
           max_tokens: 1024,
           system: systemPrompt,
-          messages: [{ role: "user", content: message }],
+          messages,
         });
 
         for await (const chunk of anthropicStream) {

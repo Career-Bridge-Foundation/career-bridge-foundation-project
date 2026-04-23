@@ -49,7 +49,11 @@ export function useChat({ prompt }: UseChatOptions): UseChatReturn {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: userMessage,
+          messages: [
+            // Include prior conversation (skip initial greeting + empty streaming placeholders)
+            ...messages.slice(1).filter((m) => m.content !== ""),
+            { role: "user" as const, content: userMessage },
+          ],
           taskTitle: prompt.title,
           taskDescription: prompt.question,
           taskGuidance: prompt.guidance,
@@ -86,7 +90,7 @@ export function useChat({ prompt }: UseChatOptions): UseChatReturn {
     } finally {
       setIsStreaming(false);
     }
-  }, [input, isStreaming, prompt]);
+  }, [input, isStreaming, prompt, messages]);
 
   return { messages, input, setInput, isStreaming, isOpen, setIsOpen, send, chatEndRef };
 }
