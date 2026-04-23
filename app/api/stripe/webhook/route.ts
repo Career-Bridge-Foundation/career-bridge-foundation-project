@@ -2,16 +2,9 @@ import Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { PriceType } from "@/types/database";
+import { CREDIT_BY_PRICE_TYPE } from "@/lib/pricing";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-// Simulation credits granted per price type
-const CREDIT_MAP: Record<PriceType, number> = {
-  single:    1,
-  bundle:    3,
-  portfolio: 14,
-  coach:     999, // effectively unlimited
-};
 
 // The webhook runs outside a user auth session, so we use the service role key
 // to bypass RLS. SUPABASE_SERVICE_ROLE_KEY must be set in your environment.
@@ -29,29 +22,25 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature") ?? "";
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  if (!webhookSecret) {
+    console.error("[webhook] STRIPE_WEBHOOK_SECRET is not configured");
+    return new Response(JSON.stringify({ error: "Server configuration error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   let event: Stripe.Event;
 
-  if (webhookSecret) {
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      console.error("[webhook] Signature verification failed:", message);
-      return new Response(
-        JSON.stringify({ error: "Webhook signature verification failed", details: message }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-  } else {
-    // Dev fallback: skip verification when STRIPE_WEBHOOK_SECRET is absent
-    try {
-      event = JSON.parse(rawBody) as Stripe.Event;
-    } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[webhook] Signature verification failed:", message);
+    return new Response(
+      JSON.stringify({ error: "Webhook signature verification failed", details: message }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   if (event.type === "checkout.session.completed") {
@@ -60,7 +49,11 @@ export async function POST(request: NextRequest) {
     // user_id is set in metadata by the checkout route; client_reference_id is
     // a fallback in case metadata is ever dropped by Stripe.
     const userId = session.metadata?.user_id ?? session.client_reference_id;
-    const priceType = (session.metadata?.price_type ?? "single") as PriceType;
+    const rawPriceType = session.metadata?.price_type;
+    const priceType: PriceType =
+      rawPriceType && rawPriceType in CREDIT_BY_PRICE_TYPE
+        ? (rawPriceType as PriceType)
+        : "single";
 
     if (!userId) {
       console.error("[webhook] checkout.session.completed — no user_id in metadata, session:", session.id);
@@ -71,7 +64,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const simulationCredits = CREDIT_MAP[priceType] ?? 1;
+    const simulationCredits = CREDIT_BY_PRICE_TYPE[priceType] ?? 1;
 
     try {
       const admin = getAdminClient();

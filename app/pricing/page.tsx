@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { PRICING_PLANS, type PricingPlan } from "@/lib/pricing";
 
 const NAVY = "#003359";
 const TEAL = "#4DC5D2";
@@ -29,90 +30,7 @@ function Check() {
   );
 }
 
-type PriceType = "single" | "bundle" | "portfolio" | "coach";
-
-interface Plan {
-  id: PriceType;
-  title: string;
-  price: string;
-  description: string;
-  badge?: string;
-  features: string[];
-  cta: string;
-  ctaHref?: string;
-  popular?: boolean;
-}
-
-const PLANS: Plan[] = [
-  {
-    id: "single",
-    title: "Single Simulation",
-    price: "£49.99",
-    description: "one-off",
-    features: [
-      "1 workplace simulation",
-      "AI-powered evaluation",
-      "Detailed feedback report",
-      "Digitally verifiable credential",
-      "AI-powered simulation assistant",
-    ],
-    cta: "Get Started",
-  },
-  {
-    id: "bundle",
-    title: "Simulation Bundle",
-    price: "£129.99",
-    description: "save £20",
-    features: [
-      "3 workplace simulations",
-      "AI-powered evaluation",
-      "Detailed feedback reports",
-      "Digitally verifiable credentials",
-      "AI-powered simulation assistant",
-      "Portfolio building across scenarios",
-      "Access to Career Bridge community",
-    ],
-    cta: "Get Started",
-  },
-  {
-    id: "portfolio",
-    title: "Complete Discipline",
-    price: "£349.99",
-    description: "one discipline, full depth",
-    badge: "Most Popular",
-    features: [
-      "All simulations in your chosen discipline",
-      "AI-powered evaluation",
-      "Detailed feedback reports",
-      "Digitally verifiable credentials",
-      "AI-powered simulation assistant",
-      "End-to-end discipline mastery",
-      "Priority support",
-      "Access to Career Bridge community",
-    ],
-    cta: "Get Started",
-    popular: true,
-  },
-  {
-    id: "coach",
-    title: "Coach Pack",
-    price: "£1,499.99",
-    description: "10 candidate seats",
-    features: [
-      "10 candidate access seats",
-      "All simulations included",
-      "Candidate progress dashboard",
-      "Bulk credential issuance",
-      "White-label ready",
-      "Dedicated support",
-      "Access to Career Bridge community",
-    ],
-    cta: "Contact Us",
-    ctaHref: "mailto:outreach@careerbridgefoundation.com",
-  },
-];
-
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({ plan }: { plan: PricingPlan }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -274,7 +192,7 @@ export default function PricingPage() {
 
         {/* Cards grid */}
         <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-          {PLANS.map((plan) => (
+          {PRICING_PLANS.map((plan) => (
             <PlanCard key={plan.id} plan={plan} />
           ))}
         </div>

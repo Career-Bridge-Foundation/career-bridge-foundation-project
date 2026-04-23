@@ -3,11 +3,32 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const QUALIFYING_BANDS = new Set(["Distinction", "Merit", "Pass"]);
+const CERTIFIER_API_URL = "https://api.certifier.io/v1/credentials";
+const CERTIFIER_API_VERSION = process.env.CERTIFIER_API_VERSION ?? "2022-10-26";
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createAdminClient(url, key, { auth: { persistSession: false } });
+}
+
+type CertifierCreateCredentialBody = {
+  groupId: string;
+  recipient: {
+    name: string;
+    email: string;
+  };
+  customAttributes?: Record<string, string>;
+};
+
+function getCustomAttributes(simulationId: string, verdictBand: string): Record<string, string> {
+  const simulationTag = process.env.CERTIFIER_SIMULATION_ATTRIBUTE_TAG ?? "custom.simulation";
+  const bandTag = process.env.CERTIFIER_BAND_ATTRIBUTE_TAG ?? "custom.band";
+
+  return {
+    [simulationTag]: simulationId,
+    [bandTag]: verdictBand,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -91,35 +112,99 @@ export async function POST(request: NextRequest) {
   let certifierCredentialUrl: string | null = null;
 
   try {
-    const certRes = await fetch("https://api.certifier.io/v1/credentials", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${certifierKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        group: certifierGroup,
-        recipient: { name: recipientName, email: recipientEmail },
-        customAttributes: {
-          simulation: "Product Strategy",
-          band: evalRow.verdict_band,
-        },
-      }),
-    });
+    const basePayload: CertifierCreateCredentialBody = {
+      groupId: certifierGroup,
+      recipient: { name: recipientName, email: recipientEmail },
+      customAttributes: getCustomAttributes(simulationId, evalRow.verdict_band),
+    };
+
+    const callCertifier = async (payload: CertifierCreateCredentialBody): Promise<Response> => {
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(), 20_000);
+
+      try {
+        return await fetch(CERTIFIER_API_URL, {
+          method: "POST",
+          signal: abort.signal,
+          headers: {
+            "Authorization": `Bearer ${certifierKey}`,
+            "Certifier-Version": CERTIFIER_API_VERSION,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+
+    let certRes: Response;
+    try {
+      certRes = await callCertifier(basePayload);
+    } catch (firstErr) {
+      const firstCode = (firstErr as { cause?: { code?: string } })?.cause?.code;
+      const isConnectTimeout = firstCode === "UND_ERR_CONNECT_TIMEOUT";
+
+      if (!isConnectTimeout) {
+        throw firstErr;
+      }
+
+      // Retry once for transient network/connectivity failures.
+      certRes = await callCertifier(basePayload);
+    }
 
     if (!certRes.ok) {
       const errBody = await certRes.text();
-      console.error("[certifier/issue] Certifier API error:", certRes.status, errBody);
-      throw new Error(`Certifier API returned ${certRes.status}`);
-    }
 
-    const certData = await certRes.json() as {
-      id?: string;
-      url?: string;
-      credential_url?: string;
-    };
-    certifierCredentialId = certData.id ?? null;
-    certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
+      const hasCustomAttributesValidationError =
+        certRes.status === 400 &&
+        errBody.includes("validation_error") &&
+        (
+          errBody.includes("customAttributes") ||
+          errBody.includes("Custom attribute [") ||
+          errBody.includes("is not defined on the workspace level")
+        );
+
+      if (hasCustomAttributesValidationError) {
+        console.warn(
+          "[certifier/issue] Certifier rejected customAttributes; retrying without them:",
+          certRes.status,
+          errBody
+        );
+
+        const fallbackPayload: CertifierCreateCredentialBody = {
+          groupId: certifierGroup,
+          recipient: { name: recipientName, email: recipientEmail },
+        };
+
+        const fallbackRes = await callCertifier(fallbackPayload);
+        if (!fallbackRes.ok) {
+          const fallbackErrBody = await fallbackRes.text();
+          console.error("[certifier/issue] Fallback Certifier API error:", fallbackRes.status, fallbackErrBody);
+          throw new Error(`Certifier API returned ${fallbackRes.status}`);
+        }
+
+        const fallbackData = await fallbackRes.json() as {
+          id?: string;
+          url?: string;
+          credential_url?: string;
+        };
+
+        certifierCredentialId = fallbackData.id ?? null;
+        certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
+      } else {
+        console.error("[certifier/issue] Certifier API error:", certRes.status, errBody);
+        throw new Error(`Certifier API returned ${certRes.status}`);
+      }
+    } else {
+      const certData = await certRes.json() as {
+        id?: string;
+        url?: string;
+        credential_url?: string;
+      };
+      certifierCredentialId = certData.id ?? null;
+      certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
+    }
   } catch (err) {
     console.error("[certifier/issue] Failed to call Certifier:", err);
 

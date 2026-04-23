@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { VerdictBand } from "@/types/database";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -166,6 +167,32 @@ function toVerdictBand(verdict: string): VerdictBand {
 }
 
 export async function POST(request: NextRequest) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `evaluate:${user.id}`,
+    limit: 10,
+    windowMs: 5 * 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "Too many evaluation requests" }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(rateLimit.retryAfterSeconds),
+      },
+    });
+  }
+
   let body: { responses?: TaskInput[]; session_id?: string; simulation_slug?: string };
 
   try {
@@ -256,62 +283,55 @@ export async function POST(request: NextRequest) {
   // ── Persist to Supabase (authenticated requests only) ──────────
   if (session_id && simulation_slug) {
     try {
-      const supabase = await createSupabaseServerClient();
+      type EvalTask = {
+        taskId: number;
+        title: string;
+        score: number;
+        maxScore: number;
+        summary: string;
+        criteria: Array<{ name: string; score: 1 | 2 | 3; level: string; feedback: string }>;
+      };
 
-      // Use the server-side session to get the real user ID — never trust client-provided IDs
-      const { data: { user } } = await supabase.auth.getUser();
+      const tasks = (evaluation.tasks as EvalTask[]) ?? [];
 
-      if (user) {
-        type EvalTask = {
-          taskId: number;
-          title: string;
-          score: number;
-          maxScore: number;
-          summary: string;
-          criteria: Array<{ name: string; score: 1 | 2 | 3; level: string; feedback: string }>;
-        };
+      const task_scores = tasks.map((t) => ({
+        taskId: t.taskId,
+        title: t.title,
+        score: t.score,
+        maxScore: t.maxScore,
+        summary: t.summary,
+      }));
 
-        const tasks = (evaluation.tasks as EvalTask[]) ?? [];
-
-        const task_scores = tasks.map((t) => ({
+      const criteria_scores = tasks.flatMap((t) =>
+        t.criteria.map((c) => ({
           taskId: t.taskId,
-          title: t.title,
-          score: t.score,
-          maxScore: t.maxScore,
-          summary: t.summary,
-        }));
+          name: c.name,
+          score: c.score,
+          level: c.level,
+          feedback: c.feedback,
+        }))
+      );
 
-        const criteria_scores = tasks.flatMap((t) =>
-          t.criteria.map((c) => ({
-            taskId: t.taskId,
-            name: c.name,
-            score: c.score,
-            level: c.level,
-            feedback: c.feedback,
-          }))
-        );
+      await supabase.from("evaluation_results").upsert(
+        {
+          session_id,
+          user_id: user.id,
+          simulation_slug,
+          verdict_band: toVerdictBand(evaluation.verdict as string),
+          overall_score: (evaluation.overallScore as number) ?? null,
+          task_scores,
+          criteria_scores,
+          feedback_text: (evaluation.verdictDescription as string) ?? null,
+          raw_evaluation: evaluation,
+        },
+        { onConflict: "session_id" }
+      );
 
-        await supabase.from("evaluation_results").upsert(
-          {
-            session_id,
-            user_id: user.id,
-            simulation_slug,
-            verdict_band: toVerdictBand(evaluation.verdict as string),
-            overall_score: (evaluation.overallScore as number) ?? null,
-            task_scores,
-            criteria_scores,
-            feedback_text: (evaluation.verdictDescription as string) ?? null,
-            raw_evaluation: evaluation,
-          },
-          { onConflict: "session_id" }
-        );
-
-        await supabase
-          .from("simulation_sessions")
-          .update({ status: "evaluated" })
-          .eq("id", session_id)
-          .eq("user_id", user.id); // RLS double-check
-      }
+      await supabase
+        .from("simulation_sessions")
+        .update({ status: "evaluated" })
+        .eq("id", session_id)
+        .eq("user_id", user.id); // RLS double-check
     } catch (dbErr) {
       // Log but don't fail the response — client still gets the evaluation
       console.error("[evaluate] Supabase write failed:", dbErr);

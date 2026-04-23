@@ -1,9 +1,67 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const ALLOWED_CORS_ORIGIN = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  if (!origin || !ALLOWED_CORS_ORIGIN || origin !== ALLOWED_CORS_ORIGIN) {
+    return {};
+  }
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    Vary: "Origin",
+  };
+}
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && ALLOWED_CORS_ORIGIN && origin !== ALLOWED_CORS_ORIGIN) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json", ...getCorsHeaders(origin) },
+    });
+  }
+
+  const rateLimit = checkRateLimit({
+    key: `chat:${user.id}`,
+    limit: 45,
+    windowMs: 60_000,
+  });
+
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "Too many chat requests" }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "Retry-After": String(rateLimit.retryAfterSeconds),
+        ...getCorsHeaders(origin),
+      },
+    });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response(JSON.stringify({ error: "Server configuration error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...getCorsHeaders(origin) },
+    });
+  }
+
   let body: {
     messages?: { role: "user" | "assistant"; content: string }[];
     taskTitle?: string;
@@ -81,20 +139,21 @@ Rules:
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Transfer-Encoding": "chunked",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      ...getCorsHeaders(origin),
     },
   });
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && ALLOWED_CORS_ORIGIN && origin !== ALLOWED_CORS_ORIGIN) {
+    return new Response(null, { status: 403 });
+  }
+
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      ...getCorsHeaders(origin),
     },
   });
 }
