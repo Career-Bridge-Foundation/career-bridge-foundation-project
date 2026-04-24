@@ -594,6 +594,7 @@ export default function ResultsPage() {
   const [credentialState, setCredentialState] = useState<"idle" | "claiming" | "claimed" | "error">("idle");
   const [credentialUrl, setCredentialUrl] = useState<string | null>(null);
   const [credentialError, setCredentialError] = useState<string | null>(null);
+  const [showCredentialToast, setShowCredentialToast] = useState(false);
 
   useEffect(() => {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -666,6 +667,8 @@ export default function ResultsPage() {
       const url = await claimCredential(sessionId);
       setCredentialUrl(url);
       setCredentialState("claimed");
+      setShowCredentialToast(true);
+      setTimeout(() => setShowCredentialToast(false), 4000);
     } catch (err) {
       setCredentialError(err instanceof Error ? err.message : "Something went wrong.");
       setCredentialState("error");
@@ -687,6 +690,23 @@ export default function ResultsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      {showCredentialToast && (
+        <div
+          className="fixed top-6 left-1/2 z-50 flex items-center gap-2.5 px-5 py-3 text-white text-sm font-medium"
+          style={{
+            transform: "translateX(-50%)",
+            backgroundColor: "#10B981",
+            borderRadius: "6px",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Credential issued successfully!
+        </div>
+      )}
       <Header variant="solid" />
 
       <main
@@ -803,17 +823,28 @@ export default function ResultsPage() {
                             Sign in to claim your credential.
                           </span>
                         ) : credentialState === "claimed" && credentialUrl ? (
-                          <>
+                          <div
+                            className="flex flex-col gap-3 p-4 w-full"
+                            style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "4px" }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                              <p className="text-sm font-semibold" style={{ color: "#166534" }}>
+                                Your credential has been issued
+                              </p>
+                            </div>
                             <a
                               href={credentialUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-semibold px-6 py-3 text-white"
+                              className="text-sm font-semibold px-5 py-2.5 text-white self-start"
                               style={{ backgroundColor: TEAL }}
                             >
-                              View My Credential →
+                              View Full Credential →
                             </a>
-                          </>
+                          </div>
                         ) : (
                           <button
                             onClick={handleClaimCredential}

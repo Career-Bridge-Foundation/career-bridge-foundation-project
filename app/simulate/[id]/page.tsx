@@ -89,6 +89,7 @@ export default function SimulationExecutionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // ── Access check on mount ────────────────────────────────────
   useEffect(() => {
@@ -124,6 +125,7 @@ export default function SimulationExecutionPage() {
 
   async function handleConfirmSubmit() {
     setShowConfirm(false);
+    setIsEvaluating(true);
 
     // Save all responses and flip session status to 'submitted' before calling the API
     await sim.markSubmitted();
@@ -131,8 +133,6 @@ export default function SimulationExecutionPage() {
     // Consume one simulation credit (server-side, uses service role key)
     const consumeRes = await fetch("/api/purchases/consume", { method: "POST" });
     if (!consumeRes.ok && consumeRes.status !== 403) {
-      // 403 means no credits — extremely unlikely here since we already checked on load,
-      // but guard against it. For other errors, continue anyway (don't block the user).
       console.warn("[simulate] Credit consume returned", consumeRes.status);
     }
 
@@ -142,15 +142,16 @@ export default function SimulationExecutionPage() {
       response: buildResponseText(sim.responses[i]),
     }));
 
-    const redirectUrl = await submitForEvaluation(
-      simulationId,
-      responses,
-      sim.sessionId,
-      sim.userId
-    );
+    // Enforce a 1.5s minimum so the loading screen is always visible long enough
+    const [redirectUrl] = await Promise.all([
+      submitForEvaluation(simulationId, responses, sim.sessionId, sim.userId),
+      new Promise<void>(resolve => setTimeout(resolve, 1500)),
+    ]);
+
     if (redirectUrl) {
       router.push(redirectUrl);
     } else {
+      setIsEvaluating(false);
       setSubmitError("Something went wrong during evaluation. Please try again.");
     }
   }
@@ -286,11 +287,11 @@ export default function SimulationExecutionPage() {
                 </div>
                 <button
                   onClick={sim.currentStep < 4 ? sim.goNext : handleSubmitClick}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isEvaluating}
                   className={cn(
                     "text-sm font-semibold px-7 py-3 text-white flex items-center gap-2",
                     sim.currentStep === 4 ? "bg-teal text-[0.9375rem]" : "bg-navy",
-                    isSubmitting && "opacity-70 cursor-not-allowed"
+                    (isSubmitting || isEvaluating) && "opacity-70 cursor-not-allowed"
                   )}
                 >
                   {sim.currentStep === 4 && isSubmitting ? (
@@ -357,7 +358,55 @@ export default function SimulationExecutionPage() {
         </div>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* ── EVALUATING OVERLAY ──────────────────────────────── */}
+      {isEvaluating && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center gap-7 px-6">
+          <img
+            src="/logo.png"
+            alt="Career Bridge Foundation"
+            style={{ width: "48px", height: "auto", objectFit: "contain" }}
+          />
+          <h2
+            className="text-center"
+            style={{ color: "#003359", fontWeight: 600, fontSize: "18px", lineHeight: 1.4 }}
+          >
+            Evaluating your responses…
+          </h2>
+          <div
+            style={{
+              position: "relative",
+              overflow: "hidden",
+              height: "4px",
+              maxWidth: "300px",
+              width: "100%",
+              backgroundColor: "#E5E7EB",
+              borderRadius: "9999px",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                bottom: 0,
+                backgroundColor: "#4DC5D2",
+                borderRadius: "9999px",
+                animation: "cb-progress 1.8s ease-in-out infinite",
+              }}
+            />
+          </div>
+          <p style={{ color: "#888", fontSize: "13px" }}>
+            This usually takes 15 to 30 seconds
+          </p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes cb-progress {
+          0%   { left: -45%; width: 45%; }
+          100% { left: 110%; width: 45%; }
+        }
+      `}</style>
     </div>
   );
 }

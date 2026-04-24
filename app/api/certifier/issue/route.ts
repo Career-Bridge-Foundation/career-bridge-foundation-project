@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
           url?: string;
           credential_url?: string;
         };
+        console.log("[certifier/issue] Raw Certifier fallback response:", JSON.stringify(fallbackData, null, 2));
 
         certifierCredentialId = fallbackData.id ?? null;
         certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
@@ -202,6 +203,7 @@ export async function POST(request: NextRequest) {
         url?: string;
         credential_url?: string;
       };
+      console.log("[certifier/issue] Raw Certifier response:", JSON.stringify(certData, null, 2));
       certifierCredentialId = certData.id ?? null;
       certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
     }
