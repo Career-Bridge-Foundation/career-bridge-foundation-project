@@ -60,6 +60,39 @@ async function issueCredential(
   }
 }
 
+async function sendCredential(
+  credentialId: string,
+  certifierKey: string,
+  apiVersion: string,
+): Promise<void> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 20_000);
+  try {
+    const res = await fetch(`${CERTIFIER_API_URL}/${credentialId}/send`, {
+      method: "POST",
+      signal: abort.signal,
+      headers: {
+        "Authorization": `Bearer ${certifierKey}`,
+        "Certifier-Version": apiVersion,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ deliveryMethod: "email" }),
+    });
+    if (res.ok || res.status === 204) {
+      console.log("[certifier/issue] Certifier /send succeeded:", res.status);
+    } else if (res.status === 404) {
+      console.warn("[certifier/issue] Certifier /send returned 404 — endpoint may not be available on this plan");
+    } else {
+      const errBody = await res.text();
+      console.error("[certifier/issue] Certifier /send failed:", res.status, errBody);
+    }
+  } catch (err) {
+    console.error("[certifier/issue] Certifier /send call threw:", err);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function getCustomAttributes(simulationId: string, verdictBand: string): Record<string, string> {
   const simulationTag = process.env.CERTIFIER_SIMULATION_ATTRIBUTE_TAG ?? "custom.simulation";
   const bandTag = process.env.CERTIFIER_BAND_ATTRIBUTE_TAG ?? "custom.band";
@@ -230,10 +263,13 @@ export async function POST(request: NextRequest) {
         certifierCredentialId = fallbackData.id ?? null;
 
         if (certifierCredentialId) {
-          const { data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+          const { res: issueRes, data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
           certifierCredentialUrl =
             issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
             fallbackData.url ?? fallbackData.credential_url ?? null;
+          if (issueRes.ok) {
+            await sendCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+          }
         } else {
           certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
         }
@@ -247,10 +283,13 @@ export async function POST(request: NextRequest) {
       certifierCredentialId = certData.id ?? null;
 
       if (certifierCredentialId) {
-        const { data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+        const { res: issueRes, data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
         certifierCredentialUrl =
           issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
           certData.url ?? certData.credential_url ?? null;
+        if (issueRes.ok) {
+          await sendCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+        }
       } else {
         certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
       }
