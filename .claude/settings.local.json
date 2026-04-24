@@ -19,7 +19,17 @@
       "Bash(cp app/api/stripe/webhook/route.ts app/api/stripe/webhook/route.ts.bak)",
       "Bash(mkdir -p app/api/purchases/consume)",
       "Bash(cp \"C:/Users/groww/Desktop/career-bridge-foundation-project/hooks/useSimulation.ts\" \"C:/Users/groww/Desktop/career-bridge-foundation-project/hooks/useSimulation.ts.bak\")",
-      "Bash(cp \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts\" \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts.bak\")"
+      "Bash(cp \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts\" \"C:/Users/groww/Desktop/career-bridge-foundation-project/app/api/evaluate/route.ts.bak\")",
+      "Bash(export ANTHROPIC_API_KEY=$\\(grep ANTHROPIC_API_KEY .env.local)",
+      "Bash(git stash *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git show *)",
+      "Bash(cp \"app/simulate/[id]/page.tsx\" \"app/simulate/[id]/page.tsx.bak\")",
+      "Bash(cp \"app/simulate/[id]/results/page.tsx\" \"app/simulate/[id]/results/page.tsx.bak\")",
+      "Bash(cp \"app/api/certifier/issue/route.ts\" \"app/api/certifier/issue/route.ts.bak\")",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
