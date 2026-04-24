@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
@@ -14,7 +15,12 @@ interface HeaderProps {
   homeMode?: boolean;
 }
 
-const NAV_LINKS = ["Simulations", "For Coaches", "Pricing", "About", "Blog"];
+const NAV_LINKS = [
+  { label: "Simulations", href: "/simulations",  homeHref: "#simulations" },
+  { label: "For Coaches", href: "/for-coaches",  homeHref: "/for-coaches" },
+  { label: "Pricing",     href: "/pricing",       homeHref: "#pricing" },
+  { label: "About",       href: "https://www.careerbridgefoundation.com/", homeHref: "https://www.careerbridgefoundation.com/" },
+];
 
 function getInitials(name: string) {
   return name
@@ -72,21 +78,33 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
 
         {/* Centre nav links */}
         <nav className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
-          {NAV_LINKS.map((link) => {
-            const href = homeMode
-              ? `#${link.toLowerCase().replace(/ /g, "-")}`
-              : `/${link.toLowerCase().replace(/ /g, "-")}`;
-            return (
+          {NAV_LINKS.map(({ label, href, homeHref }) => {
+            const to = homeMode ? homeHref : href;
+            const isExternal = to.startsWith("http");
+            return isExternal ? (
               <a
-                key={link}
-                href={href}
+                key={label}
+                href={to}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
                   "text-xs font-medium uppercase tracking-brand-sm hover:opacity-60 transition-opacity",
                   isSolid ? "text-navy" : "text-white"
                 )}
               >
-                {link}
+                {label}
               </a>
+            ) : (
+              <Link
+                key={label}
+                href={to}
+                className={cn(
+                  "text-xs font-medium uppercase tracking-brand-sm hover:opacity-60 transition-opacity",
+                  isSolid ? "text-navy" : "text-white"
+                )}
+              >
+                {label}
+              </Link>
             );
           })}
         </nav>
