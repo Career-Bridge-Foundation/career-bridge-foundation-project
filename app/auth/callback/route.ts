@@ -8,8 +8,19 @@ function sanitizeNextPath(nextValue: string | null): string {
   return nextValue
 }
 
+function getOrigin(request: NextRequest): string {
+  // On Vercel (and other proxies) the real host is in x-forwarded-host
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  if (forwardedHost) {
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    return `${proto}://${forwardedHost}`
+  }
+  return request.nextUrl.origin
+}
+
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = request.nextUrl
+  const origin = getOrigin(request)
+  const { searchParams } = request.nextUrl
   const code = searchParams.get('code')
   const next = sanitizeNextPath(searchParams.get('next'))
 
