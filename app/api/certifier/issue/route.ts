@@ -19,7 +19,46 @@ type CertifierCreateCredentialBody = {
     email: string;
   };
   customAttributes?: Record<string, string>;
+  sendEmail?: boolean;
 };
+
+type CertifierCredentialResponse = {
+  id?: string;
+  url?: string;
+  credential_url?: string;
+  publicUrl?: string;
+  imageUrl?: string;
+  status?: string;
+};
+
+async function issueCredential(
+  credentialId: string,
+  certifierKey: string,
+  apiVersion: string,
+): Promise<{ res: Response; data: CertifierCredentialResponse }> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 20_000);
+  try {
+    const res = await fetch(`${CERTIFIER_API_URL}/${credentialId}/issue`, {
+      method: "POST",
+      signal: abort.signal,
+      headers: {
+        "Authorization": `Bearer ${certifierKey}`,
+        "Certifier-Version": apiVersion,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sendEmail: true }),
+    });
+    const data = await res.json() as CertifierCredentialResponse;
+    console.log("[certifier/issue] Certifier /issue response:", JSON.stringify(data, null, 2));
+    if (!res.ok) {
+      console.error("[certifier/issue] Certifier /issue call failed:", res.status);
+    }
+    return { res, data };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function getCustomAttributes(simulationId: string, verdictBand: string): Record<string, string> {
   const simulationTag = process.env.CERTIFIER_SIMULATION_ATTRIBUTE_TAG ?? "custom.simulation";
@@ -116,6 +155,7 @@ export async function POST(request: NextRequest) {
       groupId: certifierGroup,
       recipient: { name: recipientName, email: recipientEmail },
       customAttributes: getCustomAttributes(simulationId, evalRow.verdict_band),
+      sendEmail: true,
     };
 
     const callCertifier = async (payload: CertifierCreateCredentialBody): Promise<Response> => {
@@ -175,6 +215,7 @@ export async function POST(request: NextRequest) {
         const fallbackPayload: CertifierCreateCredentialBody = {
           groupId: certifierGroup,
           recipient: { name: recipientName, email: recipientEmail },
+          sendEmail: true,
         };
 
         const fallbackRes = await callCertifier(fallbackPayload);
@@ -184,28 +225,35 @@ export async function POST(request: NextRequest) {
           throw new Error(`Certifier API returned ${fallbackRes.status}`);
         }
 
-        const fallbackData = await fallbackRes.json() as {
-          id?: string;
-          url?: string;
-          credential_url?: string;
-        };
-        console.log("[certifier/issue] Raw Certifier fallback response:", JSON.stringify(fallbackData, null, 2));
-
+        const fallbackData = await fallbackRes.json() as CertifierCredentialResponse;
+        console.log("[certifier/issue] Certifier fallback create response:", JSON.stringify(fallbackData, null, 2));
         certifierCredentialId = fallbackData.id ?? null;
-        certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
+
+        if (certifierCredentialId) {
+          const { data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+          certifierCredentialUrl =
+            issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
+            fallbackData.url ?? fallbackData.credential_url ?? null;
+        } else {
+          certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
+        }
       } else {
         console.error("[certifier/issue] Certifier API error:", certRes.status, errBody);
         throw new Error(`Certifier API returned ${certRes.status}`);
       }
     } else {
-      const certData = await certRes.json() as {
-        id?: string;
-        url?: string;
-        credential_url?: string;
-      };
-      console.log("[certifier/issue] Raw Certifier response:", JSON.stringify(certData, null, 2));
+      const certData = await certRes.json() as CertifierCredentialResponse;
+      console.log("[certifier/issue] Certifier create response:", JSON.stringify(certData, null, 2));
       certifierCredentialId = certData.id ?? null;
-      certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
+
+      if (certifierCredentialId) {
+        const { data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
+        certifierCredentialUrl =
+          issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
+          certData.url ?? certData.credential_url ?? null;
+      } else {
+        certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
+      }
     }
   } catch (err) {
     console.error("[certifier/issue] Failed to call Certifier:", err);
