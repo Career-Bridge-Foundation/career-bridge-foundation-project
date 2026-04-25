@@ -580,6 +580,231 @@ function ShareSection({ result }: { result: EvaluationResult }) {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────
+
+function formatIssuanceDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+// ── Claiming animation ─────────────────────────────────────────
+
+const CLAIMING_STAGES = [
+  "Verifying your work...",
+  "Generating your credential...",
+  "Sending to your inbox...",
+] as const;
+
+function ClaimingAnimation() {
+  const [stageIndex, setStageIndex] = useState(0);
+
+  useEffect(() => {
+    if (stageIndex >= CLAIMING_STAGES.length - 1) return;
+    const timer = setTimeout(() => {
+      setStageIndex((i) => Math.min(i + 1, CLAIMING_STAGES.length - 1));
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [stageIndex]);
+
+  return (
+    <div className="flex flex-col items-center gap-4 py-5 w-full">
+      <style>{`
+        @keyframes cb-claim-bar {
+          0%   { left: -45%; width: 45%; }
+          100% { left: 110%; width: 45%; }
+        }
+        @keyframes cb-badge-pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%       { transform: scale(1.1); opacity: 0.75; }
+        }
+      `}</style>
+      <svg
+        width="30" height="30" viewBox="0 0 24 24" fill="none"
+        stroke={TEAL} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ animation: "cb-badge-pulse 1.8s ease-in-out infinite" }}
+      >
+        <circle cx="12" cy="8" r="6" />
+        <path d="M8.56,17.39L7,22l5-3,5,3-1.56-4.61" />
+      </svg>
+      <div
+        style={{
+          position: "relative",
+          overflow: "hidden",
+          height: "3px",
+          width: "220px",
+          backgroundColor: "#E5E7EB",
+          borderRadius: "9999px",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            backgroundColor: TEAL,
+            borderRadius: "9999px",
+            animation: "cb-claim-bar 1.4s ease-in-out infinite",
+          }}
+        />
+      </div>
+      <p className="text-sm font-medium" style={{ color: NAVY, minHeight: "20px" }}>
+        {CLAIMING_STAGES[stageIndex]}
+      </p>
+      <div className="flex gap-2">
+        {CLAIMING_STAGES.map((_, i) => (
+          <div
+            key={i}
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor: i <= stageIndex ? TEAL : "#E5E7EB",
+              transition: "background-color 0.4s ease",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Credential card (post-claim) ───────────────────────────────
+
+function CredentialCard({
+  credentialUrl,
+  imageUrl,
+  recipientName,
+  simulationTitle,
+  verdictBand,
+  issueDate,
+}: {
+  credentialUrl: string | null;
+  imageUrl: string | null;
+  recipientName: string;
+  simulationTitle: string;
+  verdictBand: string;
+  issueDate: string;
+}) {
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function handleShare() {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: `${simulationTitle} Credential`,
+          text: `I earned a Career Bridge verified credential for ${simulationTitle}`,
+          url: credentialUrl,
+        });
+        return;
+      } catch { /* cancelled or unsupported */ }
+    }
+    try {
+      await navigator.clipboard.writeText(credentialUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div style={{ border: `1px solid ${BORDER}`, borderRadius: "6px", overflow: "hidden", width: "100%" }}>
+      {/* Thumbnail */}
+      <div
+        style={{
+          background: `linear-gradient(135deg, ${NAVY} 0%, #00568a 100%)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: imageUrl ? "0" : "48px 24px",
+          overflow: "hidden",
+        }}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="Credential"
+            style={{ maxHeight: "240px", width: "100%", objectFit: "contain", display: "block" }}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="Career Bridge Foundation"
+              style={{ width: "52px", height: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
+            />
+            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+              Career Bridge Foundation
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Card body */}
+      <div className="px-6 py-5 flex flex-col gap-1.5">
+        <p className="text-xl font-bold" style={{ color: NAVY }}>{recipientName || "Candidate"}</p>
+        <p
+          className="text-xs font-semibold uppercase"
+          style={{ color: TEAL, letterSpacing: "0.08em" }}
+        >
+          Career Bridge Verified Credential
+        </p>
+        <p className="text-sm mt-1" style={{ color: "#555" }}>
+          {simulationTitle} &middot; {verdictBand}
+        </p>
+        <p className="text-xs mt-0.5" style={{ color: "#aaa" }}>Issued {issueDate}</p>
+      </div>
+
+      {/* Email confirmation banner */}
+      <div
+        className="px-6 py-3 flex items-start gap-2.5 text-sm text-white"
+        style={{ backgroundColor: TEAL }}
+      >
+        <span style={{ flexShrink: 0 }}>📧</span>
+        <span>A copy has been sent to your inbox — please check your email</span>
+      </div>
+
+      {/* Action buttons */}
+      <div
+        className="px-5 py-4 flex flex-wrap gap-3"
+        style={{ borderTop: `1px solid ${BORDER}` }}
+      >
+        {credentialUrl ? (
+          <a
+            href={credentialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold px-5 py-2.5 text-white text-center"
+            style={{ backgroundColor: NAVY, borderRadius: "4px", flex: "1 1 auto" }}
+          >
+            View Full Credential
+          </a>
+        ) : (
+          <span className="text-sm" style={{ color: "#888", flex: "1 1 auto", alignSelf: "center" }}>
+            Credential issued — link will appear shortly
+          </span>
+        )}
+        <button
+          onClick={handleShare}
+          className="text-sm font-medium px-5 py-2.5 text-center"
+          style={{
+            border: `1px solid ${NAVY}`,
+            color: linkCopied ? TEAL : NAVY,
+            borderRadius: "4px",
+            flex: "1 1 auto",
+            cursor: "pointer",
+            background: "white",
+            transition: "color 0.2s",
+          }}
+        >
+          {linkCopied ? "Link copied!" : "Share"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main results page ─────────────────────────────────────────────
 
 export default function ResultsPage() {
@@ -595,6 +820,9 @@ export default function ResultsPage() {
   const [credentialUrl, setCredentialUrl] = useState<string | null>(null);
   const [credentialError, setCredentialError] = useState<string | null>(null);
   const [showCredentialToast, setShowCredentialToast] = useState(false);
+  const [recipientName, setRecipientName] = useState<string>("");
+  const [credentialImageUrl, setCredentialImageUrl] = useState<string | null>(null);
+  const [issueDate, setIssueDate] = useState<string>("");
 
   useEffect(() => {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -612,15 +840,28 @@ export default function ResultsPage() {
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const { data: issuance } = await supabase
-              .from("credential_issuances")
-              .select("certifier_credential_url, status")
-              .eq("candidate_user_id", user.id)
-              .eq("simulation_id", simulationId)
-              .maybeSingle();
+            const [{ data: issuance }, { data: profile }] = await Promise.all([
+              supabase
+                .from("credential_issuances")
+                .select("certifier_credential_url, status, issued_at")
+                .eq("candidate_user_id", user.id)
+                .eq("simulation_id", simulationId)
+                .maybeSingle(),
+              supabase
+                .from("profiles")
+                .select("full_name")
+                .eq("id", user.id)
+                .maybeSingle(),
+            ]);
+            const name = (profile as { full_name?: string } | null)?.full_name
+              ?? user.email?.split("@")[0]
+              ?? "Candidate";
+            setRecipientName(name);
             if (issuance?.status === "issued" && issuance.certifier_credential_url) {
               setCredentialUrl(issuance.certifier_credential_url);
               setCredentialState("claimed");
+              const rawDate = (issuance as { issued_at?: string }).issued_at;
+              setIssueDate(formatIssuanceDate(rawDate ? new Date(rawDate) : new Date()));
             }
           }
           return;
@@ -661,15 +902,35 @@ export default function ResultsPage() {
 
   async function handleClaimCredential() {
     if (!sessionId) return;
+    console.log("[claim] Button clicked, state =", credentialState);
     setCredentialState("claiming");
     setCredentialError(null);
+
+    const MIN_DURATION_MS = 3600;
+    const startTime = Date.now();
+
     try {
-      const url = await claimCredential(sessionId);
+      console.log("[claim] State set to claiming, calling API...");
+      const claimResult = await claimCredential(sessionId);
+      console.log("[claim] API returned, response =", JSON.stringify(claimResult));
+
+      const { credentialUrl: url, imageUrl } = claimResult;
+
+      // Enforce minimum animation duration so all three stages are visible.
+      const remaining = MIN_DURATION_MS - (Date.now() - startTime);
+      if (remaining > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, remaining));
+      }
+
       setCredentialUrl(url);
+      setCredentialImageUrl(imageUrl);
+      setIssueDate(formatIssuanceDate(new Date()));
       setCredentialState("claimed");
+      console.log("[claim] State set to claimed, credentialUrl =", url);
       setShowCredentialToast(true);
       setTimeout(() => setShowCredentialToast(false), 4000);
     } catch (err) {
+      console.log("[claim] Caught error:", err);
       setCredentialError(err instanceof Error ? err.message : "Something went wrong.");
       setCredentialState("error");
     }
@@ -787,129 +1048,104 @@ export default function ResultsPage() {
             </p>
           </div>
 
-          {/* 3. Credential card */}
-          <div className="p-6" style={{ border: `1px solid ${BORDER}` }}>
-            <div className="flex items-start gap-4">
-              {/* Credential icon */}
-              <svg
-                width="28"
-                height="28"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={result.credentialIssued ? TEAL : "#bbb"}
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="shrink-0 mt-0.5"
-              >
-                <circle cx="12" cy="8" r="6" />
-                <path d="M8.56,17.39L7,22l5-3,5,3-1.56-4.61" />
-              </svg>
-              <div className="flex-1">
-                <p className="text-sm font-semibold mb-2" style={{ color: NAVY }}>
-                  Portfolio Verification: {SIM.title} — {SIM.industry}
-                </p>
-                {result.credentialIssued ? (
-                  <>
-                    <p className="text-sm mb-5" style={{ color: "#555", lineHeight: 1.75 }}>
-                      You are eligible to claim your verified digital credential at this
-                      level. You may also choose to retake the simulation to aim for a
-                      higher band.
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      <div className="flex flex-wrap gap-3">
-                        {!sessionId ? (
-                          <span className="text-sm" style={{ color: "#888" }}>
-                            Sign in to claim your credential.
-                          </span>
-                        ) : credentialState === "claimed" && credentialUrl ? (
-                          <div
-                            className="flex flex-col gap-3 p-4 w-full"
-                            style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: "4px" }}
-                          >
-                            <div className="flex items-center gap-2">
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                              <p className="text-sm font-semibold" style={{ color: "#166534" }}>
-                                Your credential has been issued
-                              </p>
-                            </div>
+          {/* 3. Credential section */}
+          {credentialState === "claimed" ? (
+            <CredentialCard
+              credentialUrl={credentialUrl}
+              imageUrl={credentialImageUrl}
+              recipientName={recipientName}
+              simulationTitle={SIM.title}
+              verdictBand={result.verdict === "Pass with Merit" ? "Merit" : result.verdict}
+              issueDate={issueDate}
+            />
+          ) : (
+            <div className="p-6" style={{ border: `1px solid ${BORDER}` }}>
+              <div className="flex items-start gap-4">
+                {/* Credential icon */}
+                <svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={result.credentialIssued ? TEAL : "#bbb"}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="shrink-0 mt-0.5"
+                >
+                  <circle cx="12" cy="8" r="6" />
+                  <path d="M8.56,17.39L7,22l5-3,5,3-1.56-4.61" />
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold mb-2" style={{ color: NAVY }}>
+                    Portfolio Verification: {SIM.title} — {SIM.industry}
+                  </p>
+                  {result.credentialIssued ? (
+                    <>
+                      {credentialState !== "claiming" && (
+                        <p className="text-sm mb-5" style={{ color: "#555", lineHeight: 1.75 }}>
+                          You are eligible to claim your verified digital credential at this
+                          level. You may also choose to retake the simulation to aim for a
+                          higher band.
+                        </p>
+                      )}
+                      <div className="flex flex-col gap-3">
+                        {credentialState === "claiming" ? (
+                          <ClaimingAnimation />
+                        ) : (
+                          <div className="flex flex-wrap gap-3">
+                            {!sessionId ? (
+                              <span className="text-sm" style={{ color: "#888" }}>
+                                Sign in to claim your credential.
+                              </span>
+                            ) : (
+                              <button
+                                onClick={handleClaimCredential}
+                                disabled={credentialState === "claiming"}
+                                className="text-sm font-semibold px-6 py-3 text-white"
+                                style={{ backgroundColor: TEAL, cursor: "pointer" }}
+                              >
+                                {credentialState === "error" ? "Try Again →" : "Claim My Credential →"}
+                              </button>
+                            )}
                             <a
-                              href={credentialUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-semibold px-5 py-2.5 text-white self-start"
-                              style={{ backgroundColor: TEAL }}
+                              href={`/simulate/${simulationId}`}
+                              className="text-sm font-medium px-6 py-3"
+                              style={{ border: `1px solid ${NAVY}`, color: NAVY }}
                             >
-                              View Full Credential →
+                              Retake Simulation
                             </a>
                           </div>
-                        ) : (
-                          <button
-                            onClick={handleClaimCredential}
-                            disabled={credentialState === "claiming"}
-                            className="text-sm font-semibold px-6 py-3 text-white flex items-center gap-2"
-                            style={{
-                              backgroundColor: TEAL,
-                              opacity: credentialState === "claiming" ? 0.7 : 1,
-                              cursor: credentialState === "claiming" ? "not-allowed" : "pointer",
-                            }}
-                          >
-                            {credentialState === "claiming" ? (
-                              <>
-                                <svg
-                                  width="13" height="13" viewBox="0 0 24 24" fill="none"
-                                  stroke="white" strokeWidth="2.5" strokeLinecap="round"
-                                  style={{ animation: "spin 0.8s linear infinite" }}
-                                >
-                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                </svg>
-                                Issuing…
-                              </>
-                            ) : credentialState === "error" ? (
-                              "Try Again →"
-                            ) : (
-                              "Claim My Credential →"
-                            )}
-                          </button>
                         )}
+                        {credentialState === "error" && credentialError && (
+                          <p className="text-xs" style={{ color: "#EF4444" }}>{credentialError}</p>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm mb-5" style={{ color: "#555", lineHeight: 1.75 }}>
+                        This level does not qualify for a credential. Review the feedback
+                        below and retake the simulation when you are ready.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-4">
                         <a
                           href={`/simulate/${simulationId}`}
-                          className="text-sm font-medium px-6 py-3"
-                          style={{ border: `1px solid ${NAVY}`, color: NAVY }}
+                          className="text-sm font-semibold px-6 py-3 text-white"
+                          style={{ backgroundColor: NAVY }}
                         >
                           Retake Simulation
                         </a>
+                        <span className="text-xs" style={{ color: "#bbb" }}>
+                          You may retry in 7 days
+                        </span>
                       </div>
-                      {credentialState === "error" && credentialError && (
-                        <p className="text-xs" style={{ color: "#EF4444" }}>{credentialError}</p>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm mb-5" style={{ color: "#555", lineHeight: 1.75 }}>
-                      This level does not qualify for a credential. Review the feedback
-                      below and retake the simulation when you are ready.
-                    </p>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <a
-                        href={`/simulate/${simulationId}`}
-                        className="text-sm font-semibold px-6 py-3 text-white"
-                        style={{ backgroundColor: NAVY }}
-                      >
-                        Retake Simulation
-                      </a>
-                      <span className="text-xs" style={{ color: "#bbb" }}>
-                        You may retry in 7 days
-                      </span>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
         </div>
 
