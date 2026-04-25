@@ -696,13 +696,13 @@ function CredentialCard({
         await navigator.share({
           title: `${simulationTitle} Credential`,
           text: `I earned a Career Bridge verified credential for ${simulationTitle}`,
-          url: credentialUrl,
+          url: credentialUrl ?? undefined,
         });
         return;
       } catch { /* cancelled or unsupported */ }
     }
     try {
-      await navigator.clipboard.writeText(credentialUrl);
+      await navigator.clipboard.writeText(credentialUrl ?? "");
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2500);
     } catch { /* ignore */ }
@@ -1098,7 +1098,6 @@ export default function ResultsPage() {
                             ) : (
                               <button
                                 onClick={handleClaimCredential}
-                                disabled={credentialState === "claiming"}
                                 className="text-sm font-semibold px-6 py-3 text-white"
                                 style={{ backgroundColor: TEAL, cursor: "pointer" }}
                               >
