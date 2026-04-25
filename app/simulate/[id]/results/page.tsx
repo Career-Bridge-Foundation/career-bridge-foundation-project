@@ -728,31 +728,28 @@ function CredentialCard({
             style={{ maxHeight: "240px", width: "100%", objectFit: "contain", display: "block" }}
           />
         ) : (
-          <div className="flex flex-col items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="Career Bridge Foundation"
-              style={{ width: "52px", height: "auto", filter: "brightness(0) invert(1)", opacity: 0.85 }}
-            />
-            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-              Career Bridge Foundation
-            </p>
-          </div>
+          <p
+            style={{
+              color: "rgba(255,255,255,0.9)",
+              fontSize: "11px",
+              fontWeight: 600,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              textAlign: "center",
+            }}
+          >
+            Portfolio Simulations Credential
+          </p>
         )}
       </div>
 
       {/* Card body */}
       <div className="px-6 py-5 flex flex-col gap-1.5">
         <p className="text-xl font-bold" style={{ color: NAVY }}>{recipientName || "Candidate"}</p>
-        <p
-          className="text-xs font-semibold uppercase"
-          style={{ color: TEAL, letterSpacing: "0.08em" }}
-        >
-          Career Bridge Verified Credential
+        <p className="text-sm font-semibold" style={{ color: TEAL }}>
+          {simulationTitle.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
         </p>
-        <p className="text-sm mt-1" style={{ color: "#555" }}>
-          {simulationTitle} &middot; {verdictBand}
-        </p>
+        <p className="text-sm font-semibold" style={{ color: TEAL }}>{verdictBand}</p>
         <p className="text-xs mt-0.5" style={{ color: "#aaa" }}>Issued {issueDate}</p>
       </div>
 
