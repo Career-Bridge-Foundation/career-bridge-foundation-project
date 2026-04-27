@@ -1,12 +1,71 @@
-const NAV_LINKS = ["Home", "How It Works", "Simulations", "For Coaches", "Contact"];
+const NAV_LINKS = [
+  {
+    id: 1,
+    name: "Home",
+    url: "https://www.careerbridgefoundation.com/"
+  },
+  {
+    id: 2,
+    name: "How It Works",
+    url: "https://www.careerbridgefoundation.com/how-it-works"
+  },
+  {
+    id: 3,
+    name: "Simulations",
+    url: "https://career-bridge-foundation-project.vercel.app/simulations"
+  },
+  {
+    id: 4,
+    name: "For Coaches",
+    url: "https://career-bridge-foundation-project.vercel.app/for-coaches"
+  },
+  {
+    id: 5,
+    name: "Contact",
+    url: "https://www.careerbridgefoundation.com/contact"
+  },
+]
+// const POLICY_LINKS = [
+//   "Privacy Policy",
+//   "Terms of Use",
+//   "Safeguarding Policy",
+//   "Data Protection",
+//   "Complaints Procedure",
+//   "Other Policies",
+// ];
+
 const POLICY_LINKS = [
-  "Privacy Policy",
-  "Terms of Use",
-  "Safeguarding Policy",
-  "Data Protection",
-  "Complaints Procedure",
-  "Other Policies",
-];
+  {
+    id: 1,
+    name: "Privacy Policy",
+    url: "https://www.careerbridgefoundation.com/privacy-policy"
+  },
+  {
+    id: 2,
+    name: "Terms of Use",
+    url: "https://www.careerbridgefoundation.com/terms-of-use"
+  },
+  {
+    id: 3,
+    name: "Safeguarding Policy",
+    url: "https://www.careerbridgefoundation.com/safeguarding-policy"
+  },
+  {
+    id: 4,
+    name: "Data Protection",
+    url: "https://www.careerbridgefoundation.com/data-protection"
+  },
+  {
+    id: 5,
+    name: "Complaints Procedure",
+    url: "https://www.careerbridgefoundation.com/complaints-procedure"
+  },
+  {
+    id: 6,
+    name: "Other Policies",
+    url: "https://www.careerbridgefoundation.com/policies"
+  },
+]
 
 export function Footer() {
   return (
@@ -30,8 +89,8 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-3.5">
               {NAV_LINKS.map((link) => (
-                <a key={link} href="#" className="footer-link text-sm text-white/[0.65]">
-                  {link}
+                <a key={link.id} href={link.url} className="footer-link text-sm text-white/[0.65]">
+                  {link.name}
                 </a>
               ))}
             </div>
@@ -44,8 +103,8 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-3.5">
               {POLICY_LINKS.map((link) => (
-                <a key={link} href="#" className="footer-link text-sm text-white/[0.65]">
-                  {link}
+                <a key={link.id} href={link.url} className="footer-link text-sm text-white/[0.65]">
+                  {link.name}
                 </a>
               ))}
             </div>

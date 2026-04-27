@@ -7,6 +7,7 @@ import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useEvaluation } from "@/hooks/useEvaluation";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 import { LeftSidebar } from "@/components/simulation/LeftSidebar";
 import { RightSidebar } from "@/components/simulation/RightSidebar";
 import { TaskPrompt } from "@/components/simulation/TaskPrompt";
@@ -16,6 +17,12 @@ import { ChatWidget } from "@/components/simulation/ChatWidget";
 import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
+
+// ── Evaluation cycling messages ───────────────────────────────
+const EVAL_MESSAGES = [
+  ...PROMPTS.map((p, i) => `Reviewing Task ${i + 1}: ${p.title}…`),
+  "Compiling your verdict…",
+];
 
 // ── Access gate states ────────────────────────────────────────
 type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated";
@@ -90,6 +97,8 @@ export default function SimulationExecutionPage() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evalMsgIndex, setEvalMsgIndex] = useState(0);
+  const [evalVisible, setEvalVisible] = useState(true);
 
   // ── Access check on mount ────────────────────────────────────
   useEffect(() => {
@@ -108,6 +117,25 @@ export default function SimulationExecutionPage() {
 
     checkAccess().catch(() => setAccessStatus("unauthenticated"));
   }, []);
+
+  // ── Evaluation message cycling ────────────────────────────────
+  useEffect(() => {
+    if (!isEvaluating) return;
+    let cancelled = false;
+    const id = setInterval(() => {
+      setEvalVisible(false);
+      setTimeout(() => {
+        if (!cancelled) {
+          setEvalMsgIndex(i => (i + 1) % EVAL_MESSAGES.length);
+          setEvalVisible(true);
+        }
+      }, 300);
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [isEvaluating]);
 
   function handleSubmitClick() {
     // Validate all tasks have content
@@ -176,6 +204,80 @@ export default function SimulationExecutionPage() {
 
   if (accessStatus === "denied") {
     return <PaywallScreen />;
+  }
+
+  // ── Evaluating state: Header + card + Footer, no overlay ──────
+  if (isEvaluating) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header variant="solid" />
+        <main
+          className="flex-1 flex flex-col items-center justify-center px-6"
+          style={{ paddingTop: "80px", paddingBottom: "80px" }}
+        >
+          <div
+            className="flex flex-col items-center gap-7 px-10 py-12"
+            style={{
+              border: "1px solid #D5DCE8",
+              maxWidth: "420px",
+              width: "100%",
+            }}
+          >
+            <img
+              src="/logo.png"
+              alt="Career Bridge Foundation"
+              style={{ width: "48px", height: "auto", objectFit: "contain" }}
+            />
+            <h2
+              className="text-center"
+              style={{ color: "#003359", fontWeight: 600, fontSize: "18px", lineHeight: 1.4 }}
+            >
+              Evaluating your responses…
+            </h2>
+            <div
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                height: "4px",
+                width: "100%",
+                backgroundColor: "#E5E7EB",
+                borderRadius: "9999px",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: "#4DC5D2",
+                  borderRadius: "9999px",
+                  animation: "cb-eval-progress 1.8s ease-in-out infinite",
+                }}
+              />
+            </div>
+            <p
+              className="text-center"
+              style={{
+                color: "#555",
+                fontSize: "13px",
+                opacity: evalVisible ? 1 : 0,
+                transition: "opacity 0.3s ease",
+                minHeight: "20px",
+              }}
+            >
+              {EVAL_MESSAGES[evalMsgIndex]}
+            </p>
+          </div>
+        </main>
+        <Footer />
+        <style>{`
+          @keyframes cb-eval-progress {
+            0%   { left: -45%; width: 45%; }
+            100% { left: 110%; width: 45%; }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -358,54 +460,8 @@ export default function SimulationExecutionPage() {
         </div>
       )}
 
-      {/* ── EVALUATING OVERLAY ──────────────────────────────── */}
-      {isEvaluating && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center gap-7 px-6">
-          <img
-            src="/logo.png"
-            alt="Career Bridge Foundation"
-            style={{ width: "48px", height: "auto", objectFit: "contain" }}
-          />
-          <h2
-            className="text-center"
-            style={{ color: "#003359", fontWeight: 600, fontSize: "18px", lineHeight: 1.4 }}
-          >
-            Evaluating your responses…
-          </h2>
-          <div
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              height: "4px",
-              maxWidth: "300px",
-              width: "100%",
-              backgroundColor: "#E5E7EB",
-              borderRadius: "9999px",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                backgroundColor: "#4DC5D2",
-                borderRadius: "9999px",
-                animation: "cb-progress 1.8s ease-in-out infinite",
-              }}
-            />
-          </div>
-          <p style={{ color: "#888", fontSize: "13px" }}>
-            This usually takes 15 to 30 seconds
-          </p>
-        </div>
-      )}
-
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes cb-progress {
-          0%   { left: -45%; width: 45%; }
-          100% { left: 110%; width: 45%; }
-        }
       `}</style>
     </div>
   );

@@ -24,6 +24,7 @@ type CertifierCreateCredentialBody = {
 
 type CertifierCredentialResponse = {
   id?: string;
+  publicId?: string;
   url?: string;
   credential_url?: string;
   publicUrl?: string;
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
 
   let certifierCredentialId: string | null = null;
   let certifierCredentialUrl: string | null = null;
+  let certifierImageUrl: string | null = null;
 
   try {
     const basePayload: CertifierCreateCredentialBody = {
@@ -260,18 +262,28 @@ export async function POST(request: NextRequest) {
 
         const fallbackData = await fallbackRes.json() as CertifierCredentialResponse;
         console.log("[certifier/issue] Certifier fallback create response:", JSON.stringify(fallbackData, null, 2));
-        certifierCredentialId = fallbackData.id ?? null;
+        certifierCredentialId = fallbackData.id ?? fallbackData.publicId ?? null;
 
         if (certifierCredentialId) {
           const { res: issueRes, data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
           certifierCredentialUrl =
             issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
-            fallbackData.url ?? fallbackData.credential_url ?? null;
+            fallbackData.url ?? fallbackData.credential_url ?? fallbackData.publicUrl ?? null;
+          if (!certifierCredentialUrl && fallbackData.publicId) {
+            certifierCredentialUrl = `https://credsverse.com/credentials/${fallbackData.publicId}`;
+            console.log("[certifier/issue] Constructed URL from publicId:", certifierCredentialUrl);
+          }
+          certifierImageUrl = issueData.imageUrl ?? fallbackData.imageUrl ?? null;
           if (issueRes.ok) {
             await sendCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
           }
         } else {
-          certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? null;
+          certifierCredentialUrl = fallbackData.url ?? fallbackData.credential_url ?? fallbackData.publicUrl ?? null;
+          if (!certifierCredentialUrl && fallbackData.publicId) {
+            certifierCredentialUrl = `https://credsverse.com/credentials/${fallbackData.publicId}`;
+            console.log("[certifier/issue] Constructed URL from publicId:", certifierCredentialUrl);
+          }
+          certifierImageUrl = fallbackData.imageUrl ?? null;
         }
       } else {
         console.error("[certifier/issue] Certifier API error:", certRes.status, errBody);
@@ -280,18 +292,28 @@ export async function POST(request: NextRequest) {
     } else {
       const certData = await certRes.json() as CertifierCredentialResponse;
       console.log("[certifier/issue] Certifier create response:", JSON.stringify(certData, null, 2));
-      certifierCredentialId = certData.id ?? null;
+      certifierCredentialId = certData.id ?? certData.publicId ?? null;
 
       if (certifierCredentialId) {
         const { res: issueRes, data: issueData } = await issueCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
         certifierCredentialUrl =
           issueData.url ?? issueData.credential_url ?? issueData.publicUrl ??
-          certData.url ?? certData.credential_url ?? null;
+          certData.url ?? certData.credential_url ?? certData.publicUrl ?? null;
+        if (!certifierCredentialUrl && certData.publicId) {
+          certifierCredentialUrl = `https://credsverse.com/credentials/${certData.publicId}`;
+          console.log("[certifier/issue] Constructed URL from publicId:", certifierCredentialUrl);
+        }
+        certifierImageUrl = issueData.imageUrl ?? certData.imageUrl ?? null;
         if (issueRes.ok) {
           await sendCredential(certifierCredentialId, certifierKey, CERTIFIER_API_VERSION);
         }
       } else {
-        certifierCredentialUrl = certData.url ?? certData.credential_url ?? null;
+        certifierCredentialUrl = certData.url ?? certData.credential_url ?? certData.publicUrl ?? null;
+        if (!certifierCredentialUrl && certData.publicId) {
+          certifierCredentialUrl = `https://credsverse.com/credentials/${certData.publicId}`;
+          console.log("[certifier/issue] Constructed URL from publicId:", certifierCredentialUrl);
+        }
+        certifierImageUrl = certData.imageUrl ?? null;
       }
     }
   } catch (err) {
@@ -322,5 +344,5 @@ export async function POST(request: NextRequest) {
     { onConflict: "candidate_user_id,simulation_id" }
   );
 
-  return Response.json({ credentialUrl: certifierCredentialUrl });
+  return Response.json({ credentialUrl: certifierCredentialUrl, imageUrl: certifierImageUrl });
 }
