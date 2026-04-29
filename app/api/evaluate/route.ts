@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ensurePortfolioProfile } from "@/lib/portfolio/ensureProfile";
 import type { VerdictBand } from "@/types/database";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -335,6 +336,23 @@ export async function POST(request: NextRequest) {
     } catch (dbErr) {
       // Log but don't fail the response — client still gets the evaluation
       console.error("[evaluate] Supabase write failed:", dbErr);
+    }
+
+    // ── Portfolio auto-creation ────────────────────────────────────
+    try {
+      const displayName =
+        (user.user_metadata?.full_name as string | undefined)
+        ?? user.email?.split('@')[0]
+        ?? 'candidate';
+      await ensurePortfolioProfile(user.id, displayName, supabase);
+    } catch (portfolioErr) {
+      console.error('[evaluate] portfolio auto-create failed', {
+        user_id: user.id,
+        simulation_slug,
+        session_id,
+        error: portfolioErr instanceof Error ? portfolioErr.message : String(portfolioErr),
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 
