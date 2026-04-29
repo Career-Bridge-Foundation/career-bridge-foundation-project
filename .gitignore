@@ -44,3 +44,6 @@ next-env.d.ts
 *.bak
 *.bak2
 *.bak3
+
+# supabase CLI artifacts
+supabase/.temp/

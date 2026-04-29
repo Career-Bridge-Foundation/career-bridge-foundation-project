@@ -49,11 +49,17 @@ public.update_updated_at()
 - `20260420_001_create_all_tables.sql`
 - `20260421_002_create_purchases_table.sql`
 
+| Migration | Date applied | Method | Status |
+|-----------|--------------|--------|--------|
+| 001_create_all_tables | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
+| 002_create_purchases_table | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
+| 003_add_evaluation_results_update_policy | 2026-04-29 | SQL Editor | Applied and verified |
+
 Use a zero-padded three-digit sequence number. Use underscores, no spaces. Keep the description short and lowercase.
 
 **RLS:** Include `ENABLE ROW LEVEL SECURITY` and all `CREATE POLICY` statements in the same file as the `CREATE TABLE`. Both existing migrations follow this pattern — table definition, then RLS block, then indexes.
 
-**Applying migrations:** _Needs confirmation — the repo has no Supabase CLI config (`supabase/config.toml`) or CI pipeline for `supabase db push`. Current practice is likely manual execution via the Supabase SQL editor. Confirm with the team before documenting this definitively._
+**Applying migrations:** Migrations are currently applied manually via the Supabase SQL Editor. The Supabase CLI is installed and linked to the project (Pro tier) as of 29 April 2026, but `supabase db push` is not yet the application mechanism because the existing schema was built incrementally via 30+ ad-hoc SQL Editor scripts rather than tracked migrations. Schema reconciliation (using `supabase db pull` to baseline a clean migration history) is a planned future task. Until then: paste new migration SQL into a new SQL Editor query, run it, and commit the migration file to `supabase/migrations/` as documentation. Project linking details (project ref, region) live in `supabase/config.toml` and the local `.env.local`.
 
 ---
 
@@ -251,7 +257,9 @@ CREATE TABLE public.evaluation_results (
 "Coaches can view candidate results" — SELECT via coach_candidates join
 ```
 
-> **Known bug — missing UPDATE policy:** `app/api/evaluate/route.ts` uses the **user-scoped server client** (not the admin client) for its upsert. The upsert has `onConflict: "session_id"`, so on a duplicate session it attempts an UPDATE. There is no UPDATE RLS policy, so the UPDATE is silently blocked. The route wraps the DB write in `try/catch` and continues on failure, meaning the candidate receives their result but the DB row is not updated. Re-evaluating an already-evaluated session will appear to succeed from the client but produce no DB change. Fix: either add an UPDATE policy (`USING (auth.uid() = user_id)`) or switch the upsert to use the admin client.
+> **Known bug — missing UPDATE policy [RESOLVED 29 April 2026]:** `app/api/evaluate/route.ts` uses the **user-scoped server client** (not the admin client) for its upsert. The upsert has `onConflict: "session_id"`, so on a duplicate session it attempts an UPDATE. There is no UPDATE RLS policy, so the UPDATE is silently blocked. The route wraps the DB write in `try/catch` and continues on failure, meaning the candidate receives their result but the DB row is not updated. Re-evaluating an already-evaluated session will appear to succeed from the client but produce no DB change. Fix: either add an UPDATE policy (`USING (auth.uid() = user_id)`) or switch the upsert to use the admin client.
+>
+> **Resolution applied:** Migration `20260425_003_add_evaluation_results_update_policy.sql` took the first path — added the UPDATE RLS policy. Re-evaluations now correctly overwrite the previous row. Verified via `pg_policies` query against production immediately after applying. The `try/catch` pattern in `app/api/evaluate/route.ts` is unchanged and remains a latent risk for *other* silent-failure bugs of this shape — flagged for future audit.
 
 **Indexes:**
 ```sql
