@@ -47,3 +47,6 @@ next-env.d.ts
 
 # supabase CLI artifacts
 supabase/.temp/
+
+# Claude Code local configuration
+.claude/
