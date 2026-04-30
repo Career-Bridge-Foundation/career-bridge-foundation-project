@@ -31,6 +31,10 @@ export interface EvaluationResult {
   tasks: EvaluationTask[];
 }
 
+type EvaluationApiResponse = EvaluationResult & {
+  warnings?: Array<{ message: string; details?: string }>;
+};
+
 // ── localStorage helpers (unauthenticated users) ──────────────────
 
 export function storageKey(simulationId: string): string {
@@ -119,7 +123,7 @@ export function useEvaluation() {
         );
       }
 
-      const result: EvaluationResult = await res.json();
+      const result: EvaluationApiResponse = await res.json();
 
       // Unauthenticated path: persist to localStorage so the results page can read it
       if (!sessionId || !userId) {
@@ -127,8 +131,13 @@ export function useEvaluation() {
       }
 
       const redirectBase = `/simulate/${simulationId}/results`;
+      const warnings = result.warnings ?? [];
+      const warningParam = warnings.length > 0
+        ? `&warning=${encodeURIComponent(warnings.map((warning) => warning.message).join(" "))}`
+        : "";
+
       return sessionId
-        ? `${redirectBase}?session_id=${encodeURIComponent(sessionId)}`
+        ? `${redirectBase}?session_id=${encodeURIComponent(sessionId)}${warningParam}`
         : redirectBase;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Evaluation failed. Please try again.");

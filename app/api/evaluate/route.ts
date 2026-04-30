@@ -161,6 +161,11 @@ interface TaskInput {
   response: string;
 }
 
+type EvaluationWarning = {
+  message: string;
+  details?: string;
+};
+
 // Maps Claude's frontend verdict to the DB VerdictBand enum
 function toVerdictBand(verdict: string): VerdictBand {
   if (verdict === "Pass with Merit") return "Merit";
@@ -282,6 +287,8 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Persist to Supabase (authenticated requests only) ──────────
+  const warnings: EvaluationWarning[] = [];
+
   if (session_id && simulation_slug) {
     try {
       type EvalTask = {
@@ -313,7 +320,7 @@ export async function POST(request: NextRequest) {
         }))
       );
 
-      await supabase.from("evaluation_results").upsert(
+      const { error: evaluationWriteError } = await supabase.from("evaluation_results").upsert(
         {
           session_id,
           user_id: user.id,
@@ -328,14 +335,43 @@ export async function POST(request: NextRequest) {
         { onConflict: "session_id" }
       );
 
-      await supabase
+      if (evaluationWriteError) {
+        console.error("[evaluate] evaluation_results upsert failed:", {
+          session_id,
+          simulation_slug,
+          user_id: user.id,
+          error: evaluationWriteError.message,
+        });
+        warnings.push({
+          message: "Your evaluation was scored, but the saved result could not be written to the database.",
+          details: evaluationWriteError.message,
+        });
+      }
+
+      const { error: sessionUpdateError } = await supabase
         .from("simulation_sessions")
         .update({ status: "evaluated" })
         .eq("id", session_id)
         .eq("user_id", user.id); // RLS double-check
+
+      if (sessionUpdateError) {
+        console.error("[evaluate] simulation_sessions update failed:", {
+          session_id,
+          simulation_slug,
+          user_id: user.id,
+          error: sessionUpdateError.message,
+        });
+        warnings.push({
+          message: "Your evaluation was scored, but your session status could not be updated.",
+          details: sessionUpdateError.message,
+        });
+      }
     } catch (dbErr) {
-      // Log but don't fail the response — client still gets the evaluation
       console.error("[evaluate] Supabase write failed:", dbErr);
+      warnings.push({
+        message: "Your evaluation was scored, but one or more database writes failed.",
+        details: dbErr instanceof Error ? dbErr.message : String(dbErr),
+      });
     }
 
     // ── Portfolio auto-creation ────────────────────────────────────
@@ -353,10 +389,16 @@ export async function POST(request: NextRequest) {
         error: portfolioErr instanceof Error ? portfolioErr.message : String(portfolioErr),
         timestamp: new Date().toISOString(),
       });
+      warnings.push({
+        message: "Your portfolio profile could not be auto-created.",
+        details: portfolioErr instanceof Error ? portfolioErr.message : String(portfolioErr),
+      });
     }
   }
 
-  return new Response(JSON.stringify(evaluation), {
+  const payload = warnings.length > 0 ? { ...evaluation, warnings } : evaluation;
+
+  return new Response(JSON.stringify(payload), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });

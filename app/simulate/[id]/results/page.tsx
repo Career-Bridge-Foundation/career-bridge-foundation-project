@@ -809,6 +809,7 @@ export default function ResultsPage() {
   const searchParams = useSearchParams();
   const simulationId = params?.id ?? "product-strategy";
   const sessionId = searchParams?.get("session_id") ?? null;
+  const submissionWarning = searchParams?.get("warning") ?? null;
 
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -966,6 +967,16 @@ export default function ResultsPage() {
         </div>
       )}
       <Header variant="solid" />
+
+      {submissionWarning && (
+        <div className="border-b" style={{ borderColor: BORDER, backgroundColor: "#FAFAFA" }}>
+          <div className="w-full max-w-[900px] mx-auto px-6 md:px-12 py-4">
+            <p className="text-sm" style={{ color: NAVY, lineHeight: 1.7 }}>
+              <span className="font-semibold">Submission note:</span> {submissionWarning}
+            </p>
+          </div>
+        </div>
+      )}
 
       <main
         className="flex-1 w-full max-w-[900px] mx-auto px-6 md:px-12 pb-20"
