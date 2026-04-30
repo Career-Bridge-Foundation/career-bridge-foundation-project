@@ -85,7 +85,7 @@ export function HeroSection() {
                 Go to Simulations
               </a>
               <a
-                href={portfolioSlug ? `/portfolio/${portfolioSlug}` : "#"}
+                href={portfolioSlug ? `/portfolio/${portfolioSlug}` : "/portfolio"}
                 className="btn-hero-secondary inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium uppercase"
               >
                 View My Portfolio
