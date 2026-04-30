@@ -34,19 +34,6 @@ export default async function PortfolioLandingPage() {
       }}
     >
       <div className="max-w-xl w-full">
-        <p
-          style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.2em',
-            color: TEAL,
-            textTransform: 'uppercase',
-            marginBottom: '28px',
-          }}
-        >
-          Career Bridge Portfolio
-        </p>
-
         <h1
           style={{
             fontFamily: "'Fraunces', serif",
