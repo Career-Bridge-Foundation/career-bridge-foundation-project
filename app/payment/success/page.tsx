@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
@@ -41,7 +41,32 @@ function Row({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessFallback() {
+  return (
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: "#f3f3f3" }}>
+      <Header variant="solid" />
+      <main className="flex-1 flex items-center justify-center px-6 py-20">
+        <div
+          className="w-full max-w-sm bg-white rounded-2xl overflow-hidden flex items-center justify-center"
+          style={{ border: "1px solid #e8e8e8", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", minHeight: 320 }}
+        >
+          <div
+            className="w-10 h-10 rounded-full border-4"
+            style={{
+              borderColor: "#e5e7eb",
+              borderTopColor: TEAL,
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+        </div>
+      </main>
+      <Footer />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
@@ -209,5 +234,13 @@ export default function PaymentSuccessPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<PaymentSuccessFallback />}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }
