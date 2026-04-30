@@ -131,6 +131,14 @@ export default async function PortfolioPage({
         `,
       }}
     >
+      <style>{`
+        .portfolio-back-link {
+          transition: opacity 0.2s ease;
+        }
+        .portfolio-back-link:hover {
+          opacity: 0.7;
+        }
+      `}</style>
       <main
         className="w-full mx-auto px-6"
         style={{
@@ -139,6 +147,34 @@ export default async function PortfolioPage({
           paddingBottom: '120px',
         }}
       >
+
+        {/* ── Back button ────────────────────────────────────────── */}
+        <div
+          style={{
+            marginBottom: '40px',
+            animation:    'portfolio-fade-up 0.5s ease both',
+            animationDelay: '0.15s',
+          }}
+        >
+          <a
+            href="/"
+            className="portfolio-back-link"
+            style={{
+              display:        'inline-flex',
+              alignItems:     'center',
+              gap:            '8px',
+              fontSize:       '11px',
+              fontWeight:     600,
+              color:          TEAL,
+              textDecoration: 'none',
+              letterSpacing:  '0.12em',
+              textTransform:  'uppercase',
+            }}
+          >
+            <span>←</span>
+            Back to Home
+          </a>
+        </div>
 
         {/* ── Header ─────────────────────────────────────────────── */}
         <PortfolioHeader profile={profile} candidate={candidate} />

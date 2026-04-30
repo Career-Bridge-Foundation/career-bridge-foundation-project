@@ -6,6 +6,7 @@ import type { User } from "@supabase/supabase-js";
 
 export function HeroSection() {
   const [user, setUser] = useState<User | null>(null);
+  const [portfolioSlug, setPortfolioSlug] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -15,6 +16,19 @@ export function HeroSection() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = createClient();
+    supabase
+      .from('portfolio_profiles')
+      .select('slug')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.slug) setPortfolioSlug(data.slug);
+      });
+  }, [user?.id]);
 
   const firstName = (user?.user_metadata?.full_name ?? user?.email ?? "").split(" ")[0];
 
@@ -71,7 +85,7 @@ export function HeroSection() {
                 Go to Simulations
               </a>
               <a
-                href="/profile"
+                href={portfolioSlug ? `/portfolio/${portfolioSlug}` : "#"}
                 className="btn-hero-secondary inline-flex items-center justify-center px-8 py-3.5 text-sm font-medium uppercase"
               >
                 View My Portfolio
