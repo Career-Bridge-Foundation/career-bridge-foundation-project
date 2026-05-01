@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const message = await client.messages.create({
-      model: "claude-opus-4-7",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [
@@ -255,6 +255,13 @@ export async function POST(request: NextRequest) {
     });
 
     const block = message.content[0];
+    if (!block) {
+      console.error("[evaluate] Empty content array. stop_reason:", message.stop_reason);
+      return new Response(
+        JSON.stringify({ error: "Claude returned an empty response", stop_reason: message.stop_reason }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
     if (block.type !== "text") {
       return new Response(
         JSON.stringify({ error: "Unexpected response type from Claude API" }),
