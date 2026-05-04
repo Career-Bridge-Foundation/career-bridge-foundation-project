@@ -25,7 +25,7 @@ export function DisciplinePills() {
           Prove Your Capability
         </h2>
 
-        <p className="text-sm font-light text-[#555] leading-[1.75] mb-12 md:whitespace-nowrap">
+        <p className="text-sm font-light text-[#555] leading-[1.75] mb-12">
           Workplace simulations across multiple disciplines, built around real industry scenarios
           and verified by practitioners.
         </p>

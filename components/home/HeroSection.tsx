@@ -49,19 +49,19 @@ export function HeroSection() {
         {/* Headline */}
         {user ? (
           <h1 className="font-bold leading-hero">
-            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-white whitespace-nowrap">
+            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-white">
               Good to see you,
             </span>
-            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-teal whitespace-nowrap">
+            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-teal">
               {firstName}.
             </span>
           </h1>
         ) : (
           <h1 className="font-bold leading-hero">
-            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-white whitespace-nowrap">
+            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-white">
               Prove what you can do.
             </span>
-            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-teal whitespace-nowrap">
+            <span className="block text-[clamp(2rem,4vw,3.5rem)] text-teal">
               Not just what you know.
             </span>
           </h1>

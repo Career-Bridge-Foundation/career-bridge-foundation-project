@@ -70,8 +70,8 @@ const POLICY_LINKS = [
 export function Footer() {
   return (
     <footer className="bg-navy">
-      <div className="max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-8">
+      <div className="max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 overflow-x-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 md:gap-8">
 
           {/* Col 1: Brand */}
           <div className="flex flex-col gap-4">
@@ -119,7 +119,7 @@ export function Footer() {
             <p className="text-xs italic text-white/[0.55] mb-1.5">General Enquiries</p>
             <a
               href="mailto:support@careerbridgefoundation.zohodesk.eu"
-              className="footer-link text-xs text-teal whitespace-nowrap"
+              className="footer-link text-xs text-teal break-all"
             >
               support@careerbridgefoundation.zohodesk.eu
             </a>
@@ -127,7 +127,7 @@ export function Footer() {
             <p className="text-xs italic text-white/[0.55] mt-5 mb-1.5">Partnership Enquiries</p>
             <a
               href="mailto:outreach@careerbridgefoundation.com"
-              className="footer-link text-xs text-teal"
+              className="footer-link text-xs text-teal break-all"
             >
               outreach@careerbridgefoundation.com
             </a>
@@ -182,10 +182,10 @@ export function Footer() {
 
       {/* Bottom bar */}
       <div className="px-6 md:px-12 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/10">
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-white/40 text-center sm:text-left">
           &copy; 2026 Career Bridge Foundation CIC. All rights reserved.
         </p>
-        <p className="text-xs text-white/40">Registered Company Number: 16939467</p>
+        <p className="text-xs text-white/40 text-center sm:text-right">Registered Company Number: 16939467</p>
       </div>
     </footer>
   );
