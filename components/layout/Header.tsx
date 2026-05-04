@@ -16,10 +16,14 @@ interface HeaderProps {
 }
 
 const NAV_LINKS = [
-  { label: "Simulations", href: "/simulations",  homeHref: "#simulations" },
-  { label: "For Coaches", href: "/for-coaches",  homeHref: "/for-coaches" },
-  { label: "Pricing",     href: "/pricing",       homeHref: "#pricing" },
-  { label: "About",       href: "https://www.careerbridgefoundation.com/", homeHref: "https://www.careerbridgefoundation.com/" },
+  { label: "Simulations", href: "/simulations", homeHref: "#simulations" },
+  { label: "For Coaches", href: "/for-coaches", homeHref: "/for-coaches" },
+  { label: "Pricing", href: "/pricing", homeHref: "/pricing" },
+  {
+    label: "About",
+    href: "https://www.careerbridgefoundation.com/",
+    homeHref: "https://www.careerbridgefoundation.com/",
+  },
 ];
 
 function getInitials(name: string) {
@@ -31,7 +35,10 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-export function Header({ variant = "transparent", homeMode = false }: HeaderProps) {
+export function Header({
+  variant = "transparent",
+  homeMode = false,
+}: HeaderProps) {
   const scrolled = useScrolled();
   const isSolid = variant === "solid" || scrolled;
   const [user, setUser] = useState<User | null>(null);
@@ -44,7 +51,9 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
       setUser(session?.user ?? null);
       setReady(true);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setReady(true);
     });
@@ -76,7 +85,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-200",
-        isSolid ? "bg-white border-b border-border-light" : "bg-transparent"
+        isSolid ? "bg-white border-b border-border-light" : "bg-transparent",
       )}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-4 flex items-center justify-between relative">
@@ -102,7 +111,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
                 rel="noopener noreferrer"
                 className={cn(
                   "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hover:opacity-60 transition-opacity whitespace-nowrap",
-                  isSolid ? "text-navy" : "text-white"
+                  isSolid ? "text-navy" : "text-white",
                 )}
               >
                 {label}
@@ -113,7 +122,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
                 href={to}
                 className={cn(
                   "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hover:opacity-60 transition-opacity whitespace-nowrap",
-                  isSolid ? "text-navy" : "text-white"
+                  isSolid ? "text-navy" : "text-white",
                 )}
               >
                 {label}
@@ -135,23 +144,34 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
                   className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-2 ring-offset-1 ring-border-light"
                 />
               ) : (
-                <div className={cn(
-                  "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ring-2 ring-offset-1",
-                  isSolid ? "bg-navy text-white ring-border-light" : "bg-white text-navy ring-white/30"
-                )}>
+                <div
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ring-2 ring-offset-1",
+                    isSolid
+                      ? "bg-navy text-white ring-border-light"
+                      : "bg-white text-navy ring-white/30",
+                  )}
+                >
                   {getInitials(displayName)}
                 </div>
               )}
-              <span className={cn(
-                "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hidden lg:block",
-                isSolid ? "text-navy" : "text-white"
-              )}>
+              <span
+                className={cn(
+                  "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hidden lg:block",
+                  isSolid ? "text-navy" : "text-white",
+                )}
+              >
                 {firstName}
               </span>
             </div>
 
             {/* Divider */}
-            <div className={cn("h-5 w-px hidden lg:block", isSolid ? "bg-border-light" : "bg-white/20")} />
+            <div
+              className={cn(
+                "h-5 w-px hidden lg:block",
+                isSolid ? "bg-border-light" : "bg-white/20",
+              )}
+            />
 
             {/* Logout */}
             <button
@@ -159,7 +179,9 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
               className={cn(
                 "text-xs font-medium uppercase tracking-brand-sm px-4 py-2 border transition-opacity hover:opacity-60 cursor-pointer",
                 "text-[10px] lg:text-xs px-2.5 lg:px-4 py-1.5 lg:py-2",
-                isSolid ? "text-navy border-border-light" : "text-white border-white/30"
+                isSolid
+                  ? "text-navy border-border-light"
+                  : "text-white border-white/30",
               )}
             >
               Log Out
@@ -172,7 +194,9 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
               href="/auth/login"
               className={cn(
                 "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm px-2.5 lg:px-5 py-1.5 lg:py-2.5 transition-opacity hover:opacity-60 border whitespace-nowrap",
-                isSolid ? "text-navy border-border-light" : "text-white border-white/30"
+                isSolid
+                  ? "text-navy border-border-light"
+                  : "text-white border-white/30",
               )}
             >
               Login
@@ -181,7 +205,7 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
               href="/auth/signup"
               className={cn(
                 "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm px-2.5 lg:px-5 py-1.5 lg:py-2.5 whitespace-nowrap",
-                isSolid ? "btn-apply" : "btn-apply-inverted"
+                isSolid ? "btn-apply" : "btn-apply-inverted",
               )}
             >
               Sign Up
@@ -194,27 +218,29 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
           onClick={() => setMobileMenuOpen((v) => !v)}
           className={cn(
             "md:hidden relative inline-flex items-center justify-center w-10 h-10 transition-transform duration-200 ease-out active:scale-95",
-            isSolid ? "text-navy" : "text-white"
+            isSolid ? "text-navy" : "text-white",
           )}
-          aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-label={
+            mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"
+          }
           aria-expanded={mobileMenuOpen}
         >
           <span
             className={cn(
               "absolute h-0.5 w-5 bg-current transition-all duration-300 ease-out",
-              mobileMenuOpen ? "rotate-45 top-[19px]" : "top-[13px]"
+              mobileMenuOpen ? "rotate-45 top-[19px]" : "top-[13px]",
             )}
           />
           <span
             className={cn(
               "absolute h-0.5 w-5 bg-current transition-all duration-200 ease-out",
-              mobileMenuOpen ? "opacity-0 scale-0" : "opacity-100 scale-100"
+              mobileMenuOpen ? "opacity-0 scale-0" : "opacity-100 scale-100",
             )}
           />
           <span
             className={cn(
               "absolute h-0.5 w-5 bg-current transition-all duration-300 ease-out",
-              mobileMenuOpen ? "-rotate-45 top-[19px]" : "top-[25px]"
+              mobileMenuOpen ? "-rotate-45 top-[19px]" : "top-[25px]",
             )}
           />
         </button>
@@ -225,13 +251,13 @@ export function Header({ variant = "transparent", homeMode = false }: HeaderProp
           "md:hidden bg-white overflow-hidden origin-top transition-all duration-300 ease-out",
           mobileMenuOpen
             ? "max-h-[80vh] opacity-100 scale-y-100 translate-y-0"
-            : "max-h-0 opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
+            : "max-h-0 opacity-0 scale-y-95 -translate-y-1 pointer-events-none",
         )}
       >
         <div
           className={cn(
             "pt-2 transition-opacity duration-200",
-            mobileMenuOpen ? "opacity-100 delay-100" : "opacity-0"
+            mobileMenuOpen ? "opacity-100 delay-100" : "opacity-0",
           )}
         >
           <nav className="px-4 py-4 flex flex-col gap-1">
