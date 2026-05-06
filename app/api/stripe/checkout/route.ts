@@ -1,10 +1,28 @@
 import Stripe from "stripe";
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { CHECKOUT_PRICES } from "@/lib/pricing";
+import { CHECKOUT_PRICES, PRICING_PLANS } from "@/lib/pricing";
 import type { PriceType } from "@/types/database";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+
+function buildLineItem(planId: PriceType): Stripe.Checkout.SessionCreateParams.LineItem {
+  const plan = PRICING_PLANS.find((p) => p.id === planId);
+  if (!plan) throw new Error(`No pricing plan found for planId: ${planId}`);
+
+  const features = plan.features.map((f) => `• ${f}`).join("\n");
+  const raw = plan.checkout.description ?? features;
+  const description = raw.slice(0, 500);
+
+  return {
+    quantity: plan.checkout.quantity ?? 1,
+    price_data: {
+      currency: "gbp",
+      unit_amount: plan.checkout.amount,
+      product_data: { name: plan.checkout.name },
+    },
+  };
+}
 
 export async function POST(request: NextRequest) {
   // Require authentication — user_id must be in Stripe metadata so the
@@ -39,18 +57,21 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const { amount, name, quantity, discount } = CHECKOUT_PRICES[priceType];
+  if (priceType === "coach") {
+    return new Response(
+      JSON.stringify({ error: "Coach Pack requires a direct enquiry — please email outreach@careerbridgefoundation.com" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const { amount, quantity: checkoutQty, discount } = CHECKOUT_PRICES[priceType];
+  const subtotalPence = amount * (checkoutQty ?? 1);
+  const discountPence = discount ?? 0;
+  const totalPence = subtotalPence - discountPence;
   const origin = request.headers.get("origin") ?? "";
 
   try {
-    const lineItem = {
-      quantity: quantity ?? 1,
-      price_data: {
-        currency: "gbp",
-        unit_amount: amount,
-        product_data: { name },
-      },
-    };
+    const lineItem = buildLineItem(priceType);
 
     // Stripe Checkout doesn't support discount_amounts on line items —
     // discounts must be applied at the session level via a coupon.
@@ -75,10 +96,18 @@ export async function POST(request: NextRequest) {
       metadata: { price_type: priceType, simulation_id: simulationId, user_id: user.id },
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        url: session.url,
+        breakdown: {
+          subtotalPence,
+          ...(discountPence > 0 ? { couponPence: discountPence } : {}),
+          totalPence,
+          currency: "gbp",
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return new Response(

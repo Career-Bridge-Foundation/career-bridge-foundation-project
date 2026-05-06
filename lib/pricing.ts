@@ -5,6 +5,7 @@ type CheckoutPrice = {
   name: string;
   quantity?: number;
   discount?: number; // discount in pence (e.g., 2000 = £20.00)
+  description?: string;
 };
 
 export type PricingPlan = {
@@ -37,7 +38,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     cta: "Get Started",
     checkout: {
       amount: 4999,
-      name: "Career Bridge - Single Simulation",
+      name: "Single Simulation",
     },
     simulationCredits: 1,
   },
@@ -58,9 +59,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     cta: "Get Started",
     checkout: {
       amount: 4999,
-      name: "Career Bridge - Bundle (3 Simulations)",
+      name: "Bundle (3 Simulations)",
       quantity: 3,
-      discount: 2000, // Save £20
+      discount: 1998, // £49.99 × 3 − £19.98 = £129.99 (matches advertised price)
     },
     simulationCredits: 3,
   },
@@ -84,7 +85,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     popular: true,
     checkout: {
       amount: 34999,
-      name: "Career Bridge - Full PM Portfolio (14 Simulations)",
+      name: "Full PM Portfolio (14 Simulations)",
     },
     simulationCredits: 14,
   },
@@ -106,7 +107,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     ctaHref: "mailto:outreach@careerbridgefoundation.com",
     checkout: {
       amount: 149999,
-      name: "Career Bridge - Coach Licence (10 Seats)",
+      name: "Coach Licence (10 Seats)",
     },
     simulationCredits: 999,
   },
