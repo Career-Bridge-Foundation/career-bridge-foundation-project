@@ -5,9 +5,20 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { FilterBar } from "@/components/simulation/FilterBar";
 import { SimulationCard } from "@/components/simulation/SimulationCard";
-import { simulations } from "@/lib/simulations-data";
 import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
+
+type SimulationListItem = {
+  id?: string | number;
+  slug: string;
+  title: string;
+  company: string;
+  industry: string;
+  type: string;
+  difficulty: "Foundation" | "Practitioner" | "Advanced";
+  time: string;
+  description: string;
+};
 
 export default function ProductManagementPage() {
   const [typeFilter, setTypeFilter] = useState("All");
@@ -26,7 +37,26 @@ export default function ProductManagementPage() {
   const [diffFilter, setDiffFilter] = useState("All");
   const [industryFilter, setIndustryFilter] = useState("All");
 
-  const filtered = simulations.filter((s) => {
+  const [simsList, setSimsList] = useState<SimulationListItem[]>([]);
+
+  useEffect(()=>{
+    async function load(){
+      const supabase = createClient();
+      const { data, error } = await supabase.from('simulations').select('*').order('display_order', { ascending: true });
+      
+      if (error) {
+        console.error("Error fetching simulations:", error);
+        console.error("Error code:", error.code);
+        console.error("Error message:", error.message);
+      }
+      
+      setSimsList(data ?? []);
+    }
+    load();
+  },[])
+
+
+  const filtered = simsList.filter((s) => {
     if (typeFilter !== "All" && s.type !== typeFilter) return false;
     if (diffFilter !== "All" && s.difficulty !== diffFilter) return false;
     if (industryFilter !== "All" && s.industry !== industryFilter) return false;

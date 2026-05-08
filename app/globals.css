@@ -3,12 +3,20 @@
 /* ── Design tokens (Tailwind v4 @theme) ─────────────────── */
 @theme {
   /* Brand colours */
-  --color-teal: #4dc5d2;
-  --color-navy: #003359;
-  --color-border-light: #d5dce8;
-  --color-grey-bg: #f3f3f3;
-  --color-link-blue: #006fad;
-  --color-url-chip: #ebf4fb;
+  --color-teal: #0d9488;          /* accent.DEFAULT */
+  --color-navy: #18284e;          /* primary.DEFAULT */
+  --color-border-light: #e5e5e5;  /* border.DEFAULT */
+  --color-grey-bg: #f5f5f4;       /* muted.DEFAULT */
+  --color-link-blue: #0d9488;     /* unified with accent */
+  --color-url-chip: #f0fdfa;      /* teal-50 tint */
+
+  /* Admin dark surface tokens */
+  --color-bg: #0f1112;
+  --color-bg-surface: #131517;
+  --color-bg-elevated: #191b1e;
+  --color-border-dark: #202226;
+  --color-accent-admin: #4c6ef5;
+  --color-accent-admin-muted: #3b5bcc;
 
   /* Fluid hero font sizes */
   --font-size-hero: clamp(2rem, 4vw, 3.5rem);
@@ -27,10 +35,10 @@
   --leading-section: 1.3;
 }
 
-/* ── Base ───────────────────────────────────────────────── */
+/* ── Base — light theme (public) ────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafaf9;   /* warm-white */
+  --foreground: #0f172a;   /* ink */
 }
 
 body {
@@ -40,6 +48,18 @@ body {
   font-size: 17px;
   line-height: 1.7;
   overflow-x: hidden;
+}
+
+/* ── Admin layout — dark theme override ─────────────────── */
+/*
+   Apply [data-theme="admin"] to your admin root element, e.g.
+   <div data-theme="admin"> or the <body> on /admin/* routes.
+*/
+[data-theme="admin"] {
+  --background: #0f1112;
+  --foreground: #f4f4f5;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 /* ── Navbar apply button ────────────────────────────────── */
@@ -54,7 +74,6 @@ body {
   color: #ffffff;
 }
 
-/* Inverted variant for transparent navbar over navy hero */
 .btn-apply-inverted {
   border: 1px solid rgba(255, 255, 255, 0.6);
   color: #ffffff;
@@ -70,6 +89,7 @@ body {
   border: 1px solid #ffffff;
   color: #ffffff;
   letter-spacing: var(--tracking-brand-xs);
+  transition: background-color 0.15s;
 }
 .btn-hero-primary:hover {
   background-color: rgba(255, 255, 255, 0.08);
@@ -116,7 +136,7 @@ body {
   transition: outline-color 0.15s;
 }
 .discipline-card:hover {
-  outline-color: var(--color-link-blue);
+  outline-color: var(--color-teal);
 }
 
 /* ── Hero dot-grid overlay ──────────────────────────────── */
@@ -132,14 +152,14 @@ body {
 /* ── Filter select (custom chevron) ─────────────────────── */
 .filter-select {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23003359' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2318284e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   padding-right: 32px;
   cursor: pointer;
 }
 
-/* ── Form inputs — focus border ─────────────────────────── */
+/* ── Form inputs — public (light) ───────────────────────── */
 .sim-input {
   outline: none;
   border: 1px solid var(--color-border-light);
@@ -150,7 +170,29 @@ body {
   border-color: var(--color-teal);
 }
 .sim-input-error {
-  border-color: #e53e3e;
+  border-color: #dc2626;
+}
+
+/* ── Admin inputs (dark surfaces) ───────────────────────── */
+.admin-input {
+  outline: none;
+  background-color: var(--color-bg-surface);
+  color: #f4f4f5;
+  border: 1px solid var(--color-border-dark);
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+.admin-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+.admin-input:focus {
+  border-color: var(--color-accent-admin);
+}
+.admin-input-error {
+  border-color: #dc2626;
+}
+.admin-input-success {
+  border-color: #059669;
 }
 
 /* ── Chat widget ─────────────────────────────────────────── */
@@ -163,7 +205,7 @@ body {
   border-radius: 16px;
   transform-origin: bottom right;
   transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.15s ease;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 40px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 .chat-panel-closed {
   transform: scale(0.85);
@@ -182,12 +224,12 @@ body {
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 51, 89, 0.35), 0 1px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 16px rgba(24, 40, 78, 0.28), 0 1px 4px rgba(15, 23, 42, 0.1);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .chat-fab:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 20px rgba(0, 51, 89, 0.45), 0 2px 6px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 20px rgba(24, 40, 78, 0.38), 0 2px 6px rgba(15, 23, 42, 0.14);
 }
 
 /* ── Chat close button ───────────────────────────────────── */
@@ -206,8 +248,8 @@ body {
 
 /* ── Video controls ──────────────────────────────────────── */
 .video-control-btn {
-  background-color: rgba(0, 0, 0, 0.55);
-  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(15, 23, 42, 0.55);
+  color: rgba(255, 255, 255, 0.85);
   border-radius: 3px;
 }
 
@@ -215,4 +257,46 @@ body {
 .social-icon-btn {
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.75);
+}
+
+/* ── cmdk command palette — dark (admin) ─────────────────── */
+[cmdk-root] {
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-dark);
+  border-radius: 10px;
+  overflow: hidden;
+}
+[cmdk-input] {
+  background: transparent;
+  color: #f4f4f5;
+  caret-color: var(--color-accent-admin);
+  border-bottom: 1px solid var(--color-border-dark);
+  font-family: inherit;
+}
+[cmdk-input]::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+[cmdk-group-heading] {
+  padding: 4px 12px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 2px;
+}
+[cmdk-list] {
+  overflow-y: auto;
+}
+[cmdk-item] {
+  cursor: pointer;
+  border-radius: 6px;
+  outline: none;
+  color: rgba(255, 255, 255, 0.8);
+  transition: background-color 0.1s;
+}
+[cmdk-item]:hover,
+[cmdk-item][data-selected='true'] {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
 }

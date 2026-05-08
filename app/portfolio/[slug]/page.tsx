@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
 import { PortfolioHeader } from './PortfolioHeader';
 import { SimulationCard } from './SimulationCard';
@@ -156,8 +157,8 @@ export default async function PortfolioPage({
             animationDelay: '0.15s',
           }}
         >
-          <a
-            href="/"
+                <Link
+                  href="/"
             className="portfolio-back-link"
             style={{
               display:        'inline-flex',
@@ -173,7 +174,7 @@ export default async function PortfolioPage({
           >
             <span>←</span>
             Back to Home
-          </a>
+                </Link>
         </div>
 
         {/* ── Header ─────────────────────────────────────────────── */}
@@ -236,8 +237,8 @@ export default async function PortfolioPage({
         className="w-full text-center"
         style={{ paddingBottom: '40px' }}
       >
-        <a
-          href="/"
+              <Link
+                href="/"
           style={{
             fontSize:       '11px',
             color:          '#bbb',
@@ -246,7 +247,7 @@ export default async function PortfolioPage({
           }}
         >
           Powered by Career Bridge Foundation
-        </a>
+              </Link>
       </footer>
 
     </div>

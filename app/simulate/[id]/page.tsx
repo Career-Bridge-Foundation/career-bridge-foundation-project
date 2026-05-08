@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
 import { useSimulation } from "@/hooks/useSimulation";
@@ -329,12 +330,12 @@ export default function SimulationExecutionPage() {
                     Saved
                   </span>
                 )}
-                <a
+                <Link
                   href="/simulations/product-management"
                   className="text-xs font-medium px-4 py-2 border border-navy text-navy"
                 >
                   Exit Assessment
-                </a>
+                </Link>
               </div>
             </div>
 

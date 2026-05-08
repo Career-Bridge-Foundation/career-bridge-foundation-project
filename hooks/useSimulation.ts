@@ -207,7 +207,7 @@ export function useSimulation(
     }
 
     setTimeout(() => setSaveStatus("idle"), 2000);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — all deps accessed via stable refs
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── MARK SUBMITTED: saves all responses then flips session status ──
   const markSubmitted = useCallback(async () => {
