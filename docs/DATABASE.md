@@ -1,11 +1,14 @@
 # Database
 
-_Last updated: 25 April 2026_
+_Last updated: 11 May 2026_
 
-Schema source of truth: `supabase/migrations/`. Two migration files exist:
+Schema source of truth: `supabase/migrations/`. Migration files:
 
 - `20260420_001_create_all_tables.sql` — tables 1–9, RLS, indexes, triggers
 - `20260421_002_create_purchases_table.sql` — `purchases` table, RLS, indexes
+- `20260425_003_add_evaluation_results_update_policy.sql` — UPDATE policy on `evaluation_results`
+- `20260508_001_create_simulations_and_admins.sql` — `admins` and `simulations` (CMS) tables, `is_admin()`, RLS
+- `20260508_002_activity_log_and_auth.sql` — `simulation_activity` table; replaces `is_admin()` to use `auth.email()`
 
 All tables are in the `public` schema. RLS is enabled on every table. All write operations in API routes that need to bypass RLS use a Supabase admin client constructed with `SUPABASE_SERVICE_ROLE_KEY`.
 
@@ -20,6 +23,7 @@ The following API routes construct a Supabase admin client using `SUPABASE_SERVI
 - **`app/api/stripe/webhook/route.ts`** — INSERT `purchases`; UPDATE `profiles` (user_type); INSERT/UPDATE `coaches`
 - **`app/api/purchases/consume/route.ts`** — SELECT + UPDATE `purchases` (incrementing `simulations_used`)
 - **`app/api/certifier/issue/route.ts`** — SELECT `evaluation_results`; SELECT `profiles` (full_name); `auth.admin.getUserById` (email lookup); SELECT + upsert `credential_issuances`
+- **`app/api/admin/simulations/**/route.ts`** (all admin CMS routes) — full read/write on `simulations` and `simulation_activity`. Authorisation is enforced one layer above the DB by `middleware.ts`, which gates every `/admin` and `/api/admin` request against the `ADMIN_EMAILS` env var. The `is_admin()` SQL function and admin RLS policies on `simulations` / `simulation_activity` are defence-in-depth — they would matter only if a non-admin code path ever used a user-scoped client to write to these tables.
 
 All other routes use the user-scoped server client and rely on RLS.
 
@@ -27,19 +31,25 @@ All other routes use the user-scoped server client and rely on RLS.
 
 ## DB triggers
 
-Two functions are defined and attached as triggers:
+Three functions are defined and attached as triggers:
 
 ```sql
 -- Auto-creates a profiles row on new user signup
 public.handle_new_user()
   AFTER INSERT ON auth.users → INSERT INTO public.profiles
 
--- Updates updated_at column on row update
+-- Updates updated_at column on row update (original)
 public.update_updated_at()
   BEFORE UPDATE ON: profiles, simulation_sessions, coaches, coach_notes
+
+-- Updates updated_at column on row update (added with CMS schema)
+public.set_updated_at()
+  BEFORE UPDATE ON: simulations
 ```
 
-> **Tables without `updated_at`:** `evaluation_results`, `simulation_responses`, `coach_candidates`, `simulation_assignments`, and `credential_issuances` have no `updated_at` column and no update trigger. Do not add `updated_at` to these tables expecting auto-population — it would require a new migration to add the column and a new trigger attachment.
+> **Two trigger functions doing the same thing:** `update_updated_at()` and `set_updated_at()` are functionally identical — the latter was introduced in `20260508_001` rather than reusing the existing function. Either function could maintain `updated_at` on any table. Worth consolidating in a future migration but harmless as-is.
+
+> **Tables without `updated_at`:** `evaluation_results`, `simulation_responses`, `coach_candidates`, `simulation_assignments`, `credential_issuances`, and `simulation_activity` have no `updated_at` column and no update trigger. Do not add `updated_at` to these tables expecting auto-population — it would require a new migration to add the column and a new trigger attachment.
 
 ---
 
@@ -51,9 +61,13 @@ public.update_updated_at()
 
 | Migration | Date applied | Method | Status |
 |-----------|--------------|--------|--------|
-| 001_create_all_tables | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
-| 002_create_purchases_table | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
-| 003_add_evaluation_results_update_policy | 2026-04-29 | SQL Editor | Applied and verified |
+| 20260420_001_create_all_tables | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
+| 20260421_002_create_purchases_table | (historical) | SQL Editor (incremental scripts) | Schema present, file is partial reconstruction |
+| 20260425_003_add_evaluation_results_update_policy | 2026-04-29 | SQL Editor | Applied and verified |
+| 20260508_001_create_simulations_and_admins | 2026-05-08 | SQL Editor | Applied |
+| 20260508_002_activity_log_and_auth | 2026-05-08 | SQL Editor | Applied |
+
+> **Sequence-number convention drift:** The original three migrations used a single global sequence (`001` → `002` → `003`). The 8 May 2026 pair restarted at `001` within the date prefix. Both schemes sort correctly because the date prefix dominates, but mixing them makes the "next number" ambiguous. Pick one before the next migration: either continue the global sequence (`004`, `005`…) or commit to per-date sequences. Document the choice here.
 
 Use a zero-padded three-digit sequence number. Use underscores, no spaces. Keep the description short and lowercase.
 
@@ -523,6 +537,160 @@ idx_purchases_status         ON (status)
 - `app/api/purchases/consume/route.ts` — SELECT oldest active purchase with remaining credits; UPDATE `simulations_used + 1` (admin client)
 - `lib/access-control.ts` — SELECT all active purchases to compute `remainingCredits` (browser client, RLS-protected)
 - `app/simulate/[id]/page.tsx` — via `checkSimulationAccess()` from `lib/access-control.ts`
+
+---
+
+## Admin / CMS schema
+
+Added 8 May 2026 to support the in-app admin CMS for managing simulation content. Three tables plus an `is_admin()` SQL helper.
+
+> **Naming collision:** the table `simulations` here is **not** the same as `simulation_sessions` (table 2) or `simulation_responses` (table 3). It is a new top-level table holding the *content of each simulation* (brief, prompts, etc.) — the published catalog that candidates browse. Until 8 May 2026 this content lived in code (`lib/simulations/*.ts` or similar). The admin CMS migrates that content into the database. Routes like `/api/admin/simulations` read and write this table; runtime reads use `getSimulations()` / `getSimBySlug()` in `lib/data.ts`.
+
+---
+
+### 11. `admins`
+
+Allow-list of admin email addresses. Read by the `is_admin()` SQL function.
+
+```sql
+CREATE TABLE admins (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  email       TEXT        NOT NULL UNIQUE,
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+```
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `email` | TEXT UNIQUE | Matched against `auth.email()` by `is_admin()` |
+| `created_at` | TIMESTAMPTZ | |
+
+**RLS:** RLS not explicitly enabled on this table by the migration. Only the service role and the `is_admin()` SQL function (`SECURITY DEFINER`) read it; no user-scoped reads happen in the application.
+
+**Used by:**
+- `is_admin()` SQL function — reads `email = auth.email()` to authorise writes against `simulations` and `simulation_activity` under their RLS policies
+- No application code reads or writes this table. Admins are seeded manually via the SQL Editor (see commented `INSERT` at the bottom of `20260508_002_activity_log_and_auth.sql`).
+
+> **Two parallel admin authorisation systems:** The application gate in `middleware.ts` uses the `ADMIN_EMAILS` env var, not this table. The `admins` table is consulted only by RLS policies on `simulations` / `simulation_activity`. Both must list the same emails for the system to behave consistently; there is no code that keeps them in sync. If you add or remove an admin, update **both** the env var **and** the `admins` table.
+
+---
+
+### 12. `simulations` (CMS content)
+
+The published simulation catalog. One row per simulation slug. Public read; admin write.
+
+```sql
+CREATE TABLE simulations (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug              TEXT        NOT NULL UNIQUE,
+  title             TEXT,
+  company           TEXT,
+  industry          TEXT,
+  type              TEXT,
+  difficulty        TEXT        CHECK (difficulty IN ('Foundation','Practitioner','Advanced')),
+  time              TEXT,
+  description       TEXT,
+  display_order     INT,
+  sim_role          TEXT,
+  brief_short       TEXT,
+  brief_full        TEXT,
+  video_transcript  TEXT,
+  time_remaining    INT[],
+  prompts           JSONB       DEFAULT '[]'::jsonb,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+```
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | Referenced by `simulation_activity.simulation_id` |
+| `slug` | TEXT UNIQUE | URL-safe identifier — e.g. `'product-strategy'`. Validated by `SimulationMetadataSchema` (`/^[a-z0-9]+(?:-[a-z0-9]+)*$/`, 2–60 chars) |
+| `title` / `company` / `industry` / `type` / `time` | TEXT | Catalog metadata. Length limits enforced at the Zod layer (`lib/schemas/simulation.ts`), not the DB |
+| `difficulty` | TEXT | DB CHECK constrains to `Foundation` / `Practitioner` / `Advanced` |
+| `description` | TEXT | Max 280 chars enforced by Zod |
+| `display_order` | INT | Determines order on the public listing; assigned automatically on create (max + 1) and rewritten by the reorder endpoint |
+| `sim_role` | TEXT | The role description shown to candidates inside the simulation |
+| `brief_short` / `brief_full` | TEXT | Two views of the simulation brief |
+| `video_transcript` | TEXT | Optional video transcript |
+| `time_remaining` | INT[] | Per-prompt time budgets (seconds); array length must match `prompts.length` (Zod-enforced) |
+| `prompts` | JSONB | Array of `{id, type, title, question, guidance, minWords}`. IDs are 1-indexed and re-sequenced server-side by the content PATCH route |
+| `created_at` / `updated_at` | TIMESTAMPTZ | `updated_at` maintained by `set_updated_at` trigger |
+
+**Indexes:** `idx_simulations_display_order ON (display_order)`
+
+**RLS:**
+```sql
+"public_select" — SELECT  USING (true)
+"admin_write"   — ALL     USING (is_admin())  WITH CHECK (is_admin())
+```
+Anyone can read; only admins (per `admins` table via `is_admin()`) can write. In practice admin routes use the service role and bypass RLS — the policy is the second line of defence.
+
+**Trigger:** `trg_set_updated_at` — BEFORE UPDATE, sets `updated_at = now()` via `set_updated_at()`.
+
+**Used by:**
+- `lib/data.ts` — `getSimulations()` and `getSimBySlug()` via `supabaseServer` (RLS-safe under `public_select`)
+- All `app/api/admin/simulations/**/route.ts` routes — full CRUD via service role
+- `app/admin/page.tsx` and admin list/detail/content pages — read via `getSimulations()` / `getSimBySlug()`
+- Public listing and `app/simulations/[slug]/page.tsx` — read via `getSimBySlug()`
+
+---
+
+### 13. `simulation_activity`
+
+Audit log of every admin write to a simulation. One row per `created` / `updated_metadata` / `updated_content` / `deleted` event. Read by the activity timeline on the simulation edit page.
+
+```sql
+CREATE TABLE simulation_activity (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  simulation_id  UUID        REFERENCES simulations(id) ON DELETE CASCADE,
+  user_email     TEXT        NOT NULL,
+  action         TEXT        NOT NULL
+                   CHECK (action IN ('created','updated_metadata','updated_content','deleted')),
+  diff           JSONB,
+  created_at     TIMESTAMPTZ DEFAULT now()
+);
+```
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID PK | |
+| `simulation_id` | UUID FK → `simulations(id)` | CASCADE on simulation delete — a `deleted` activity row is removed along with the simulation it describes. If you need a durable deletion record, switch to `ON DELETE SET NULL` and store the slug in `diff`. |
+| `user_email` | TEXT | Resolved server-side from the request's Supabase session (`'unknown'` if unresolved) |
+| `action` | TEXT | One of four lifecycle events |
+| `diff` | JSONB | Shape varies by action: `created` → none; `updated_metadata` → `{before, after}`; `updated_content` → `{promptCount}`; `deleted` → `{title, slug}` |
+| `created_at` | TIMESTAMPTZ | |
+
+**Indexes:**
+```sql
+idx_activity_simulation_id ON (simulation_id)
+idx_activity_created_at    ON (created_at DESC)
+```
+
+**RLS:**
+```sql
+"admin_all_activity" — ALL  USING (is_admin())  WITH CHECK (is_admin())
+```
+No public read; only admins. Service-role writes from the admin routes bypass this.
+
+**Used by:**
+- `lib/supabase/log-activity.ts` — fire-and-forget INSERT after each successful admin mutation. Never throws — a logging failure does not break the response.
+- `app/api/admin/simulations/[slug]/activity/route.ts` — SELECT last 50 rows for a given simulation
+- `app/admin/simulations/[slug]/page.tsx` — renders the activity timeline tab
+
+---
+
+### `is_admin()` — RLS helper
+
+```sql
+CREATE FUNCTION is_admin() RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS(SELECT 1 FROM admins WHERE email = auth.email());
+$$;
+```
+
+Used in the `admin_write` policy on `simulations` and `admin_all_activity` policy on `simulation_activity`. `SECURITY DEFINER` lets the function read `admins` regardless of the caller's privileges. The current definition (from `20260508_002`) uses `auth.email()`; the prior definition (from `20260508_001`) read `request.jwt.claims->>'email'` manually and was replaced because `auth.email()` is the canonical Supabase helper.
 
 ---
 
