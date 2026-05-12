@@ -11,26 +11,34 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 
 export function PromptsTab() {
-  const { content, addPrompt, expandedPromptId, setExpandedPromptId } = useEditorStore()
+  const { content, addPrompt, updateContent, expandedPromptId, setExpandedPromptId } = useEditorStore()
   const [prompts, setPrompts] = useState<Prompt[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Keep local render list in sync with store, since PromptCard updates the store directly.
+  useEffect(() => {
+    setPrompts(content?.prompts ?? [])
+  }, [content?.prompts])
+
   // Fetch prompts from database
   useEffect(() => {
     async function fetchPrompts() {
-        const prompt = content?.prompts
-        console.log("Prompt", prompt )
-      if (!prompt.id) return
+      // Only fetch when we have the simulation id
+      console.log("Content ID: ", content?.id)
+      if (!content?.id) return
       
       try {
         setLoading(true)
         const supabase = createClient()
-        const { data, error: dbError } = await supabase
-          .from('simulation_prompts')
-          .select('*')
-          .eq('simulation_id', content.id)
-          .order('id', { ascending: true })
+        const { data: simulation_prompts, error: dbError } = await supabase
+        .from('simulation_prompts')
+        .select('*')
+        .eq('simulation_id', content.id)
+        .order('id', { ascending: true })
+        
+        // Log both data and any DB error for diagnostics
+        console.log('Supabase result:', { data: simulation_prompts, dbError })
         
         if (dbError) {
           console.error('Error fetching prompts:', dbError)
@@ -38,8 +46,16 @@ export function PromptsTab() {
           return
         }
         
-        setPrompts(data || [])
-        console.log("Prompts: ", data)
+        // Transform snake_case from DB to camelCase for schema
+        const transformed = (simulation_prompts || []).map((p: any) => ({
+          id: String(p.id),
+          type: p.type,
+          title: p.title,
+          question: p.question,
+          guidance: p.guidance || [],
+          minWords: p.min_words || 0,
+        }))
+        updateContent({ prompts: transformed })
       } catch (err) {
         console.error('Error fetching prompts:', err)
         setError('Failed to load prompts')
@@ -49,22 +65,22 @@ export function PromptsTab() {
     }
     
     fetchPrompts()
-  }, [content?.id])
+  }, [content?.id, updateContent])
 
   const handleAddPrompt = useCallback(() => {
     if (!content?.id) return
-    const nextId = Math.max(0, ...prompts.map(p => p.id)) + 1
+    const newId = crypto.randomUUID()
     const newPrompt: Prompt = {
-      id: nextId,
+      id: newId,
       type: 'typed',
       title: `Prompt ${prompts.length + 1}`,
       question: '',
       guidance: [],
       minWords: 0,
     }
-    setPrompts([...prompts, newPrompt])
-    setExpandedPromptId(nextId)
-  }, [prompts, setExpandedPromptId, content?.id])
+    addPrompt(newPrompt)
+    setExpandedPromptId(newId)
+  }, [prompts, setExpandedPromptId, content?.id, addPrompt])
 
   if (!content?.id) {
     return (
@@ -114,7 +130,7 @@ export function PromptsTab() {
           >
             <Button
               onClick={handleAddPrompt}
-              variant="default"
+              variant="primary"
               size="default"
               leftIcon={<Plus size={16} />}
             >
@@ -158,7 +174,7 @@ export function PromptsTab() {
         >
           <Button
             onClick={handleAddPrompt}
-            variant="default"
+            variant="primary"
             size="default"
             leftIcon={<Plus size={16} />}
           >

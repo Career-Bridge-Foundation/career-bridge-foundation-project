@@ -38,7 +38,7 @@ export const GuidanceBulletSchema = z
   .max(200, 'Guidance must be 200 characters or less')
 
 export const PromptSchema = z.object({
-  id: z.number().int().positive(),
+  id: z.union([z.string().uuid(), z.string()]),
   type: z.enum(['typed', 'url', 'either']),
   title: z.string().min(1, 'Title is required').max(200),
   question: z.string().min(1, 'Question is required').max(2000),
@@ -50,6 +50,7 @@ export type Prompt = z.infer<typeof PromptSchema>
 
 export const SimulationContentSchema = z
   .object({
+    id: z.string().uuid(),
     sim_role: z.string().nullable().default(null),
     brief_short: z.string().nullable().default(null),
     brief_full: z.string().nullable().default(null),
@@ -67,6 +68,7 @@ export type SimulationContent = z.infer<typeof SimulationContentSchema>
 // ── Import/Export ─────────────────────────────────────────────────────────────
 
 export const SimulationExportRowSchema = SimulationMetadataSchema.extend({
+  id: z.string().uuid(),
   sim_role: z.string().nullable().optional(),
   brief_short: z.string().nullable().optional(),
   brief_full: z.string().nullable().optional(),

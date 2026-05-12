@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, FileText, Settings, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 
 const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -40,14 +41,19 @@ export function Sidebar() {
       {/* Brand */}
       <div className="px-6 pt-6 pb-5 border-b border-slate-200">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-teal/10 border border-teal/30">
-            <span className="text-xs font-bold text-teal">CB</span>
+          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 ">
+            <Image
+              src="/logo.png"            
+              alt='Logo'
+              width={45}
+              height={45}
+            />
           </div>
           <div>
             <div className="text-slate-900 font-bold text-sm tracking-tight leading-none">
               CareerBridge
             </div>
-            <div className="text-xs font-semibold tracking-widest uppercase mt-0.5 text-teal">
+            <div className="text-xs font-semibold tracking-widest uppercase mt-0.5 text-{accent-copper}">
               Admin
             </div>
           </div>

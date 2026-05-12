@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from 'react'
 import { useEditorStore } from '@/lib/stores/simulation-editor'
 import { SimulationContentSchema } from '@/lib/schemas/simulation'
+import { normalizeSimulationContent } from '@/lib/simulation-content-utils'
 import { toast } from 'sonner'
 
 export function useKeyboardShortcuts(slug: string) {
@@ -16,13 +17,10 @@ export function useKeyboardShortcuts(slug: string) {
 
     try {
       // Validate content
-      const validated = SimulationContentSchema.parse(content)
+      const validated = SimulationContentSchema.parse(normalizeSimulationContent(content))
 
       // Resequence ids
-      const payload = {
-        ...validated,
-        prompts: validated.prompts.map((p, i) => ({ ...p, id: i + 1 })),
-      }
+      const payload = validated
 
       const response = await fetch(`/api/admin/simulations/${slug}/content`, {
         method: 'PATCH',

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { useEditorStore } from '@/lib/stores/simulation-editor'
 import { SimulationContentSchema } from '@/lib/schemas/simulation'
+import { normalizeSimulationContent } from '@/lib/simulation-content-utils'
 import { Button } from '@/components/ui'
 import { ArrowLeft, Save, Eye } from 'lucide-react'
 import Link from 'next/link'
@@ -26,11 +27,8 @@ export function EditorHeader({ slug, title }: EditorHeaderProps) {
     setIsSaving(true)
 
     try {
-      const validated = SimulationContentSchema.parse(content)
-      const payload = {
-        ...validated,
-        prompts: validated.prompts.map((p, i) => ({ ...p, id: i + 1 })),
-      }
+      const validated = SimulationContentSchema.parse(normalizeSimulationContent(content))
+      const payload = validated
 
       const response = await fetch(`/api/admin/simulations/${slug}/content`, {
         method: 'PATCH',

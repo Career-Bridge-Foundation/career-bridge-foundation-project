@@ -14,6 +14,7 @@ import { useKeyboardShortcuts } from './_hooks/use-keyboard-shortcuts'
 interface ContentEditorProps {
   slug: string
   initialData: {
+    id: number | string
     title: string
     sim_role: string | null
     brief_short: string | null
@@ -37,12 +38,16 @@ export function ContentEditor({ slug, initialData }: ContentEditorProps) {
   // Initialize store with data
   useEffect(() => {
     const data: SimulationContent = {
+      id: String(initialData.id),
       sim_role: initialData.sim_role,
       brief_short: initialData.brief_short,
       brief_full: initialData.brief_full,
       video_transcript: initialData.video_transcript,
       time_remaining: initialData.time_remaining || [],
-      prompts: initialData.prompts || [],
+      prompts: (initialData.prompts || []).map((prompt) => ({
+        ...prompt,
+        id: String(prompt.id),
+      })),
     }
     setOriginal(data)
   }, [initialData, setOriginal])

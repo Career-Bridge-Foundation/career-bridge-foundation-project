@@ -120,11 +120,11 @@ function LoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50">
+    <div className="max-h-screen flex justify-center px-4 bg-slate-50">
       <div className="w-full max-w-md">
         {/* Brand */}
-        <div className="text-center mb-10">
-          <div className="font-bold text-2xl mb-2 text-slate-900">
+        <div className="text-center mt-20 mb-10">
+          <div className="font-bold text-5xl mb-2 text-slate-900">
             CareerBridge
           </div>
           <div className="text-xs font-semibold tracking-widest uppercase text-teal">

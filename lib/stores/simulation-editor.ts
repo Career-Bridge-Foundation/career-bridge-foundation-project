@@ -13,22 +13,22 @@ interface EditorStore {
   saveStatus: SaveStatus
   errorMessage: string | null
   activeTab: 'overview' | 'prompts' | 'settings'
-  expandedPromptId: number | null
+  expandedPromptId: string | number | null
 
   // Actions
   setContent: (content: SimulationContent) => void
   setOriginal: (content: SimulationContent) => void
   updateContent: (updates: Partial<SimulationContent>) => void
-  updatePrompt: (id: number, updates: Partial<Prompt>) => void
+  updatePrompt: (id: string | number, updates: Partial<Prompt>) => void
   addPrompt: (prompt: Prompt) => void
-  deletePrompt: (id: number) => void
+  deletePrompt: (id: string | number) => void
   reorderPrompts: (newOrder: Prompt[]) => void
 
   // UI actions
   setSaveStatus: (status: SaveStatus) => void
   setErrorMessage: (message: string | null) => void
   setActiveTab: (tab: 'overview' | 'prompts' | 'settings') => void
-  setExpandedPromptId: (id: number | null) => void
+  setExpandedPromptId: (id: string | number | null) => void
 
   // Reset
   reset: () => void
@@ -70,7 +70,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
     set((state) => {
       if (!state.content) return {}
       const newPrompts = state.content.prompts.map((p) =>
-        p.id === id ? { ...p, ...updates } : p
+        String(p.id) === String(id) ? { ...p, ...updates } : p
       )
       const newContent = { ...state.content, prompts: newPrompts }
       return {
@@ -101,9 +101,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
   deletePrompt: (id) =>
     set((state) => {
       if (!state.content) return {}
-      const idx = state.content.prompts.findIndex((p) => p.id === id)
+      const idx = state.content.prompts.findIndex((p) => String(p.id) === String(id))
       if (idx === -1) return {}
-      const newPrompts = state.content.prompts.filter((p) => p.id !== id)
+      const newPrompts = state.content.prompts.filter((p) => String(p.id) !== String(id))
       const newTimeRemaining = state.content.time_remaining.filter((_, i) => i !== idx)
       const newContent = {
         ...state.content,
@@ -120,9 +120,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
     set((state) => {
       if (!state.content) return {}
       const timeMap = new Map(
-        state.content.prompts.map((p, i) => [p.id, state.content!.time_remaining[i]])
+        state.content.prompts.map((p, i) => [String(p.id), state.content!.time_remaining[i]])
       )
-      const newTimeRemaining = newOrder.map((p) => timeMap.get(p.id) || 5)
+      const newTimeRemaining = newOrder.map((p) => timeMap.get(String(p.id)) || 5)
       const newContent = {
         ...state.content,
         prompts: newOrder,
