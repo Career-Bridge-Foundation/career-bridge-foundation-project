@@ -30,7 +30,11 @@ export function SimulationCard({
       <div className="px-6 py-5 flex flex-col gap-3">
 
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <VerdictChip band={sim.highestBand} />
+          {sim.showScores ? (
+            <VerdictChip band={sim.highestBand} />
+          ) : (
+            <span /> /* placeholder so credential link stays right-aligned */
+          )}
 
           {sim.credentialStatus === 'issued' && sim.credentialUrl && (
             <a

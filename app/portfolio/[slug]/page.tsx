@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
+import { createClient } from '@/lib/supabase/server';
 import { PortfolioHeader } from './PortfolioHeader';
 import { SimulationCard } from './SimulationCard';
+import { EditPortfolioButton } from './EditPortfolioButton';
 
 const NAVY  = '#003359';
 const TEAL  = '#4DC5D2';
@@ -121,6 +123,23 @@ export default async function PortfolioPage({
 
   const { profile, candidate, simulations, stats } = data;
 
+  // Ownership detection — done separately so getPortfolioBySlug stays
+  // privacy-gated and never exposes user_id in its return type. The query
+  // is constrained to the viewer's own row so RLS allows it cleanly.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let isOwner = false;
+  if (user) {
+    const { data: ownerRow } = await supabase
+      .from('portfolio_profiles')
+      .select('user_id')
+      .eq('slug', slug)
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+    isOwner = !!ownerRow;
+  }
+
   return (
     <div
       style={{
@@ -149,16 +168,20 @@ export default async function PortfolioPage({
         }}
       >
 
-        {/* ── Back button ────────────────────────────────────────── */}
+        {/* ── Back button + Edit button row ──────────────────────── */}
         <div
           style={{
-            marginBottom: '40px',
-            animation:    'portfolio-fade-up 0.5s ease both',
+            marginBottom:   '40px',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            gap:            '12px',
+            animation:      'portfolio-fade-up 0.5s ease both',
             animationDelay: '0.15s',
           }}
         >
-                <Link
-                  href="/"
+          <Link
+            href="/"
             className="portfolio-back-link"
             style={{
               display:        'inline-flex',
@@ -174,7 +197,9 @@ export default async function PortfolioPage({
           >
             <span>←</span>
             Back to Home
-                </Link>
+          </Link>
+
+          <EditPortfolioButton isOwner={isOwner} />
         </div>
 
         {/* ── Header ─────────────────────────────────────────────── */}
@@ -195,7 +220,10 @@ export default async function PortfolioPage({
         <StatsBar stats={stats} />
 
         {/* ── Simulation cards ───────────────────────────────────── */}
-        {simulations.length > 0 ? (
+        {/* When the simulations array is empty (no completed sims, or all
+            hidden via portfolio_simulation_visibility), render nothing —
+            no header, no fallback. */}
+        {simulations.length > 0 && (
           <div style={{ marginTop: '56px' }}>
             <div
               style={{
@@ -217,17 +245,6 @@ export default async function PortfolioPage({
               ))}
             </div>
           </div>
-        ) : (
-          <p
-            style={{
-              marginTop:  '56px',
-              fontSize:   '14px',
-              color:      '#aaa',
-              lineHeight: 1.75,
-            }}
-          >
-            This candidate hasn&apos;t published any work yet.
-          </p>
         )}
 
       </main>

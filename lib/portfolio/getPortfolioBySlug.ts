@@ -166,6 +166,13 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
     });
   }
 
+  // ── Visibility filter ────────────────────────────────────────────
+  // Hides simulations the candidate has chosen not to display, and gates
+  // per-simulation score / feedback exposure. Does NOT bypass is_public —
+  // the is_public privacy gate above (round 1) remains the primary
+  // visibility boundary; this is a per-simulation override applied on top.
+  // Defaults when no row exists: showOnPortfolio=true, showScores=true,
+  // showFeedback=false (applied below in the assemble loop).
   const visibilityMap = new Map<string, { showOnPortfolio: boolean; showScores: boolean; showFeedback: boolean }>();
   for (const v of visibilityRows ?? []) {
     visibilityMap.set(v.simulation_id, {
