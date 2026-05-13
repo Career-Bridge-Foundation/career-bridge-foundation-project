@@ -54,9 +54,14 @@ export async function PATCH(
     .eq('slug', slug)
     .single()
 
+  const updatePayload: Record<string, unknown> = { ...result.data }
+  if (result.data.status === 'published' && !before?.published_at) {
+    updatePayload.published_at = new Date().toISOString()
+  }
+
   const { data, error } = await supabaseServer
     .from('simulations')
-    .update(result.data)
+    .update(updatePayload)
     .eq('slug', slug)
     .select()
     .single()

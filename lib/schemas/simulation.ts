@@ -12,6 +12,9 @@ export const SimulationMetadataSchema = z.object({
   }),
   time: z.string().min(1, 'Required').max(40),
   description: z.string().max(280).optional(),
+  discipline: z.string().max(80).optional(),
+  video_url: z.string().url('Enter a valid URL').or(z.literal('')).optional(),
+  status: z.enum(['draft', 'published', 'archived']).default('draft'),
   slug: z
     .string()
     .min(2, 'At least 2 characters')
@@ -69,6 +72,7 @@ export type SimulationContent = z.infer<typeof SimulationContentSchema>
 
 export const SimulationExportRowSchema = SimulationMetadataSchema.extend({
   id: z.string().uuid(),
+  published_at: z.string().nullable().optional(),
   sim_role: z.string().nullable().optional(),
   brief_short: z.string().nullable().optional(),
   brief_full: z.string().nullable().optional(),

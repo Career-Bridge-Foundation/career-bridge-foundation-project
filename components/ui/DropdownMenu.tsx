@@ -12,7 +12,7 @@ export function DropdownMenu({ trigger, children, align='start'}: { trigger: Rea
   },[])
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <div className="relative inline-block z-100" ref={ref}>
       <div
         role="button"
         tabIndex={0}

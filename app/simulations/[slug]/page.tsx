@@ -92,9 +92,11 @@ type SimRow = {
   title: string
   company: string
   industry: string
+  discipline: string | null
   difficulty: string
   time: string
   description: string
+  video_url: string | null
   sim_role: string | null
   brief_short: string | null
   brief_full: string | null
@@ -189,6 +191,11 @@ export default function SimulationPreviewPage() {
           </div>
           <h1 className="text-2xl font-bold text-white leading-snug">{sim.title}</h1>
           <div className="flex items-center gap-3 flex-wrap">
+            {sim.discipline && (
+              <span className="text-xs px-2 py-0.5 rounded-full border border-violet-500/30 text-violet-400">
+                {sim.discipline}
+              </span>
+            )}
             <span className="text-xs px-2 py-0.5 rounded-full border border-white/10 text-white/50">
               {sim.difficulty}
             </span>
@@ -205,6 +212,20 @@ export default function SimulationPreviewPage() {
           <div className="space-y-2">
             <h2 className="text-xs text-white/40 uppercase tracking-widest font-medium">Your role</h2>
             <p className="text-sm text-white/70 leading-relaxed">{content.sim_role}</p>
+          </div>
+        )}
+
+        {/* Video */}
+        {sim.video_url && (
+          <div className="space-y-2">
+            <h2 className="text-xs text-white/40 uppercase tracking-widest font-medium">Video briefing</h2>
+            <div className="rounded-lg overflow-hidden border border-white/10">
+              <video
+                controls
+                className="w-full bg-black aspect-video"
+                src={sim.video_url}
+              />
+            </div>
           </div>
         )}
 

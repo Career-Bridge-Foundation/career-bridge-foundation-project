@@ -1,6 +1,6 @@
 import { supabaseServer } from '@/lib/supabase/server'
 
-type Action = 'created' | 'updated_metadata' | 'updated_content' | 'deleted'
+type Action = 'created' | 'updated_metadata' | 'updated_content' | 'updated_rubric' | 'deleted'
 
 export async function logActivity(opts: {
   simulationId: string

@@ -17,7 +17,7 @@ async function getCallerEmail(request: NextRequest): Promise<string> {
 export async function GET() {
   const { data, error } = await supabaseServer
     .from('simulations')
-    .select('slug, title, company, industry, difficulty, time, display_order, updated_at')
+    .select('slug, title, company, industry, discipline, difficulty, time, status, published_at, display_order, updated_at')
     .order('display_order', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

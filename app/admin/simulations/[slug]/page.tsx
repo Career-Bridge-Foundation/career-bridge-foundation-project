@@ -267,6 +267,9 @@ export default function EditSimulationPage() {
       difficulty: 'Foundation',
       time: '',
       description: '',
+      discipline: '',
+      video_url: '',
+      status: 'draft' as const,
       slug: '',
     },
     mode: 'onBlur',
@@ -289,6 +292,9 @@ export default function EditSimulationPage() {
           difficulty: data.difficulty ?? 'Foundation',
           time: data.time ?? '',
           description: data.description ?? '',
+          discipline: data.discipline ?? '',
+          video_url: data.video_url ?? '',
+          status: data.status ?? 'draft',
           slug: data.slug ?? slug,
         })
         setIsLoading(false)
@@ -434,6 +440,37 @@ export default function EditSimulationPage() {
               <div className="col-span-12 lg:col-span-8 space-y-5">
                 <div className="bg-white rounded-xl p-6 space-y-5 border border-slate-200">
 
+                  {/* Status */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-900 text-sm font-medium">Status</label>
+                    <div className="flex gap-2">
+                      {(['draft', 'published', 'archived'] as const).map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setValue('status', s, { shouldDirty: true })}
+                          className={cn(
+                            'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors capitalize',
+                            watchedAll.status === s
+                              ? s === 'published'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-400'
+                                : s === 'archived'
+                                ? 'bg-amber-50 text-amber-700 border-amber-400'
+                                : 'bg-slate-100 text-slate-700 border-slate-400'
+                              : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                          )}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    {simData?.published_at && (
+                      <p className="text-xs text-slate-400">
+                        Published {formatDistanceToNow(new Date(simData.published_at as string), { addSuffix: true })}
+                      </p>
+                    )}
+                  </div>
+
                   <Input
                     id="title"
                     label="Title"
@@ -512,6 +549,24 @@ export default function EditSimulationPage() {
                         {descLen}/280
                       </span>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
+                      id="discipline"
+                      label="Discipline"
+                      placeholder="e.g. Product Management"
+                      error={errors.discipline?.message}
+                      {...register('discipline')}
+                    />
+                    <Input
+                      id="video_url"
+                      label="Video URL"
+                      type="url"
+                      placeholder="https://…"
+                      error={errors.video_url?.message}
+                      {...register('video_url')}
+                    />
                   </div>
 
                   {/* Slug */}

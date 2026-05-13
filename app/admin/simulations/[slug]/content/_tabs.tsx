@@ -4,7 +4,7 @@ import React from 'react'
 import { useEditorStore } from '@/lib/stores/simulation-editor'
 import { motion } from 'framer-motion'
 
-type TabKey = 'overview' | 'prompts' | 'settings'
+type TabKey = 'overview' | 'prompts' | 'settings' | 'rubric'
 
 interface Tab {
   key: TabKey
@@ -16,6 +16,7 @@ const TABS: Tab[] = [
   { key: 'overview', label: 'Overview', icon: '📋' },
   { key: 'prompts', label: 'Prompts', icon: '💬' },
   { key: 'settings', label: 'Settings', icon: '⚙️' },
+  { key: 'rubric', label: 'Rubric', icon: '📝' },
 ]
 
 export function EditorTabs() {

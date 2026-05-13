@@ -58,6 +58,11 @@ function SimPreview({ data }: { data: Partial<SimulationMeta> }) {
             {data.industry}
           </span>
         )}
+        {data.discipline && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 font-medium">
+            {data.discipline}
+          </span>
+        )}
         {diffStyle && (
           <span
             className="text-xs px-2 py-0.5 rounded-full font-medium border"
@@ -103,6 +108,9 @@ export default function NewSimulationPage() {
       difficulty: 'Foundation',
       time: '',
       description: '',
+      discipline: '',
+      video_url: '',
+      status: 'draft' as const,
       slug: '',
     },
     mode: 'onBlur',
@@ -180,6 +188,32 @@ export default function NewSimulationPage() {
           {/* ── Form ── */}
           <div className="col-span-12 lg:col-span-8 space-y-5">
             <div className="bg-white rounded-xl p-6 space-y-5 border border-slate-200">
+
+              {/* Status */}
+              <div className="flex flex-col gap-2">
+                <label className="text-slate-900 text-sm font-medium">Status</label>
+                <div className="flex gap-2">
+                  {(['draft', 'published', 'archived'] as const).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setValue('status', s, { shouldDirty: true })}
+                      className={cn(
+                        'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors capitalize',
+                        watchedAll.status === s
+                          ? s === 'published'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-400'
+                            : s === 'archived'
+                            ? 'bg-amber-50 text-amber-700 border-amber-400'
+                            : 'bg-slate-100 text-slate-700 border-slate-400'
+                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Title */}
               <Input
@@ -265,6 +299,25 @@ export default function NewSimulationPage() {
                     {descLen}/280
                   </span>
                 </div>
+              </div>
+
+              {/* Discipline / Video URL */}
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  id="discipline"
+                  label="Discipline"
+                  placeholder="e.g. Product Management"
+                  error={errors.discipline?.message}
+                  {...register('discipline')}
+                />
+                <Input
+                  id="video_url"
+                  label="Explainer Video URL"
+                  type="url"
+                  placeholder="https://…"
+                  error={errors.video_url?.message}
+                  {...register('video_url')}
+                />
               </div>
 
               {/* Slug */}

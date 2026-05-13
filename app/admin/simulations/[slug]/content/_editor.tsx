@@ -8,6 +8,7 @@ import { EditorTabs } from './_tabs'
 import { OverviewTab } from './_overview'
 import { PromptsTab } from './_prompts'
 import { SettingsTab } from './_settings'
+import { RubricTab } from './_rubric'
 import { useBeforeUnload } from './_hooks/use-before-unload'
 import { useKeyboardShortcuts } from './_hooks/use-keyboard-shortcuts'
 
@@ -70,6 +71,7 @@ export function ContentEditor({ slug, initialData }: ContentEditorProps) {
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'prompts' && <PromptsTab />}
         {activeTab === 'settings' && <SettingsTab slug={slug} />}
+        {activeTab === 'rubric' && <RubricTab slug={slug} />}
       </div>
     </div>
   )
