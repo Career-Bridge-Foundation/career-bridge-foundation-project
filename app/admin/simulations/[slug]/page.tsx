@@ -464,9 +464,9 @@ export default function EditSimulationPage() {
                         </button>
                       ))}
                     </div>
-                    {simData?.published_at && (
+                    {!!simData?.published_at && (
                       <p className="text-xs text-slate-400">
-                        Published {formatDistanceToNow(new Date(simData.published_at as string), { addSuffix: true })}
+                        Published {formatDistanceToNow(new Date(simData.published_at as string), { addSuffix: true }) as string}
                       </p>
                     )}
                   </div>

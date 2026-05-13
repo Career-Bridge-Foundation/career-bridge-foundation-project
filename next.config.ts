@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   // separately by the admin editor owner. Re-enable (delete this block)
   // once those errors are fixed. See Slack thread for context.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 };
 

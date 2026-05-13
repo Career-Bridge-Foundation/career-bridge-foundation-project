@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 
 type SimulationListItem = {
-  id?: string | number;
+  id: number;
   slug: string;
   title: string;
   company: string;

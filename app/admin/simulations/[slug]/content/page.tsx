@@ -29,7 +29,7 @@ export default async function SimulationContentPage({
         </Link>
         <span className="text-sm">{sim.title}</span>
       </div>
-      <ContentEditor slug={slug} initialData={sim} />
+      <ContentEditor slug={slug} initialData={sim as any} />
     </div>
   )
 }

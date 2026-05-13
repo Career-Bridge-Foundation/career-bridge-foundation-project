@@ -6,7 +6,7 @@ import type { PriceType } from "@/types/database";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-function buildLineItem(planId: PriceType): Stripe.Checkout.SessionCreateParams.LineItem {
+function buildLineItem(planId: PriceType) {
   const plan = PRICING_PLANS.find((p) => p.id === planId);
   if (!plan) throw new Error(`No pricing plan found for planId: ${planId}`);
 
