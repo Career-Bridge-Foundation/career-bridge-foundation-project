@@ -81,7 +81,7 @@ export function SettingsTab({ slug }: SettingsTabProps) {
           <Button
             onClick={() => setShowDeleteConfirm(true)}
             variant="destructive"
-            size="md"
+            size="default"
             leftIcon={<Trash2 size={16} />}
           >
             Delete Simulation
@@ -122,7 +122,7 @@ export function SettingsTab({ slug }: SettingsTabProps) {
                 onClick={handleDeleteSimulation}
                 disabled={deleteSlugInput !== slug || isDeleting}
                 variant="destructive"
-                size="md"
+                size="default"
                 className="flex-1"
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
@@ -130,7 +130,7 @@ export function SettingsTab({ slug }: SettingsTabProps) {
               <Button
                 onClick={() => setShowDeleteConfirm(false)}
                 variant="secondary"
-                size="md"
+                size="default"
                 className="flex-1"
               >
                 Cancel

@@ -135,9 +135,9 @@ export function PortfolioHeader({ profile, candidate }: Props) {
               </a>
             )}
 
-            {profile.external_links.slice(0, 6).map(link => (
+            {profile.external_links.slice(0, 6).map((link, index) => (
               <a
-                key={link.url}
+                key={`${link.url}-${index}`}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
