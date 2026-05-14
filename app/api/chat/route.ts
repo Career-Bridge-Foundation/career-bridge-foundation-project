@@ -107,7 +107,8 @@ Rules:
 - Be encouraging but professional
 - If they ask you to write their response, politely decline and offer a guiding question instead`;
 
-  const encoder = new TextEncoder();
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
   const stream = new ReadableStream({
     async start(controller) {

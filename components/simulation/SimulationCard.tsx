@@ -1,7 +1,5 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-// import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
+import Link from "next/link";
+import { TypeBadge, DifficultyBadge } from "@/components/ui/Badge";
 import type { Simulation } from "@/types";
 
 interface SimulationCardProps {
@@ -46,10 +44,9 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
           </svg>
           {sim.time}
         </span>
-        <button
-          onClick={handleStart}
-          disabled={hasAccess === null}
-          className="text-sm font-medium text-teal hover:underline disabled:opacity-40 cursor-pointer"
+        <Link
+          href={`/simulate/${sim.slug}`}
+          className="text-sm font-medium text-teal hover:underline"
         >
           Start Simulation →
         </button>

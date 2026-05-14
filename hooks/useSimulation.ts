@@ -7,15 +7,22 @@ import { createClient } from "@/lib/supabase/client";
 const STORAGE_KEY = "sim-product-strategy"; // legacy key — kept for unauthenticated users
 
 interface UseSimulationReturn {
+  loading: boolean;
+  prompts: Prompt[];
+  timeRemaining: number[];
+  context: SimulationContext;
   currentStep: number;
   responses: Record<number, StepResponse>;
   saveStatus: "idle" | "saving" | "saved";
+  submitStatus: "idle" | "validating" | "submitting" | "success" | "error";
+  submitError: string | null;
   lastSaved: Date | null;
   uploadedFiles: File[];
   attachedUrls: string[];
   transcriptOpen: boolean;
   briefExpanded: boolean;
   muted: boolean;
+  attemptId: string | null;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   sessionId: string | null;
   userId: string | null;
@@ -39,6 +46,8 @@ export function useSimulation(
   const [currentStep, setCurrentStep] = useState(0);
   const [responses, setResponses] = useState<Record<number, StepResponse>>({});
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "validating" | "submitting" | "success" | "error">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [attachedUrls, setAttachedUrls] = useState<string[]>([]);
@@ -348,7 +357,7 @@ export function useSimulation(
     // Cancel pending debounce and save current step immediately
     if (debounceRef.current) clearTimeout(debounceRef.current);
     saveToStorage();
-    if (currentStep < 4) setCurrentStep((s) => s + 1);
+    if (currentStep < prompts.length - 1) setCurrentStep((s) => s + 1);
   }
 
   function goPrev() {
@@ -363,16 +372,129 @@ export function useSimulation(
     return `${Math.floor(diff / 60)} mins ago`;
   }
 
+  async function submitAttempt(): Promise<boolean> {
+    // Validate all prompts have responses first
+    setSubmitStatus("validating");
+    const missingPrompts: number[] = [];
+
+    for (let i = 0; i < prompts.length; i++) {
+      const response = responses[i];
+      const hasText = response?.text && response.text.trim();
+      const hasFile = response?.file?.name;
+      const hasUrl = response?.url && response.url.trim();
+      
+      if (!hasText && !hasFile && !hasUrl) {
+        missingPrompts.push(i);
+      }
+    }
+
+    if (missingPrompts.length > 0) {
+      setSubmitError(
+        `Please complete all ${missingPrompts.length} prompt${missingPrompts.length > 1 ? "s" : ""} before submitting.`
+      );
+      setSubmitStatus("error");
+      return false;
+    }
+
+    // If no attempt ID, create one now
+    let finalAttemptId: string = attemptId || "";
+    if (!finalAttemptId) {
+      const candidateStr = localStorage.getItem("cb_candidate");
+      if (!candidateStr) {
+        setSubmitError("Candidate information not found. Please refresh and start again.");
+        setSubmitStatus("error");
+        return false;
+      }
+
+      try {
+        const candidate = JSON.parse(candidateStr);
+        const response = await fetch("/api/attempts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            simulation_id: simulationId,
+            candidate_name: candidate.name,
+            candidate_email: candidate.email,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error("Attempt creation failed:", error);
+          setSubmitError("Failed to initialize attempt. Please refresh and try again.");
+          setSubmitStatus("error");
+          return false;
+        }
+
+        const data = await response.json();
+        if (!data.attempt_id) {
+          setSubmitError("Failed to get attempt ID. Please refresh and try again.");
+          setSubmitStatus("error");
+          return false;
+        }
+
+        finalAttemptId = data.attempt_id;
+        if (simulationId) {
+          const storageKey = `attempt_${simulationId}`;
+          sessionStorage.setItem(storageKey, finalAttemptId);
+        }
+        setAttemptId(finalAttemptId);
+      } catch (error) {
+        console.error("Error creating attempt:", error);
+        setSubmitError("Failed to initialize attempt. Please refresh and try again.");
+        setSubmitStatus("error");
+        return false;
+      }
+    }
+
+    // Submit to API
+    setSubmitStatus("submitting");
+    try {
+      const response = await fetch(`/api/attempts/${finalAttemptId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ responses }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setSubmitError(error.error || "Failed to submit simulation");
+        setSubmitStatus("error");
+        return false;
+      }
+
+      const data = await response.json();
+      setSubmitStatus("success");
+      
+      // Clear session storage
+      localStorage.removeItem("cb_candidate");
+
+      return true;
+    } catch (error) {
+      console.error("Submission error:", error);
+      setSubmitError("An unexpected error occurred");
+      setSubmitStatus("error");
+      return false;
+    }
+  }
+
   return {
+    loading,
+    prompts,
+    timeRemaining,
+    context,
     currentStep,
     responses,
     saveStatus,
+    submitStatus,
+    submitError,
     lastSaved,
     uploadedFiles,
     attachedUrls,
     transcriptOpen,
     briefExpanded,
     muted,
+    attemptId,
     fileInputRef,
     sessionId,
     userId,

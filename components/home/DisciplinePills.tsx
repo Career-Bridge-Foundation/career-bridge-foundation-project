@@ -1,16 +1,10 @@
-const DISCIPLINES = [
-  "Product Management",
-  "Project Management",
-  "Cyber Security",
-  "Cloud DevOps",
-  "Customer Service",
-  "Healthcare Assistance",
-  "Data Analytics",
-  "SEO Analysis",
-  "Business Analysis",
-];
+import type { Discipline } from "@/types/simulation";
 
-export function DisciplinePills() {
+type DisciplinePillsProps = {
+  disciplines: Discipline[];
+};
+
+export function DisciplinePills({ disciplines }: DisciplinePillsProps) {
   return (
     <section id="simulations" className="py-28 px-6 bg-grey-bg">
       <div className="max-w-6xl mx-auto">
@@ -32,13 +26,13 @@ export function DisciplinePills() {
 
         {/* Discipline pills */}
         <div className="flex flex-wrap gap-3 mb-12">
-          {DISCIPLINES.map((discipline) => (
+          {disciplines.map((discipline) => (
             <a
-              key={discipline}
-              href="/simulations"
+              key={discipline.id}
+              href={`/simulations?discipline=${discipline.slug}`}
               className="discipline-pill text-xs font-medium uppercase px-5 py-3 border border-border-light text-navy tracking-brand-sm"
             >
-              {discipline}
+              {discipline.name}
             </a>
           ))}
         </div>
