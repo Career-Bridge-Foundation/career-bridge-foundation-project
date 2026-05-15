@@ -289,6 +289,32 @@ export interface PurchaseInsert {
   expires_at?: string | null
 }
 
+// ── RBAC ─────────────────────────────────────────────────────
+
+export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer'
+
+export interface AdminPermissions {
+  canManageSimulations: boolean
+  canManageUsers: boolean
+  canViewAnalytics: boolean
+  canExportData: boolean
+}
+
+export interface UserRoleRecord {
+  id: string
+  user_id: string
+  email: string | null
+  role: UserRole
+  permissions: AdminPermissions
+  granted_by: string | null
+  created_at: string
+}
+
+export interface ReviewerDiscipline {
+  reviewer_id: string
+  discipline: string
+}
+
 // ── Database convenience type (for createClient<Database>()) ──
 
 export interface Database {

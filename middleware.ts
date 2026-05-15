@@ -1,11 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? '')
-  .split(',')
-  .map(e => e.trim())
-  .filter(Boolean)
-
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -33,17 +28,75 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
-  const isLoginPage = pathname === '/admin/login'
+  const isAdminLogin = pathname === '/admin/login'
+  const isReviewerPath = pathname.startsWith('/reviewer') || pathname.startsWith('/api/reviewer')
 
-  if (isAdminPath && !isLoginPage) {
+  // ── Admin routes ────────────────────────────────────────────
+  if (isAdminPath && !isAdminLogin) {
     if (!user) {
+      // Hide admin area from unauthenticated users — redirect to home, not /admin/login
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
-    const email = user.email ?? ''
-    if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(email)) {
+    // Read role from JWT app_metadata (fast path via custom_access_token_hook)
+    const appMeta = (user.app_metadata ?? {}) as { user_role?: string }
+    let userRole = appMeta.user_role
+
+    // Fallback: DB query for sessions predating the JWT hook
+    if (!userRole) {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      userRole = data?.role ?? 'candidate'
+    }
+
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin'
+    if (!isAdmin) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      // Redirect non-admins to home, not to login — keeps admin area hidden
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // ── Reviewer routes ─────────────────────────────────────────
+  if (isReviewerPath) {
+    if (!user) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      url.searchParams.set('next', '/reviewer')
+      return NextResponse.redirect(url)
+    }
+
+    const appMeta = (user.app_metadata ?? {}) as { user_role?: string }
+    let userRole = appMeta.user_role
+
+    if (!userRole) {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      userRole = data?.role ?? 'candidate'
+    }
+
+    if (userRole !== 'reviewer') {
       if (pathname.startsWith('/api/')) {
         return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
           status: 403,
@@ -51,8 +104,7 @@ export async function middleware(request: NextRequest) {
         })
       }
       const url = request.nextUrl.clone()
-      url.pathname = '/admin/login'
-      url.searchParams.set('error', 'not_admin')
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }

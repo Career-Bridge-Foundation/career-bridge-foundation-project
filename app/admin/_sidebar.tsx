@@ -2,14 +2,15 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, FileText, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, FileText, Settings, LogOut, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
 const NAV = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/admin/simulations', label: 'Simulations', icon: FileText, exact: false },
-  { href: '/admin/settings', label: 'Settings', icon: Settings, exact: false },
+  { href: '/admin',             label: 'Dashboard',   icon: LayoutDashboard, exact: true  },
+  { href: '/admin/simulations', label: 'Simulations', icon: FileText,        exact: false },
+  { href: '/admin/team',        label: 'Team',        icon: Users,           exact: false },
+  { href: '/admin/settings',    label: 'Settings',    icon: Settings,        exact: false },
 ]
 
 export function Sidebar() {
