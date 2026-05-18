@@ -15,10 +15,17 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // ─────────────────────────────────────────────────────────────────
 // const SYSTEM_PROMPT = `You are a professional assessment evaluator for Career Bridge Portfolio Simulations. ...`;
 
+interface TaskAttachment {
+  type: "file" | "url";
+  path?: string;
+  url?: string;
+}
+
 interface TaskInput {
   taskId: number;
   title: string;
   response: string;
+  attachments?: TaskAttachment[];
 }
 
 type EvaluationWarning = {
@@ -115,12 +122,47 @@ export async function POST(request: NextRequest) {
   }
   // ──────────────────────────────────────────────────────────────────────────
 
-  // Build the user message containing each task response
+  // Generate signed URLs for any file attachments so Claude can reference them
+  const signedUrls = new Map<string, string>();
+  for (const t of responses) {
+    for (const att of t.attachments ?? []) {
+      if (att.type === "file" && att.path) {
+        try {
+          const { data } = await supabase.storage
+            .from("simulation-submissions")
+            .createSignedUrl(att.path, 3600);
+          if (data?.signedUrl) signedUrls.set(att.path, data.signedUrl);
+        } catch {
+          // Non-fatal — attachment reference will be omitted from the prompt
+        }
+      }
+    }
+  }
+
+  // Build the user message containing each task response + attachment references
   const userMessage = responses
-    .map(
-      (t) =>
-        `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${t.response.trim()}`
-    )
+    .map((t) => {
+      const attachmentLines = (t.attachments ?? [])
+        .map((a) => {
+          if (a.type === "url" && a.url) {
+            return `  [Candidate submitted URL: ${a.url}]`;
+          }
+          if (a.type === "file" && a.path) {
+            const signed = signedUrls.get(a.path);
+            return signed
+              ? `  [Candidate uploaded document (accessible for 1 hour): ${signed}]`
+              : `  [Candidate uploaded a document — file reference: ${a.path}]`;
+          }
+          return null;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      const body = t.response.trim();
+      return attachmentLines
+        ? `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${body}\n${attachmentLines}`
+        : `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${body}`;
+    })
     .join("\n\n");
 
   let rawContent: string;

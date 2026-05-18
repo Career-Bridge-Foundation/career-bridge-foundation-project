@@ -74,10 +74,17 @@ export async function loadEvaluationResultFromSupabase(
 
 // ── Hook ──────────────────────────────────────────────────────────
 
-interface TaskInput {
+export interface TaskAttachment {
+  type: "file" | "url";
+  path?: string;
+  url?: string;
+}
+
+export interface TaskInput {
   taskId: number;
   title: string;
   response: string;
+  attachments?: TaskAttachment[];
 }
 
 export function useEvaluation() {

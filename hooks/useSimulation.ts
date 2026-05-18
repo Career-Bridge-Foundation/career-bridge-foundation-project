@@ -3,28 +3,49 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { StepResponse } from "@/types";
 import { createClient } from "@/lib/supabase/client";
+import {
+  uploadSimulationFile,
+  validateSimulationFile,
+  UploadValidationError,
+} from "@/lib/storage/uploadSimulationFile";
 
 const STORAGE_KEY = "sim-product-strategy"; // legacy key — kept for unauthenticated users
+
+export interface EvidenceFile {
+  name: string;
+  size: number;
+  filePath: string;
+}
+
+interface TaskEvidence {
+  files: EvidenceFile[];
+  urls: string[];
+}
 
 interface UseSimulationReturn {
   currentStep: number;
   responses: Record<number, StepResponse>;
   saveStatus: "idle" | "saving" | "saved";
   lastSaved: Date | null;
-  uploadedFiles: File[];
-  attachedUrls: string[];
+  evidenceByTask: Record<number, TaskEvidence>;
+  evidenceUploading: boolean;
+  evidenceUploadError: string | null;
   transcriptOpen: boolean;
   briefExpanded: boolean;
   muted: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
   sessionId: string | null;
   userId: string | null;
+  uploadingTaskId: number | null;
+  fileUploadError: string | null;
   setTranscriptOpen: (open: boolean) => void;
   setBriefExpanded: (expanded: boolean) => void;
   setMuted: (muted: boolean) => void;
-  setUploadedFiles: React.Dispatch<React.SetStateAction<File[]>>;
-  setAttachedUrls: React.Dispatch<React.SetStateAction<string[]>>;
   updateResponse: (patch: Partial<StepResponse>) => void;
+  handleFileSelect: (file: File, taskId: number) => Promise<void>;
+  handleEvidenceFileSelect: (file: File, taskId: number) => Promise<void>;
+  handleEvidenceFileRemove: (filePath: string, taskId: number) => Promise<void>;
+  handleEvidenceUrlAdd: (url: string, taskId: number) => Promise<void>;
+  handleEvidenceUrlRemove: (url: string, taskId: number) => Promise<void>;
   goNext: () => void;
   goPrev: () => void;
   saveToStorage: () => void;
@@ -40,14 +61,16 @@ export function useSimulation(
   const [responses, setResponses] = useState<Record<number, StepResponse>>({});
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [attachedUrls, setAttachedUrls] = useState<string[]>([]);
+  const [evidenceByTask, setEvidenceByTask] = useState<Record<number, TaskEvidence>>({});
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
+  const [evidenceUploadError, setEvidenceUploadError] = useState<string | null>(null);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [muted, setMuted] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingTaskId, setUploadingTaskId] = useState<number | null>(null);
+  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
 
   // Stable refs so async callbacks always see latest values without stale closures
   const userIdRef = useRef<string | null>(null);
@@ -85,7 +108,6 @@ export function useSimulation(
             const data = JSON.parse(saved);
             if (typeof data.currentStep === "number") setCurrentStep(data.currentStep);
             if (data.responses) setResponses(data.responses);
-            if (data.attachedUrls) setAttachedUrls(data.attachedUrls);
           }
         } catch { /* ignore */ }
         return;
@@ -110,13 +132,50 @@ export function useSimulation(
         sessionIdRef.current = session.id;
         if (!cancelled) setSessionId(session.id);
 
-        const { data: dbResponses } = await supabase
-          .from("simulation_responses")
-          .select("task_number, response_text, link_urls")
-          .eq("session_id", session.id)
-          .order("task_number");
+        const [{ data: dbResponses }, { data: dbAttachments }] = await Promise.all([
+          supabase
+            .from("simulation_responses")
+            .select("task_number, response_text, link_urls, file_urls")
+            .eq("session_id", session.id)
+            .order("task_number"),
+          supabase
+            .from("simulation_session_attachments")
+            .select("task_id, type, file_path, url, original_filename, size_bytes, is_evidence")
+            .eq("session_id", session.id),
+        ]);
 
         if (cancelled) return;
+
+        // Separate primary submission files from supporting evidence
+        const fileByTask = new Map<number, { name: string; size: number; filePath: string }>();
+        const evidenceMap: Record<number, TaskEvidence> = {};
+
+        for (const att of dbAttachments ?? []) {
+          if (att.is_evidence) {
+            if (!evidenceMap[att.task_id]) evidenceMap[att.task_id] = { files: [], urls: [] };
+            if (att.type === "file" && att.file_path && att.original_filename) {
+              evidenceMap[att.task_id].files.push({
+                name: att.original_filename,
+                size: att.size_bytes ?? 0,
+                filePath: att.file_path,
+              });
+            } else if (att.type === "url" && att.url) {
+              evidenceMap[att.task_id].urls.push(att.url);
+            }
+          } else {
+            if (att.type === "file" && att.file_path && att.original_filename) {
+              fileByTask.set(att.task_id, {
+                name: att.original_filename,
+                size: att.size_bytes ?? 0,
+                filePath: att.file_path,
+              });
+            }
+          }
+        }
+
+        if (Object.keys(evidenceMap).length > 0) {
+          setEvidenceByTask(evidenceMap);
+        }
 
         if (dbResponses?.length) {
           const loaded: Record<number, StepResponse> = {};
@@ -125,6 +184,7 @@ export function useSimulation(
             loaded[r.task_number - 1] = {
               text: r.response_text ?? undefined,
               url: r.link_urls?.[0] ?? undefined,
+              file: fileByTask.get(r.task_number) ?? null,
             };
           }
           responsesRef.current = loaded;
@@ -143,7 +203,6 @@ export function useSimulation(
     const uid = userIdRef.current;
     const slug = simulationSlugRef.current;
     const disc = disciplineRef.current;
-    // Capture at call time — refs may change before async ops resolve
     const step = currentStepRef.current;
     const allResponses = responsesRef.current;
 
@@ -179,11 +238,12 @@ export function useSimulation(
 
       // Upsert the current step's response
       const stepResp = allResponses[step];
-      if (stepResp && (stepResp.text || stepResp.url)) {
+      if (stepResp && (stepResp.text || stepResp.url || stepResp.file)) {
         const taskNumber = step + 1;
         const payload = {
           response_text: stepResp.text ?? null,
           link_urls: stepResp.url ? [stepResp.url] : null,
+          file_urls: stepResp.file?.filePath ? [stepResp.file.filePath] : null,
         };
 
         await supabase
@@ -209,20 +269,18 @@ export function useSimulation(
     setTimeout(() => setSaveStatus("idle"), 2000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── MARK SUBMITTED: saves all responses then flips session status ──
+  // ── MARK SUBMITTED ────────────────────────────────────────────
   const markSubmitted = useCallback(async () => {
     const uid = userIdRef.current;
     const allResponses = responsesRef.current;
 
     if (!uid) {
-      // Unauthenticated fallback — write directly without delay
       try {
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
             currentStep: currentStepRef.current,
             responses: allResponses,
-            attachedUrls: [],
           })
         );
       } catch { /* ignore */ }
@@ -255,11 +313,12 @@ export function useSimulation(
 
     // Persist all responses with content
     for (const [stepStr, stepResp] of Object.entries(allResponses)) {
-      if (!stepResp?.text && !stepResp?.url) continue;
+      if (!stepResp?.text && !stepResp?.url && !stepResp?.file) continue;
       const taskNumber = parseInt(stepStr) + 1;
       const payload = {
         response_text: stepResp.text ?? null,
         link_urls: stepResp.url ? [stepResp.url] : null,
+        file_urls: stepResp.file?.filePath ? [stepResp.file.filePath] : null,
       };
 
       await supabase
@@ -273,6 +332,25 @@ export function useSimulation(
           },
           { onConflict: "session_id,task_number" }
         );
+
+      // Persist ResponseForm URL to the attachments table (primary submission, not evidence)
+      if (stepResp.url) {
+        await supabase
+          .from("simulation_session_attachments")
+          .delete()
+          .eq("session_id", sid)
+          .eq("task_id", taskNumber)
+          .eq("type", "url")
+          .eq("is_evidence", false);
+
+        await supabase.from("simulation_session_attachments").insert({
+          session_id: sid,
+          task_id: taskNumber,
+          type: "url",
+          url: stepResp.url,
+          is_evidence: false,
+        });
+      }
     }
 
     await supabase
@@ -291,7 +369,6 @@ export function useSimulation(
           JSON.stringify({
             currentStep: currentStepRef.current,
             responses: responsesRef.current,
-            attachedUrls: [],
           })
         );
         setLastSaved(new Date());
@@ -312,7 +389,6 @@ export function useSimulation(
 
   // ── DEBOUNCED AUTO-SAVE (authenticated, 500ms after typing stops) ──
   useEffect(() => {
-    // Skip saves triggered by the initial DB load
     if (!userEditedRef.current || !userIdRef.current) return;
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -335,7 +411,7 @@ export function useSimulation(
   // ── RESPONSE MANAGEMENT ────────────────────────────────────────
   const updateResponse = useCallback(
     (patch: Partial<StepResponse>) => {
-      userEditedRef.current = true; // mark as user-initiated change
+      userEditedRef.current = true;
       setResponses((prev) => ({
         ...prev,
         [currentStep]: { ...prev[currentStep], ...patch },
@@ -344,8 +420,278 @@ export function useSimulation(
     [currentStep]
   );
 
+  // ── PRIMARY SUBMISSION FILE UPLOAD (ResponseForm) ──────────────
+  const handleFileSelect = useCallback(async (file: File, taskId: number) => {
+    setFileUploadError(null);
+
+    try {
+      validateSimulationFile(file);
+    } catch (err) {
+      setFileUploadError(err instanceof UploadValidationError ? err.message : "Invalid file.");
+      return;
+    }
+
+    const uid = userIdRef.current;
+    let sid = sessionIdRef.current;
+
+    const stepIndex = taskId - 1;
+    setResponses((prev) => ({
+      ...prev,
+      [stepIndex]: { ...prev[stepIndex], file: { name: file.name, size: file.size } },
+    }));
+
+    setUploadingTaskId(taskId);
+
+    try {
+      if (!sid && uid) {
+        const supabase = createClient();
+        const { data: newSession, error } = await supabase
+          .from("simulation_sessions")
+          .upsert(
+            {
+              user_id: uid,
+              simulation_slug: simulationSlugRef.current,
+              discipline: disciplineRef.current,
+              status: "in_progress",
+            },
+            { onConflict: "user_id,simulation_slug" }
+          )
+          .select("id")
+          .single();
+        if (error) throw error;
+        sid = newSession.id;
+        sessionIdRef.current = sid;
+        setSessionId(sid);
+      }
+
+      if (!uid || !sid) return;
+
+      const filePath = await uploadSimulationFile(file, uid, sid, taskId);
+
+      userEditedRef.current = true;
+      setResponses((prev) => ({
+        ...prev,
+        [stepIndex]: {
+          ...prev[stepIndex],
+          file: { name: file.name, size: file.size, filePath },
+        },
+      }));
+
+      // Replace the primary submission file record (DELETE + INSERT to avoid upsert on partial index)
+      const supabase = createClient();
+      await supabase
+        .from("simulation_session_attachments")
+        .delete()
+        .eq("session_id", sid)
+        .eq("task_id", taskId)
+        .eq("type", "file")
+        .eq("is_evidence", false);
+
+      await supabase.from("simulation_session_attachments").insert({
+        session_id: sid,
+        task_id: taskId,
+        type: "file",
+        file_path: filePath,
+        original_filename: file.name,
+        mime_type: file.type,
+        size_bytes: file.size,
+        is_evidence: false,
+      });
+    } catch (err) {
+      setFileUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setResponses((prev) => ({
+        ...prev,
+        [stepIndex]: { ...prev[stepIndex], file: null },
+      }));
+    } finally {
+      setUploadingTaskId(null);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SUPPORTING EVIDENCE: file upload ──────────────────────────
+  const handleEvidenceFileSelect = useCallback(async (file: File, taskId: number) => {
+    setEvidenceUploadError(null);
+
+    try {
+      validateSimulationFile(file);
+    } catch (err) {
+      setEvidenceUploadError(err instanceof UploadValidationError ? err.message : "Invalid file.");
+      return;
+    }
+
+    const uid = userIdRef.current;
+    let sid = sessionIdRef.current;
+
+    setEvidenceUploading(true);
+
+    try {
+      if (!sid && uid) {
+        const supabase = createClient();
+        const { data: newSession, error } = await supabase
+          .from("simulation_sessions")
+          .upsert(
+            {
+              user_id: uid,
+              simulation_slug: simulationSlugRef.current,
+              discipline: disciplineRef.current,
+              status: "in_progress",
+            },
+            { onConflict: "user_id,simulation_slug" }
+          )
+          .select("id")
+          .single();
+        if (error) throw error;
+        sid = newSession.id;
+        sessionIdRef.current = sid;
+        setSessionId(sid);
+      }
+
+      if (!uid || !sid) {
+        // Unauthenticated: just update local state with a fake path
+        setEvidenceByTask((prev) => ({
+          ...prev,
+          [taskId]: {
+            files: [...(prev[taskId]?.files ?? []), { name: file.name, size: file.size, filePath: "" }],
+            urls: prev[taskId]?.urls ?? [],
+          },
+        }));
+        return;
+      }
+
+      // Upload to the simulation-submissions bucket under an evidence sub-path
+      const filePath = await uploadSimulationFile(file, uid, sid, taskId);
+
+      const supabase = createClient();
+      await supabase.from("simulation_session_attachments").insert({
+        session_id: sid,
+        task_id: taskId,
+        type: "file",
+        file_path: filePath,
+        original_filename: file.name,
+        mime_type: file.type,
+        size_bytes: file.size,
+        is_evidence: true,
+      });
+
+      setEvidenceByTask((prev) => ({
+        ...prev,
+        [taskId]: {
+          files: [...(prev[taskId]?.files ?? []), { name: file.name, size: file.size, filePath }],
+          urls: prev[taskId]?.urls ?? [],
+        },
+      }));
+    } catch (err) {
+      setEvidenceUploadError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setEvidenceUploading(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SUPPORTING EVIDENCE: remove file ──────────────────────────
+  const handleEvidenceFileRemove = useCallback(async (filePath: string, taskId: number) => {
+    const sid = sessionIdRef.current;
+    const uid = userIdRef.current;
+
+    if (sid) {
+      const supabase = createClient();
+      await Promise.all([
+        supabase
+          .from("simulation_session_attachments")
+          .delete()
+          .eq("session_id", sid)
+          .eq("task_id", taskId)
+          .eq("file_path", filePath)
+          .eq("is_evidence", true),
+        uid && filePath
+          ? supabase.storage.from("simulation-submissions").remove([filePath])
+          : Promise.resolve(),
+      ]);
+    }
+
+    setEvidenceByTask((prev) => ({
+      ...prev,
+      [taskId]: {
+        files: (prev[taskId]?.files ?? []).filter((f) => f.filePath !== filePath),
+        urls: prev[taskId]?.urls ?? [],
+      },
+    }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SUPPORTING EVIDENCE: add URL ──────────────────────────────
+  const handleEvidenceUrlAdd = useCallback(async (url: string, taskId: number) => {
+    const uid = userIdRef.current;
+    let sid = sessionIdRef.current;
+
+    if (uid) {
+      if (!sid) {
+        const supabase = createClient();
+        const { data: newSession, error } = await supabase
+          .from("simulation_sessions")
+          .upsert(
+            {
+              user_id: uid,
+              simulation_slug: simulationSlugRef.current,
+              discipline: disciplineRef.current,
+              status: "in_progress",
+            },
+            { onConflict: "user_id,simulation_slug" }
+          )
+          .select("id")
+          .single();
+        if (!error && newSession) {
+          sid = newSession.id;
+          sessionIdRef.current = sid;
+          setSessionId(sid);
+        }
+      }
+
+      if (sid) {
+        const supabase = createClient();
+        await supabase.from("simulation_session_attachments").insert({
+          session_id: sid,
+          task_id: taskId,
+          type: "url",
+          url,
+          is_evidence: true,
+        });
+      }
+    }
+
+    setEvidenceByTask((prev) => ({
+      ...prev,
+      [taskId]: {
+        files: prev[taskId]?.files ?? [],
+        urls: [...(prev[taskId]?.urls ?? []), url],
+      },
+    }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── SUPPORTING EVIDENCE: remove URL ───────────────────────────
+  const handleEvidenceUrlRemove = useCallback(async (url: string, taskId: number) => {
+    const sid = sessionIdRef.current;
+
+    if (sid) {
+      const supabase = createClient();
+      await supabase
+        .from("simulation_session_attachments")
+        .delete()
+        .eq("session_id", sid)
+        .eq("task_id", taskId)
+        .eq("type", "url")
+        .eq("url", url)
+        .eq("is_evidence", true);
+    }
+
+    setEvidenceByTask((prev) => ({
+      ...prev,
+      [taskId]: {
+        files: prev[taskId]?.files ?? [],
+        urls: (prev[taskId]?.urls ?? []).filter((u) => u !== url),
+      },
+    }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function goNext() {
-    // Cancel pending debounce and save current step immediately
     if (debounceRef.current) clearTimeout(debounceRef.current);
     saveToStorage();
     if (currentStep < 4) setCurrentStep((s) => s + 1);
@@ -368,20 +714,25 @@ export function useSimulation(
     responses,
     saveStatus,
     lastSaved,
-    uploadedFiles,
-    attachedUrls,
+    evidenceByTask,
+    evidenceUploading,
+    evidenceUploadError,
     transcriptOpen,
     briefExpanded,
     muted,
-    fileInputRef,
     sessionId,
     userId,
+    uploadingTaskId,
+    fileUploadError,
     setTranscriptOpen,
     setBriefExpanded,
     setMuted,
-    setUploadedFiles,
-    setAttachedUrls,
     updateResponse,
+    handleFileSelect,
+    handleEvidenceFileSelect,
+    handleEvidenceFileRemove,
+    handleEvidenceUrlAdd,
+    handleEvidenceUrlRemove,
     goNext,
     goPrev,
     saveToStorage,

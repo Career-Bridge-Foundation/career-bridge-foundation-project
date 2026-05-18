@@ -20,6 +20,9 @@ interface ResponseFormProps {
   prompt: Prompt;
   response: StepResponse;
   onUpdate: (patch: Partial<StepResponse>) => void;
+  onFileSelect?: (file: File) => Promise<void>;
+  uploadError?: string | null;
+  uploading?: boolean;
 }
 
 function EitherToggle({
@@ -49,7 +52,14 @@ function EitherToggle({
   );
 }
 
-export function ResponseForm({ prompt, response, onUpdate }: ResponseFormProps) {
+export function ResponseForm({
+  prompt,
+  response,
+  onUpdate,
+  onFileSelect,
+  uploadError,
+  uploading = false,
+}: ResponseFormProps) {
   const mode = response.mode ?? "typed";
   const textValue = response.text ?? "";
   const rationaleValue = response.rationale ?? "";
@@ -111,39 +121,62 @@ export function ResponseForm({ prompt, response, onUpdate }: ResponseFormProps) 
                 <span className="text-xs text-[#aaa]">
                   ({(response.file.size / 1024).toFixed(0)} KB)
                 </span>
+                {response.file.filePath && (
+                  <span className="text-xs text-teal">Uploaded</span>
+                )}
               </span>
               <button
                 onClick={() => onUpdate({ file: null })}
                 className="text-xs text-[#aaa]"
+                disabled={uploading}
               >
                 Remove
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center p-12 cursor-pointer border-2 border-dashed border-teal bg-teal/[0.02]">
-              {/* Upload icon */}
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-teal">
-                <path d="M21,15v4a2,2,0,0,1-2,2H5a2,2,0,0,1-2-2v-4" />
-                <polyline points="17,8 12,3 7,8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
+            <label className={cn(
+              "flex flex-col items-center justify-center p-12 border-2 border-dashed border-teal bg-teal/[0.02]",
+              uploading ? "cursor-wait opacity-60" : "cursor-pointer"
+            )}>
+              {uploading ? (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-teal animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+              ) : (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-teal">
+                  <path d="M21,15v4a2,2,0,0,1-2,2H5a2,2,0,0,1-2-2v-4" />
+                  <polyline points="17,8 12,3 7,8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              )}
               <span className="text-sm font-medium text-navy mt-3 mb-1">
-                Drag and drop your file here
+                {uploading ? "Uploading…" : "Drag and drop your file here"}
               </span>
-              <span className="text-xs text-[#aaa] mb-4">or click to browse</span>
+              {!uploading && <span className="text-xs text-[#aaa] mb-4">or click to browse</span>}
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => {
+                disabled={uploading}
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.csv,.xls,.xlsx,.ppt,.pptx"
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) onUpdate({ file: { name: file.name, size: file.size } });
+                  e.target.value = "";
+                  if (!file) return;
+                  if (file.size > 10 * 1024 * 1024) return;
+                  if (onFileSelect) {
+                    await onFileSelect(file);
+                  } else {
+                    onUpdate({ file: { name: file.name, size: file.size } });
+                  }
                 }}
               />
               <span className="text-xs text-[#ccc]">
-                Accepted formats: PDF, Word. Maximum 10MB.
+                PDF, Word, images, spreadsheets, CSV. Maximum 10 MB.
               </span>
             </label>
+          )}
+          {uploadError && (
+            <p className="text-xs text-[#e53e3e] mt-2">{uploadError}</p>
           )}
         </div>
       )}
