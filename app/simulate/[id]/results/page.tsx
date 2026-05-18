@@ -373,7 +373,7 @@ function ErrorScreen({ simulationId }: { simulationId: string }) {
 
 // ── Share section ─────────────────────────────────────────────────
 
-function ShareSection({ result }: { result: EvaluationResult }) {
+function ShareSection({ result, portfolioSlug }: { result: EvaluationResult; portfolioSlug: string | null }) {
   const [tooltip, setTooltip] = useState<string | null>(null);
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
@@ -568,14 +568,25 @@ function ShareSection({ result }: { result: EvaluationResult }) {
         Let the world see what you can do
       </p>
 
-      {/* Back to simulations */}
-      <a
-        href="/simulations"
-        className="text-sm font-medium px-8 py-3.5 text-center"
-        style={{ border: `1px solid ${NAVY}`, color: NAVY, backgroundColor: "#fff" }}
-      >
-        Back to Simulations
-      </a>
+      {/* Portfolio + Back links */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        {portfolioSlug && (
+          <a
+            href={`/portfolio/${portfolioSlug}`}
+            className="text-sm font-semibold px-8 py-3.5 text-center text-white"
+            style={{ backgroundColor: TEAL }}
+          >
+            View My Portfolio →
+          </a>
+        )}
+        <a
+          href="/simulations"
+          className="text-sm font-medium px-8 py-3.5 text-center"
+          style={{ border: `1px solid ${NAVY}`, color: NAVY, backgroundColor: "#fff" }}
+        >
+          Back to Simulations
+        </a>
+      </div>
     </div>
   );
 }
@@ -821,6 +832,7 @@ export default function ResultsPage() {
   const [recipientName, setRecipientName] = useState<string>("");
   const [credentialImageUrl, setCredentialImageUrl] = useState<string | null>(null);
   const [issueDate, setIssueDate] = useState<string>("");
+  const [portfolioSlug, setPortfolioSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -838,7 +850,7 @@ export default function ResultsPage() {
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const [{ data: issuance }, { data: profile }] = await Promise.all([
+            const [{ data: issuance }, { data: profile }, { data: portfolioProfile }] = await Promise.all([
               supabase
                 .from("credential_issuances")
                 .select("certifier_credential_url, status, issued_at")
@@ -850,7 +862,15 @@ export default function ResultsPage() {
                 .select("full_name")
                 .eq("id", user.id)
                 .maybeSingle(),
+              supabase
+                .from("portfolio_profiles")
+                .select("slug")
+                .eq("user_id", user.id)
+                .maybeSingle(),
             ]);
+            if ((portfolioProfile as { slug?: string } | null)?.slug) {
+              setPortfolioSlug((portfolioProfile as { slug: string }).slug);
+            }
             const name = (profile as { full_name?: string } | null)?.full_name
               ?? user.email?.split("@")[0]
               ?? "Candidate";
@@ -1181,7 +1201,7 @@ export default function ResultsPage() {
         {/* ── ACTIONS ───────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
           {result.credentialIssued ? (
-            <ShareSection result={result} />
+            <ShareSection result={result} portfolioSlug={portfolioSlug} />
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <a

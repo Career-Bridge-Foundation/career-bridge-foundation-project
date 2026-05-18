@@ -158,24 +158,8 @@ export default function PricingPage() {
       <Header variant="solid" />
 
       <main className="flex-1 pt-28 pb-24 px-6 md:px-12">
-        {/* Credit required notice */}
-        <div className="max-w-md mx-auto mb-10 rounded-2xl border border-gray-200 bg-white shadow-sm px-10 py-10 flex flex-col items-center text-center gap-4">
-          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="5" y="11" width="14" height="10" rx="2" stroke={NAVY} strokeWidth="1.6" />
-            <path d="M8 11V7a4 4 0 018 0v4" stroke={NAVY} strokeWidth="1.6" strokeLinecap="round" />
-          </svg>
-          <div>
-            <h2 className="text-xl font-bold mb-2" style={{ color: NAVY }}>
-              Simulation Credit Required
-            </h2>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              You need at least one simulation credit to access and submit this simulation. Purchase a plan to get started.
-            </p>
-          </div>
-        </div>
-
         {/* Hero copy */}
-        <div className="max-w-2xl mx-auto text-center mb-10">
+        <div className="max-w-2xl mx-auto text-center mb-8">
           <h1
             className="text-4xl md:text-5xl font-bold leading-tight mb-4"
             style={{ color: NAVY }}
@@ -188,6 +172,42 @@ export default function PricingPage() {
           <p className="text-sm text-gray-400 mt-3">
             Pricing applies across all disciplines — Product Management, Project Management, Cyber Security, Data Analytics, and more.
           </p>
+        </div>
+
+        {/* Credit notice */}
+        <div
+          className="max-w-2xl mx-auto mb-10 flex items-start gap-3 px-4 py-3.5 rounded-lg"
+          style={{ background: 'rgba(77,197,210,0.07)', borderLeft: `3px solid ${TEAL}` }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0 mt-0.5">
+            <circle cx="12" cy="8" r="5" stroke={TEAL} strokeWidth="1.7" />
+            <path d="M8.56 17.39L7 22l5-3 5 3-1.56-4.61" stroke={TEAL} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold" style={{ color: NAVY }}>
+              Simulation credit required
+            </p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              You need at least one credit to start a simulation. Each plan below includes credits — choose what fits your goals.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2.5">
+              {[
+                { label: '1 credit', sub: 'Single sim' },
+                { label: '3 credits', sub: 'Best value' },
+                { label: '14 credits', sub: 'Full discipline' },
+              ].map(({ label, sub }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md font-medium"
+                  style={{ background: 'rgba(0,51,89,0.06)', color: NAVY }}
+                >
+                  {label}
+                  <span className="text-gray-400 font-normal">·</span>
+                  <span className="text-gray-400 font-normal">{sub}</span>
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Cards grid */}

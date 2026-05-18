@@ -5,14 +5,20 @@ import { AdminPageTransition } from './_page-transition'
 import { AdminBreadcrumb } from './_breadcrumb'
 import { Toaster } from '@/components/ui'
 import { CommandPaletteProvider } from './_command-palette-provider'
+import { getCurrentUserRole } from '@/lib/auth/permissions'
 
 export const metadata = { title: 'Admin — CareerBridge' }
+export const dynamic = 'force-dynamic'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const ctx = await getCurrentUserRole()
+  const role = ctx?.role ?? 'admin'
+  const email = ctx?.email ?? null
+
   return (
     <CommandPaletteProvider>
       <div className="min-h-screen flex bg-slate-50">
-        <Sidebar />
+        <Sidebar role={role} email={email} />
 
         <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
           {/* Top bar */}

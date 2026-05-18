@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/cn";
@@ -44,6 +44,8 @@ export function Header({
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -67,6 +69,17 @@ export function Header({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [dropdownOpen]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -132,60 +145,96 @@ export function Header({
         </nav>
 
         {!ready ? null : user ? (
-          /* Logged-in state */
+          /* Logged-in state — avatar dropdown */
           <div className="hidden md:flex items-center gap-2 lg:gap-4">
-            {/* Avatar + Name */}
-            <div className="flex items-center gap-3">
-              {user.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt={firstName}
-                  referrerPolicy="no-referrer"
-                  className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-2 ring-offset-1 ring-border-light"
-                />
-              ) : (
-                <div
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen((v) => !v)}
+                className="flex items-center gap-3 cursor-pointer"
+                aria-expanded={dropdownOpen}
+                aria-haspopup="true"
+              >
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt={firstName}
+                    referrerPolicy="no-referrer"
+                    className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-2 ring-offset-1 ring-border-light"
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ring-2 ring-offset-1",
+                      isSolid
+                        ? "bg-navy text-white ring-border-light"
+                        : "bg-white text-navy ring-white/30",
+                    )}
+                  >
+                    {getInitials(displayName)}
+                  </div>
+                )}
+                <span
                   className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ring-2 ring-offset-1",
-                    isSolid
-                      ? "bg-navy text-white ring-border-light"
-                      : "bg-white text-navy ring-white/30",
+                    "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hidden lg:flex items-center gap-1",
+                    isSolid ? "text-navy" : "text-white",
                   )}
                 >
-                  {getInitials(displayName)}
+                  {firstName}
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 10 10"
+                    fill="currentColor"
+                    className={cn("transition-transform duration-150", dropdownOpen && "rotate-180")}
+                  >
+                    <path d="M1.5 3.5L5 7l3.5-3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </span>
+              </button>
+
+              {/* Dropdown */}
+              {dropdownOpen && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-52 bg-white border border-border-light shadow-lg z-50 py-1"
+                  style={{ borderRadius: "4px" }}
+                >
+                  <Link
+                    href="/account/profile"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-navy uppercase tracking-brand-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="8" r="4" />
+                      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
+                    My Profile
+                  </Link>
+                  <Link
+                    href="/account/settings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-navy uppercase tracking-brand-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                    </svg>
+                    Account Settings
+                  </Link>
+                  <div className="my-1 border-t border-border-light" />
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-navy/70 uppercase tracking-brand-sm hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Log Out
+                  </button>
                 </div>
               )}
-              <span
-                className={cn(
-                  "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hidden lg:block",
-                  isSolid ? "text-navy" : "text-white",
-                )}
-              >
-                {firstName}
-              </span>
             </div>
-
-            {/* Divider */}
-            <div
-              className={cn(
-                "h-5 w-px hidden lg:block",
-                isSolid ? "bg-border-light" : "bg-white/20",
-              )}
-            />
-
-            {/* Logout */}
-            <button
-              onClick={handleLogout}
-              className={cn(
-                "text-xs font-medium uppercase tracking-brand-sm px-4 py-2 border transition-opacity hover:opacity-60 cursor-pointer",
-                "text-[10px] lg:text-xs px-2.5 lg:px-4 py-1.5 lg:py-2",
-                isSolid
-                  ? "text-navy border-border-light"
-                  : "text-white border-white/30",
-              )}
-            >
-              Log Out
-            </button>
           </div>
         ) : (
           /* Logged-out state */
@@ -289,16 +338,32 @@ export function Header({
           </nav>
 
           {!ready ? null : user ? (
-            <div className="px-4 pb-4 flex flex-col gap-3">
-              <div className="px-2 text-xs font-medium uppercase tracking-brand-sm text-navy/75">
-                Signed in as {firstName}
+            <div className="px-4 pb-4 flex flex-col gap-1">
+              <div className="px-2 py-1.5 text-xs font-medium uppercase tracking-brand-sm text-navy/50 border-t border-border-light mb-1 pt-3">
+                {firstName}
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full text-xs font-medium uppercase tracking-brand-sm px-4 py-2 border border-border-light text-navy"
+              <Link
+                href="/account/profile"
+                onClick={closeMobileMenu}
+                className="px-2 py-3 text-xs font-medium uppercase tracking-brand-sm text-navy"
               >
-                Log Out
-              </button>
+                My Profile
+              </Link>
+              <Link
+                href="/account/settings"
+                onClick={closeMobileMenu}
+                className="px-2 py-3 text-xs font-medium uppercase tracking-brand-sm text-navy"
+              >
+                Account Settings
+              </Link>
+              <div className="pt-2">
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-xs font-medium uppercase tracking-brand-sm px-4 py-2 border border-border-light text-navy"
+                >
+                  Log Out
+                </button>
+              </div>
             </div>
           ) : (
             <div className="px-4 pb-4 grid grid-cols-2 gap-3">

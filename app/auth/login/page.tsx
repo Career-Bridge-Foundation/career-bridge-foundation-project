@@ -25,11 +25,25 @@ function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
       setLoading(false)
       return
+    }
+    // Redirect based on role
+    if (data.user) {
+      const { data: roleRow } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+      const role = roleRow?.role ?? 'candidate'
+      if (role === 'reviewer') { router.push('/reviewer'); return }
+      if (role === 'admin' || role === 'super_admin' || role === 'content_developer') {
+        router.push('/admin')
+        return
+      }
     }
     router.push('/')
   }

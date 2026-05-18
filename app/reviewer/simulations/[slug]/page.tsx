@@ -5,8 +5,32 @@ import { ChevronLeft } from 'lucide-react'
 import { getCurrentUserRole } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { CertifyForm } from './_certify-form'
+import { CommentablePage } from './_commentable-page'
 
 export const dynamic = 'force-dynamic'
+
+async function canAccess(reviewerId: string, sim: { discipline?: string | null; industry?: string | null; slug: string }): Promise<boolean> {
+  if (!sim.discipline) return true
+
+  const { data: disciplineRows } = await supabaseServer
+    .from('reviewer_disciplines')
+    .select('discipline')
+    .eq('reviewer_id', reviewerId)
+  if ((disciplineRows ?? []).some(d => d.discipline === sim.discipline)) return true
+
+  const { data: assignmentRows } = await supabaseServer
+    .from('reviewer_assignments')
+    .select('discipline, industry, slug')
+    .eq('reviewer_id', reviewerId)
+
+  for (const a of assignmentRows ?? []) {
+    if (a.discipline && a.discipline === sim.discipline) return true
+    if (a.industry && a.industry === sim.industry) return true
+    if (a.slug && a.slug === sim.slug) return true
+  }
+
+  return false
+}
 
 export default async function ReviewerSimulationPage({
   params,
@@ -18,15 +42,6 @@ export default async function ReviewerSimulationPage({
 
   const { slug } = await params
 
-  // Get reviewer disciplines
-  const { data: disciplineRows } = await supabaseServer
-    .from('reviewer_disciplines')
-    .select('discipline')
-    .eq('reviewer_id', ctx.userId)
-
-  const disciplines = (disciplineRows ?? []).map(d => d.discipline)
-
-  // Fetch simulation
   const { data: sim } = await supabaseServer
     .from('simulations')
     .select('*')
@@ -35,11 +50,10 @@ export default async function ReviewerSimulationPage({
 
   if (!sim) notFound()
 
-  if (sim.discipline && !disciplines.includes(sim.discipline)) {
+  if (!await canAccess(ctx.userId, sim)) {
     redirect('/reviewer')
   }
 
-  // Fetch prompts from simulation_prompts table (ordered by id, matching admin behaviour)
   const { data: promptRows } = await supabaseServer
     .from('simulation_prompts')
     .select('*')
@@ -55,7 +69,6 @@ export default async function ReviewerSimulationPage({
     minWords: Number(p.min_words ?? 0),
   }))
 
-  // Fetch active rubric — keyed by simulation_slug, not simulation_id
   const { data: rubric } = await supabaseServer
     .from('rubrics')
     .select('id, version, system_prompt, model, max_score, is_active')
@@ -81,76 +94,40 @@ export default async function ReviewerSimulationPage({
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900">{sim.title ?? sim.slug}</h1>
-            {sim.discipline && (
-              <p className="text-sm text-slate-500 mt-1">{sim.discipline}</p>
-            )}
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              {sim.discipline && <p className="text-sm text-slate-500">{sim.discipline}</p>}
+              {sim.industry && <p className="text-sm text-slate-400">{sim.industry}</p>}
+              {sim.company && <p className="text-sm text-slate-400">{sim.company}</p>}
+            </div>
           </div>
           <StatusBadge status={currentStatus} />
         </div>
-        {sim.brief && (
-          <p className="text-sm text-slate-600 mt-4 leading-relaxed">{sim.brief}</p>
-        )}
       </div>
 
-      {/* Prompts */}
-      {prompts.length > 0 && (
-        <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Prompts ({prompts.length})
-            </h2>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {prompts.map((p, i) => (
-              <div key={p.id} className="px-6 py-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-bold text-teal bg-teal/10 rounded px-2 py-0.5">
-                    {i + 1}
-                  </span>
-                  <span className="text-sm font-medium text-slate-900">{p.title}</span>
-                </div>
-                <p className="text-sm text-slate-700 leading-relaxed">{p.question}</p>
-                {p.guidance.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {p.guidance.map((g, gi) => (
-                      <li key={gi} className="text-xs text-slate-500 flex items-start gap-1.5">
-                        <span className="mt-1 w-1 h-1 rounded-full bg-slate-400 shrink-0" />
-                        {g}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {p.minWords > 0 && (
-                  <p className="text-xs text-slate-400 mt-2">Min. {p.minWords} words</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Rubric */}
-      {rubric && (
-        <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-900">Rubric</h2>
-            <span className="text-xs text-slate-500">
-              v{rubric.version} · {rubric.model} · max {rubric.max_score}
-            </span>
-          </div>
-          <div className="px-6 py-5">
-            <p className="text-xs font-medium text-slate-500 uppercase tracking-widest mb-2">System prompt</p>
-            <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50 rounded-md p-4 border border-slate-100">
-              {rubric.system_prompt}
-            </pre>
-          </div>
-        </section>
-      )}
+      <CommentablePage
+        slug={slug}
+        reviewerId={ctx.userId}
+        videoUrl={sim.video_url ?? null}
+        videoTranscript={sim.video_transcript ?? null}
+        brief={sim.brief ?? null}
+        prompts={prompts}
+        rubric={
+          rubric
+            ? {
+                id: String(rubric.id),
+                version: Number(rubric.version),
+                system_prompt: String(rubric.system_prompt),
+                model: String(rubric.model),
+                max_score: Number(rubric.max_score),
+              }
+            : null
+        }
+      />
 
       {/* Certification */}
       <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-900">Certification decision</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Approval decision</h2>
         </div>
         <div className="px-6 py-5">
           <CertifyForm slug={slug} currentStatus={currentStatus} currentNotes={sim.cert_notes ?? ''} />

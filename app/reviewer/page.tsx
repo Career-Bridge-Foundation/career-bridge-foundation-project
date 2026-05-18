@@ -16,13 +16,27 @@ export default async function ReviewerPage() {
   const ctx = await getCurrentUserRole()
   if (!ctx || ctx.role !== 'reviewer') redirect('/auth/login?next=/reviewer')
 
-  // Get reviewer's disciplines
+  // Get reviewer's disciplines (legacy table)
   const { data: disciplineRows } = await supabaseServer
     .from('reviewer_disciplines')
     .select('discipline')
     .eq('reviewer_id', ctx.userId)
+  const legacyDisciplines = new Set((disciplineRows ?? []).map(d => d.discipline))
 
-  const disciplines = (disciplineRows ?? []).map(d => d.discipline)
+  // Get granular assignments (discipline / industry / slug)
+  const { data: assignmentRows } = await supabaseServer
+    .from('reviewer_assignments')
+    .select('discipline, industry, slug')
+    .eq('reviewer_id', ctx.userId)
+  const assignedDisciplines = new Set((assignmentRows ?? []).map(a => a.discipline).filter(Boolean))
+  const assignedIndustries  = new Set((assignmentRows ?? []).map(a => a.industry).filter(Boolean))
+  const assignedSlugs       = new Set((assignmentRows ?? []).map(a => a.slug).filter(Boolean))
+
+  const hasAnyAssignment =
+    legacyDisciplines.size > 0 ||
+    assignedDisciplines.size > 0 ||
+    assignedIndustries.size > 0 ||
+    assignedSlugs.size > 0
 
   // Fetch all simulations
   const { data: allSims } = await supabaseServer
@@ -30,11 +44,19 @@ export default async function ReviewerPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  // Filter: show unclassified + matching discipline
-  const sims = (allSims ?? []).filter(s => {
-    if (!s.discipline) return true
-    return disciplines.includes(s.discipline)
-  })
+  // Strict filter: reviewer sees ONLY sims that match their assignments.
+  // If they have no assignments at all, their queue is empty (admin must assign them first).
+  const sims = hasAnyAssignment
+    ? (allSims ?? []).filter(s => {
+        // Discipline match (legacy or new)
+        if (s.discipline && (legacyDisciplines.has(s.discipline) || assignedDisciplines.has(s.discipline))) return true
+        // Industry match (covers both classified and unclassified sims)
+        if (s.industry && assignedIndustries.has(s.industry)) return true
+        // Direct slug assignment
+        if (assignedSlugs.has(s.slug)) return true
+        return false
+      })
+    : []
 
   const counts = {
     pending:   sims.filter(s => (s.cert_status ?? 'pending') === 'pending').length,
@@ -47,9 +69,9 @@ export default async function ReviewerPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Review Queue</h1>
         <p className="text-sm mt-1 text-slate-600">
-          {disciplines.length > 0
-            ? `Your disciplines: ${disciplines.join(', ')}`
-            : 'Showing all simulations (no discipline assigned yet)'}
+          {sims.length > 0
+            ? `${sims.length} simulation${sims.length !== 1 ? 's' : ''} assigned to you`
+            : 'No simulations assigned yet — contact your admin'}
         </p>
       </div>
 

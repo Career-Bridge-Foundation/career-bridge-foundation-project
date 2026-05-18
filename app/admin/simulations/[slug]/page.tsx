@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2 } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import {
   Button,
@@ -146,6 +146,13 @@ function ActivityTimeline({ slug }: { slug: string }) {
   )
 }
 
+const STATUS_CONFIG: Record<string, { label: string; selectedClass: string }> = {
+  draft:          { label: 'Draft',          selectedClass: 'bg-slate-100 text-slate-700 border-slate-400' },
+  pending_review: { label: 'Pending Review', selectedClass: 'bg-blue-50 text-blue-700 border-blue-400' },
+  published:      { label: 'Published',      selectedClass: 'bg-emerald-50 text-emerald-700 border-emerald-400' },
+  archived:       { label: 'Archived',       selectedClass: 'bg-amber-50 text-amber-700 border-amber-400' },
+}
+
 const DIFFICULTY_OPTIONS = [
   { label: 'Foundation', value: 'Foundation' },
   { label: 'Practitioner', value: 'Practitioner' },
@@ -245,6 +252,8 @@ export default function EditSimulationPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [simData, setSimData] = useState<Record<string, unknown> | null>(null)
   const [activeTab, setActiveTab] = useState<'metadata' | 'activity'>('metadata')
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<'submit' | 'approve' | 'reject' | null>(null)
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
   const slugManuallyEdited = useRef(false)
   const slugCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -277,6 +286,14 @@ export default function EditSimulationPage() {
 
   const watchedAll = watch()
   const descLen = (watchedAll.description ?? '').length
+
+  // Fetch current user's role for role-aware UI
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => r.json())
+      .then(d => setUserRole(d.role ?? null))
+      .catch(() => {})
+  }, [])
 
   // Load sim data
   useEffect(() => {
@@ -348,6 +365,49 @@ export default function EditSimulationPage() {
         toast.error('Failed to save changes')
       }
     }
+  }
+
+  async function handleSubmitForReview() {
+    setActionLoading('submit')
+    const res = await fetch(`/api/admin/simulations/${slug}/submit`, { method: 'POST' })
+    if (res.ok) {
+      toast.success('Submitted for review')
+      setSimData(prev => ({ ...prev, status: 'pending_review' }))
+      setValue('status', 'pending_review' as never, { shouldDirty: false })
+    } else {
+      const json = await res.json()
+      toast.error(json.error ?? 'Failed to submit for review')
+    }
+    setActionLoading(null)
+  }
+
+  async function handleApprove() {
+    setActionLoading('approve')
+    const res = await fetch(`/api/admin/simulations/${slug}/approve`, { method: 'POST' })
+    if (res.ok) {
+      toast.success('Approved — simulation is now published')
+      const now = new Date().toISOString()
+      setSimData(prev => ({ ...prev, status: 'published', published_at: prev?.published_at ?? now }))
+      setValue('status', 'published' as never, { shouldDirty: false })
+    } else {
+      const json = await res.json()
+      toast.error(json.error ?? 'Failed to approve')
+    }
+    setActionLoading(null)
+  }
+
+  async function handleReject() {
+    setActionLoading('reject')
+    const res = await fetch(`/api/admin/simulations/${slug}/reject`, { method: 'POST' })
+    if (res.ok) {
+      toast.success('Returned to draft')
+      setSimData(prev => ({ ...prev, status: 'draft' }))
+      setValue('status', 'draft' as never, { shouldDirty: false })
+    } else {
+      const json = await res.json()
+      toast.error(json.error ?? 'Failed to reject')
+    }
+    setActionLoading(null)
   }
 
   if (isLoading) return <PageSkeleton />
@@ -429,6 +489,15 @@ export default function EditSimulationPage() {
             >
               Activity
             </Tab>
+            {userRole && userRole !== 'content_developer' && (
+              <Link
+                href={`/admin/simulations/${slug}/reviews`}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                <MessageSquare size={13} />
+                Reviews
+              </Link>
+            )}
           </TabList>
         </Tabs>
 
@@ -443,27 +512,80 @@ export default function EditSimulationPage() {
                   {/* Status */}
                   <div className="flex flex-col gap-2">
                     <label className="text-slate-900 text-sm font-medium">Status</label>
-                    <div className="flex gap-2">
-                      {(['draft', 'published', 'archived'] as const).map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setValue('status', s, { shouldDirty: true })}
+
+                    {userRole === 'content_developer' ? (
+                      /* Content developer: read-only status + submit button */
+                      <div className="flex items-center gap-3">
+                        <span
                           className={cn(
-                            'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors capitalize',
-                            watchedAll.status === s
-                              ? s === 'published'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-400'
-                                : s === 'archived'
-                                ? 'bg-amber-50 text-amber-700 border-amber-400'
-                                : 'bg-slate-100 text-slate-700 border-slate-400'
-                              : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                            'px-3 py-1.5 rounded-md text-sm font-medium border',
+                            STATUS_CONFIG[watchedAll.status ?? 'draft']?.selectedClass
                           )}
                         >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
+                          {STATUS_CONFIG[watchedAll.status ?? 'draft']?.label ?? watchedAll.status}
+                        </span>
+                        {watchedAll.status === 'draft' && (
+                          <button
+                            type="button"
+                            disabled={!!actionLoading || isDirty}
+                            onClick={handleSubmitForReview}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          >
+                            <Send size={13} />
+                            {actionLoading === 'submit' ? 'Submitting…' : 'Submit for Review'}
+                          </button>
+                        )}
+                        {isDirty && watchedAll.status === 'draft' && (
+                          <p className="text-xs text-amber-600">Save your changes before submitting</p>
+                        )}
+                      </div>
+                    ) : (
+                      /* Admin / super_admin: full status selector */
+                      <>
+                        <div className="flex gap-2 flex-wrap">
+                          {(['draft', 'pending_review', 'published', 'archived'] as const).map(s => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => setValue('status', s, { shouldDirty: true })}
+                              className={cn(
+                                'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors',
+                                watchedAll.status === s
+                                  ? STATUS_CONFIG[s]?.selectedClass
+                                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                              )}
+                            >
+                              {STATUS_CONFIG[s]?.label ?? s}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Approve / Reject actions when pending review */}
+                        {(simData?.status === 'pending_review' || watchedAll.status === 'pending_review') && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="button"
+                              disabled={!!actionLoading}
+                              onClick={handleApprove}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                            >
+                              <Check size={13} />
+                              {actionLoading === 'approve' ? 'Approving…' : 'Approve & Publish'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!!actionLoading}
+                              onClick={handleReject}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                            >
+                              <X size={13} />
+                              {actionLoading === 'reject' ? 'Rejecting…' : 'Reject (back to draft)'}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                     {!!simData?.published_at && (
                       <p className="text-xs text-slate-400">
                         Published {formatDistanceToNow(new Date(simData.published_at as string), { addSuffix: true }) as string}

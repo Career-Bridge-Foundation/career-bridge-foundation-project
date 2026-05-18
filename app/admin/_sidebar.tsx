@@ -1,30 +1,62 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, FileText, Settings, LogOut, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 
-const NAV = [
-  { href: '/admin',             label: 'Dashboard',   icon: LayoutDashboard, exact: true  },
-  { href: '/admin/simulations', label: 'Simulations', icon: FileText,        exact: false },
-  { href: '/admin/team',        label: 'Team',        icon: Users,           exact: false },
-  { href: '/admin/settings',    label: 'Settings',    icon: Settings,        exact: false },
+type StaffRole = 'admin' | 'super_admin' | 'content_developer' | string
+
+const ALL_NAV = [
+  {
+    href: '/admin',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    exact: true,
+    roles: ['admin', 'super_admin'],
+  },
+  {
+    href: '/admin/simulations',
+    label: 'Simulations',
+    icon: FileText,
+    exact: false,
+    roles: ['admin', 'super_admin', 'content_developer'],
+  },
+  {
+    href: '/admin/team',
+    label: 'Team',
+    icon: Users,
+    exact: false,
+    roles: ['admin', 'super_admin'],
+  },
+  {
+    href: '/admin/settings',
+    label: 'Settings',
+    icon: Settings,
+    exact: false,
+    roles: ['admin', 'super_admin'],
+  },
 ]
 
-export function Sidebar() {
+const ROLE_LABEL: Record<string, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  content_developer: 'Content Dev',
+}
+
+type Props = {
+  role: StaffRole
+  email: string | null
+}
+
+export function Sidebar({ role, email }: Props) {
   const path = usePathname()
   const router = useRouter()
-  const [email, setEmail] = useState<string | null>(null)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null)
-    })
-  }, [])
+  const nav = ALL_NAV.filter(item => item.roles.includes(role))
+  const initial = email ? email[0].toUpperCase() : 'A'
 
   async function handleLogout() {
     setIsLoggingOut(true)
@@ -33,29 +65,20 @@ export function Sidebar() {
     router.push('/admin/login')
   }
 
-  const initial = email ? email[0].toUpperCase() : 'A'
-
   return (
-    <aside
-      className="w-64 min-h-screen flex flex-col shrink-0 bg-white border-r border-slate-200"
-    >
+    <aside className="w-64 min-h-screen flex flex-col shrink-0 bg-white border-r border-slate-200">
       {/* Brand */}
       <div className="px-6 pt-6 pb-5 border-b border-slate-200">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 ">
-            <Image
-              src="/logo.png"            
-              alt='Logo'
-              width={45}
-              height={45}
-            />
+          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0">
+            <Image src="/logo.png" alt="Logo" width={45} height={45} />
           </div>
           <div>
             <div className="text-slate-900 font-bold text-sm tracking-tight leading-none">
               CareerBridge
             </div>
             <div className="text-xs font-semibold tracking-widest uppercase mt-0.5 text-{accent-copper}">
-              Admin
+              {ROLE_LABEL[role] ?? 'Admin'}
             </div>
           </div>
         </div>
@@ -63,7 +86,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-5 space-y-0.5">
-        {NAV.map(({ href, label, icon: Icon, exact }) => {
+        {nav.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? path === href : path.startsWith(href)
           return (
             <Link
@@ -92,9 +115,7 @@ export function Sidebar() {
                 style={{ color: active ? '#0d9488' : 'rgb(156, 163, 175)', flexShrink: 0 }}
               />
               <span className="flex-1">{label}</span>
-              {active && (
-                <span className="h-4 w-0.5 rounded-full shrink-0 bg-teal" />
-              )}
+              {active && <span className="h-4 w-0.5 rounded-full shrink-0 bg-teal" />}
             </Link>
           )
         })}
@@ -107,10 +128,10 @@ export function Sidebar() {
             {initial}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-slate-900 text-xs font-medium truncate">Admin</div>
-            <div className="text-xs truncate text-slate-500">
-              {email ?? '…'}
+            <div className="text-slate-900 text-xs font-medium truncate">
+              {ROLE_LABEL[role] ?? 'Admin'}
             </div>
+            <div className="text-xs truncate text-slate-500">{email ?? '…'}</div>
           </div>
           <button
             onClick={handleLogout}

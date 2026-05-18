@@ -107,7 +107,7 @@ function csvRowsToSimulations(rows: Record<string, string>[]) {
       display_order: row.display_order ? parseInt(row.display_order, 10) : undefined,
       discipline: row.discipline?.trim() || undefined,
       video_url: row.video_url?.trim() || undefined,
-      status: (row.status?.trim() as 'draft' | 'published' | 'archived') || 'draft',
+      status: (row.status?.trim() as SimStatus) || 'draft',
       sim_role: row.sim_role?.trim() || null,
       brief_short: row.brief_short?.trim() || null,
       brief_full: row.brief_full?.trim() || null,
@@ -314,7 +314,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type SimStatus = 'draft' | 'published' | 'archived'
+type SimStatus = 'draft' | 'pending_review' | 'published' | 'archived'
 
 type SimListItem = {
   slug: string
@@ -338,15 +338,17 @@ const DIFF_BADGE: Record<string, string> = {
 }
 
 const STATUS_BADGE: Record<SimStatus, string> = {
-  draft:     'bg-slate-100   text-slate-600   border-slate-300',
-  published: 'bg-emerald-50  text-emerald-700  border-emerald-200',
-  archived:  'bg-amber-50    text-amber-700    border-amber-200',
+  draft:          'bg-slate-100   text-slate-600   border-slate-300',
+  pending_review: 'bg-blue-50     text-blue-700    border-blue-200',
+  published:      'bg-emerald-50  text-emerald-700  border-emerald-200',
+  archived:       'bg-amber-50    text-amber-700    border-amber-200',
 }
 
 const STATUS_LABEL: Record<SimStatus, string> = {
-  draft: 'Draft',
-  published: 'Published',
-  archived: 'Archived',
+  draft:          'Draft',
+  pending_review: 'Pending Review',
+  published:      'Published',
+  archived:       'Archived',
 }
 
 const DIFF_OPTIONS = [
@@ -357,10 +359,11 @@ const DIFF_OPTIONS = [
 ]
 
 const STATUS_OPTIONS = [
-  { label: 'All', value: '' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Published', value: 'published' },
-  { label: 'Archived', value: 'archived' },
+  { label: 'All',            value: '' },
+  { label: 'Draft',          value: 'draft' },
+  { label: 'Pending Review', value: 'pending_review' },
+  { label: 'Published',      value: 'published' },
+  { label: 'Archived',       value: 'archived' },
 ]
 
 // ── Skeleton rows ─────────────────────────────────────────────────────────────

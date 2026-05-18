@@ -18,12 +18,13 @@ export async function GET() {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    // Enrich reviewers with their disciplines
+    // Enrich reviewers with their disciplines and granular assignments
     const reviewerIds = (roles ?? [])
       .filter(r => r.role === 'reviewer')
       .map(r => r.user_id)
 
     let disciplineMap: Record<string, string[]> = {}
+    let assignmentMap: Record<string, unknown[]> = {}
     if (reviewerIds.length > 0) {
       const { data: disciplines } = await supabaseServer
         .from('reviewer_disciplines')
@@ -34,11 +35,22 @@ export async function GET() {
         if (!disciplineMap[d.reviewer_id]) disciplineMap[d.reviewer_id] = []
         disciplineMap[d.reviewer_id].push(d.discipline)
       }
+
+      const { data: assignments } = await supabaseServer
+        .from('reviewer_assignments')
+        .select('id, reviewer_id, discipline, industry, slug')
+        .in('reviewer_id', reviewerIds)
+
+      for (const a of assignments ?? []) {
+        if (!assignmentMap[a.reviewer_id]) assignmentMap[a.reviewer_id] = []
+        assignmentMap[a.reviewer_id].push(a)
+      }
     }
 
     const members = (roles ?? []).map(r => ({
       ...r,
       disciplines: disciplineMap[r.user_id] ?? [],
+      assignments: assignmentMap[r.user_id] ?? [],
     }))
 
     return NextResponse.json({ members })
@@ -67,8 +79,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'email and role are required' }, { status: 400 })
     }
 
-    if (!['admin', 'reviewer'].includes(role)) {
-      return NextResponse.json({ error: 'role must be admin or reviewer' }, { status: 400 })
+    if (!['admin', 'reviewer', 'content_developer'].includes(role)) {
+      return NextResponse.json({ error: 'role must be admin, reviewer, or content_developer' }, { status: 400 })
     }
 
     // Resolve user by email via admin API

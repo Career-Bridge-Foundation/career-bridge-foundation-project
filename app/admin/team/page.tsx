@@ -28,11 +28,43 @@ export default async function TeamPage() {
     disciplines = data ?? []
   }
 
-  const members: (UserRoleRecord & { disciplines: string[] })[] = (roles ?? []).map(r => {
+  // Fetch granular reviewer_assignments for all reviewers
+  type Assignment = { id: string; reviewer_id: string; discipline: string | null; industry: string | null; slug: string | null }
+  let assignmentMap: Record<string, Assignment[]> = {}
+  if (reviewerIds.length > 0) {
+    const { data: assignments } = await supabaseServer
+      .from('reviewer_assignments')
+      .select('id, reviewer_id, discipline, industry, slug')
+      .in('reviewer_id', reviewerIds)
+    for (const a of assignments ?? []) {
+      if (!assignmentMap[a.reviewer_id]) assignmentMap[a.reviewer_id] = []
+      assignmentMap[a.reviewer_id].push(a as Assignment)
+    }
+  }
+
+  // Fetch distinct industries from simulations for the assignment UI
+  const { data: industryRows } = await supabaseServer
+    .from('simulations')
+    .select('industry')
+    .not('industry', 'is', null)
+  const industries = [...new Set((industryRows ?? []).map(r => r.industry).filter(Boolean))] as string[]
+
+  // Fetch simulation options (slug + title) for slug-based assignment
+  const { data: simRows } = await supabaseServer
+    .from('simulations')
+    .select('slug, title')
+    .order('title', { ascending: true })
+  const simOptions = (simRows ?? []).map(r => ({ slug: r.slug as string, title: r.title as string | null }))
+
+  const members: (UserRoleRecord & { disciplines: string[]; assignments: Assignment[] })[] = (roles ?? []).map(r => {
     const disc = disciplines
       .filter(d => d.reviewer_id === r.user_id)
       .map(d => d.discipline)
-    return { ...(r as UserRoleRecord), disciplines: disc }
+    return {
+      ...(r as UserRoleRecord),
+      disciplines: disc,
+      assignments: assignmentMap[r.user_id] ?? [],
+    }
   })
 
   const canManage = ctx.permissions.canManageUsers || ctx.role === 'super_admin'
@@ -50,6 +82,8 @@ export default async function TeamPage() {
         currentUserId={ctx.userId}
         currentRole={ctx.role}
         canManage={canManage}
+        industries={industries}
+        simOptions={simOptions}
       />
     </div>
   )

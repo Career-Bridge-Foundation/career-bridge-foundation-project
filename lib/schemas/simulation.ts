@@ -14,7 +14,7 @@ export const SimulationMetadataSchema = z.object({
   description: z.string().max(280).optional(),
   discipline: z.string().max(80).optional(),
   video_url: z.string().url('Enter a valid URL').or(z.literal('')).optional(),
-  status: z.enum(['draft', 'published', 'archived']).default('draft'),
+  status: z.enum(['draft', 'pending_review', 'published', 'archived']).default('draft'),
   slug: z
     .string()
     .min(2, 'At least 2 characters')

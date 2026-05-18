@@ -27,21 +27,24 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAdminPath    = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
-  const isAdminLogin   = pathname === '/admin/login'
+  const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
+  const isAdminLogin = pathname === '/admin/login'
   const isReviewerPath = pathname.startsWith('/reviewer') || pathname.startsWith('/api/reviewer')
 
-  // ── Admin / staff routes ─────────────────────────────────────────────────
+  // ── Admin routes ────────────────────────────────────────────
   if (isAdminPath && !isAdminLogin) {
     if (!user) {
+      // Hide admin area from unauthenticated users — redirect to home, not /admin/login
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
 
+    // Read role from JWT app_metadata (fast path via custom_access_token_hook)
     const appMeta = (user.app_metadata ?? {}) as { user_role?: string }
     let userRole = appMeta.user_role
 
+    // Fallback: DB query for sessions predating the JWT hook
     if (!userRole) {
       const { data } = await supabase
         .from('user_roles')
@@ -51,25 +54,22 @@ export async function middleware(request: NextRequest) {
       userRole = data?.role ?? 'candidate'
     }
 
-    const isStaff =
-      userRole === 'admin' ||
-      userRole === 'super_admin' ||
-      userRole === 'content_developer'
-
-    if (!isStaff) {
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin'
+    if (!isAdmin) {
       if (pathname.startsWith('/api/')) {
         return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' },
         })
       }
+      // Redirect non-admins to home, not to login — keeps admin area hidden
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }
 
-  // ── Reviewer routes ──────────────────────────────────────────────────────
+  // ── Reviewer routes ─────────────────────────────────────────
   if (isReviewerPath) {
     if (!user) {
       if (pathname.startsWith('/api/')) {

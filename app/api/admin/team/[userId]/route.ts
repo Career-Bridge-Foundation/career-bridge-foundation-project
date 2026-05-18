@@ -27,10 +27,11 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { role, permissions, disciplines } = body as {
+    const { role, permissions, disciplines, addAssignment } = body as {
       role?: string
       permissions?: Record<string, boolean>
       disciplines?: string[]
+      addAssignment?: { discipline?: string; industry?: string; slug?: string }
     }
 
     const updates: Record<string, unknown> = {}
@@ -58,6 +59,18 @@ export async function PUT(
           .from('reviewer_disciplines')
           .insert(disciplines.map(d => ({ reviewer_id: userId, discipline: d })))
       }
+    }
+
+    // Add a single granular assignment
+    if (addAssignment) {
+      const { discipline, industry, slug } = addAssignment
+      if (!discipline && !industry && !slug) {
+        return NextResponse.json({ error: 'At least one of discipline, industry, or slug is required' }, { status: 400 })
+      }
+      const { error } = await supabaseServer
+        .from('reviewer_assignments')
+        .insert({ reviewer_id: userId, discipline: discipline ?? null, industry: industry ?? null, slug: slug ?? null })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
@@ -92,6 +105,11 @@ export async function DELETE(
 
     await supabaseServer
       .from('reviewer_disciplines')
+      .delete()
+      .eq('reviewer_id', userId)
+
+    await supabaseServer
+      .from('reviewer_assignments')
       .delete()
       .eq('reviewer_id', userId)
 

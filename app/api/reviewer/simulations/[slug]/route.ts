@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireReviewer } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 
+async function canAccess(reviewerId: string, sim: { discipline?: string | null; industry?: string | null; slug: string }): Promise<boolean> {
+  if (!sim.discipline) return true
+
+  const { data: disciplineRows } = await supabaseServer
+    .from('reviewer_disciplines')
+    .select('discipline')
+    .eq('reviewer_id', reviewerId)
+  if ((disciplineRows ?? []).some(d => d.discipline === sim.discipline)) return true
+
+  const { data: assignmentRows } = await supabaseServer
+    .from('reviewer_assignments')
+    .select('discipline, industry, slug')
+    .eq('reviewer_id', reviewerId)
+
+  for (const a of assignmentRows ?? []) {
+    if (a.discipline && a.discipline === sim.discipline) return true
+    if (a.industry && a.industry === sim.industry) return true
+    if (a.slug && a.slug === sim.slug) return true
+  }
+
+  return false
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -10,15 +33,6 @@ export async function GET(
     const ctx = await requireReviewer()
     const { slug } = await params
 
-    // Get reviewer's disciplines
-    const { data: disciplineRows } = await supabaseServer
-      .from('reviewer_disciplines')
-      .select('discipline')
-      .eq('reviewer_id', ctx.userId)
-
-    const disciplines = (disciplineRows ?? []).map(d => d.discipline)
-
-    // Fetch simulation
     const { data: sim, error } = await supabaseServer
       .from('simulations')
       .select('*')
@@ -28,19 +42,16 @@ export async function GET(
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!sim) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    // Verify discipline access
-    if (sim.discipline && !disciplines.includes(sim.discipline)) {
+    if (!await canAccess(ctx.userId, sim)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Fetch prompts from simulation_prompts table
     const { data: prompts } = await supabaseServer
       .from('simulation_prompts')
       .select('*')
       .eq('simulation_id', sim.id)
       .order('display_order', { ascending: true })
 
-    // Fetch active rubric — keyed by simulation_slug, not simulation_id
     const { data: rubric } = await supabaseServer
       .from('rubrics')
       .select('id, version, system_prompt, model, max_score, is_active')

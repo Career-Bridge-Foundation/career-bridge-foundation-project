@@ -1,13 +1,14 @@
 'use client'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, X } from 'lucide-react'
 import type { UserRoleRecord, AdminPermissions, UserRole } from '@/types/database'
 
 const ROLE_STYLE: Record<string, string> = {
-  super_admin: 'bg-orange-50 border-orange-200 text-orange-700',
-  admin:       'bg-blue-50 border-blue-200 text-blue-700',
-  reviewer:    'bg-emerald-50 border-emerald-200 text-emerald-700',
+  super_admin:       'bg-orange-50 border-orange-200 text-orange-700',
+  admin:             'bg-blue-50 border-blue-200 text-blue-700',
+  reviewer:          'bg-emerald-50 border-emerald-200 text-emerald-700',
+  content_developer: 'bg-violet-50 border-violet-200 text-violet-700',
 }
 
 const PERMISSION_LABELS: { key: keyof AdminPermissions; label: string }[] = [
@@ -22,16 +23,31 @@ const ALL_DISCIPLINES = [
   'Sales', 'Legal', 'Technology', 'Strategy', 'Data & Analytics',
 ]
 
-type Member = UserRoleRecord & { disciplines: string[] }
+const ASSIGN_TYPE_LABELS: Record<string, string> = {
+  discipline: 'Discipline',
+  industry:   'Industry',
+  slug:       'Simulation',
+}
+
+interface Assignment {
+  id: string
+  discipline: string | null
+  industry: string | null
+  slug: string | null
+}
+
+type Member = UserRoleRecord & { disciplines: string[]; assignments: Assignment[] }
 
 interface Props {
   members: Member[]
   currentUserId: string
   currentRole: UserRole
   canManage: boolean
+  industries: string[]
+  simOptions: { slug: string; title: string | null }[]
 }
 
-export function TeamManager({ members, currentUserId, currentRole, canManage }: Props) {
+export function TeamManager({ members, currentUserId, currentRole, canManage, industries, simOptions }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
@@ -40,7 +56,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
 
   // Add member form state
   const [addEmail, setAddEmail] = useState('')
-  const [addRole, setAddRole] = useState<'admin' | 'reviewer'>('admin')
+  const [addRole, setAddRole] = useState<'admin' | 'reviewer' | 'content_developer'>('admin')
   const [addDisciplines, setAddDisciplines] = useState<string[]>([])
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
@@ -111,6 +127,51 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
     }
   }
 
+  async function handleAddAssignment(
+    member: Member,
+    assignment: { discipline?: string; industry?: string; slug?: string },
+  ) {
+    setLoading(member.user_id + ':add-assign')
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/team/${member.user_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ addAssignment: assignment }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Failed to add assignment')
+      }
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  async function handleRemoveAssignment(assignmentId: string) {
+    setLoading(assignmentId)
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/team/assignments/${assignmentId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Failed to remove assignment')
+      }
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     setAddLoading(true)
@@ -120,7 +181,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: addEmail, role: addRole, disciplines: addDisciplines }),
+        body: JSON.stringify({ email: addEmail, role: addRole, disciplines: addRole === 'reviewer' ? addDisciplines : [] }),
       })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
@@ -181,18 +242,21 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
                 <label className="block text-xs font-medium text-slate-700 mb-1">Role</label>
                 <select
                   value={addRole}
-                  onChange={e => setAddRole(e.target.value as 'admin' | 'reviewer')}
+                  onChange={e => setAddRole(e.target.value as 'admin' | 'reviewer' | 'content_developer')}
                   className="w-full text-sm border border-slate-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal/40"
                 >
                   <option value="admin">Admin</option>
                   <option value="reviewer">Reviewer</option>
+                  <option value="content_developer">Content Developer</option>
                 </select>
               </div>
             </div>
 
             {addRole === 'reviewer' && (
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-2">Disciplines</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Disciplines <span className="text-slate-400 font-normal">(optional — can also configure after adding)</span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {ALL_DISCIPLINES.map(d => (
                     <button
@@ -248,15 +312,18 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
                       {(member.email ?? '?')[0].toUpperCase()}
                     </div>
 
-                    {/* Email + role */}
+                    {/* Email + summary */}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-slate-900 font-medium truncate">
                         {member.email}
                         {isMe && <span className="ml-1.5 text-xs text-slate-400">(you)</span>}
                       </div>
-                      {member.role === 'reviewer' && member.disciplines.length > 0 && (
+                      {member.role === 'reviewer' && (
                         <div className="text-xs text-slate-500 mt-0.5 truncate">
-                          {member.disciplines.join(', ')}
+                          {[
+                            member.disciplines.length > 0 && member.disciplines.join(', '),
+                            member.assignments.length > 0 && `+${member.assignments.length} specific ${member.assignments.length === 1 ? 'assignment' : 'assignments'}`,
+                          ].filter(Boolean).join(' · ') || 'No assignments yet'}
                         </div>
                       )}
                     </div>
@@ -290,7 +357,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
 
                   {/* Expanded panel */}
                   {isOpen && !isSuperAdmin && (
-                    <div className="px-6 pb-5 pt-2 bg-slate-50 border-t border-slate-100 space-y-4">
+                    <div className="px-6 pb-5 pt-2 bg-slate-50 border-t border-slate-100 space-y-5">
                       {/* Permission toggles (admin only) */}
                       {member.role === 'admin' && (
                         <div>
@@ -323,13 +390,26 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
                         </div>
                       )}
 
-                      {/* Disciplines editor (reviewer only) */}
+                      {/* Reviewer assignment editors */}
                       {member.role === 'reviewer' && (
-                        <ReviewerDisciplinesEditor
-                          member={member}
-                          saving={loading === member.user_id + 'disc'}
-                          onSave={disciplines => handleDisciplinesUpdate(member, disciplines)}
-                        />
+                        <>
+                          <ReviewerDisciplinesEditor
+                            member={member}
+                            saving={loading === member.user_id + 'disc'}
+                            onSave={disciplines => handleDisciplinesUpdate(member, disciplines)}
+                          />
+                          <div className="border-t border-slate-200 pt-4">
+                            <ReviewerAssignmentsEditor
+                              member={member}
+                              industries={industries}
+                              simOptions={simOptions}
+                              addingAssignment={loading === member.user_id + ':add-assign'}
+                              removingId={loading}
+                              onAdd={assignment => handleAddAssignment(member, assignment)}
+                              onRemove={id => handleRemoveAssignment(id)}
+                            />
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -343,6 +423,8 @@ export function TeamManager({ members, currentUserId, currentRole, canManage }: 
   )
 }
 
+// ─── Disciplines editor (existing reviewer_disciplines table) ─────────────────
+
 function ReviewerDisciplinesEditor({
   member,
   saving,
@@ -352,30 +434,55 @@ function ReviewerDisciplinesEditor({
   saving: boolean
   onSave: (disciplines: string[]) => void
 }) {
+  // Merge the standard list with any raw DB values that don't match (e.g. "product-management" vs "Product Management")
+  const allOptions = [...new Set([...ALL_DISCIPLINES, ...member.disciplines])]
   const [selected, setSelected] = useState<string[]>(member.disciplines)
 
   function toggle(d: string) {
     setSelected(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
   }
 
+  const hasActiveDisciplines = member.disciplines.length > 0
+
   return (
     <div>
-      <p className="text-xs font-medium text-slate-700 mb-2">Disciplines</p>
+      <p className="text-xs font-medium text-slate-700 mb-1">Disciplines</p>
+      <p className="text-xs text-slate-400 mb-2">
+        Grants access to <em>all</em> simulations with a matching discipline.
+        To restrict to specific simulations only, deselect all and save.
+      </p>
+
+      {/* Warning: broad discipline access overrides specific slug assignments */}
+      {hasActiveDisciplines && (
+        <div className="mb-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          <span className="mt-px shrink-0">⚠</span>
+          <span>
+            Broad access is active for: <strong>{member.disciplines.join(', ')}</strong>.
+            This gives access to <em>all</em> matching simulations and overrides any specific assignments below.
+            Deselect these chips and click Save to use specific assignments only.
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 mb-3">
-        {ALL_DISCIPLINES.map(d => (
-          <button
-            key={d}
-            type="button"
-            onClick={() => toggle(d)}
-            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-              selected.includes(d)
-                ? 'bg-teal text-white border-teal'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-teal/50'
-            }`}
-          >
-            {d}
-          </button>
-        ))}
+        {allOptions.map(d => {
+          const isNonStandard = !ALL_DISCIPLINES.includes(d)
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => toggle(d)}
+              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                selected.includes(d)
+                  ? 'bg-teal text-white border-teal'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-teal/50'
+              }`}
+            >
+              {d}
+              {isNonStandard && <span className="ml-1 opacity-60 text-[10px]">↑DB</span>}
+            </button>
+          )
+        })}
       </div>
       <button
         onClick={() => onSave(selected)}
@@ -384,6 +491,153 @@ function ReviewerDisciplinesEditor({
       >
         {saving ? 'Saving…' : 'Save disciplines'}
       </button>
+    </div>
+  )
+}
+
+// ─── Granular assignments editor (reviewer_assignments table) ─────────────────
+
+interface AssignmentsEditorProps {
+  member: Member
+  industries: string[]
+  simOptions: { slug: string; title: string | null }[]
+  addingAssignment: boolean
+  removingId: string | null
+  onAdd: (assignment: { discipline?: string; industry?: string; slug?: string }) => void
+  onRemove: (id: string) => void
+}
+
+function ReviewerAssignmentsEditor({
+  member,
+  industries,
+  simOptions,
+  addingAssignment,
+  removingId,
+  onAdd,
+  onRemove,
+}: AssignmentsEditorProps) {
+  const [addType, setAddType] = useState<'discipline' | 'industry' | 'slug'>('industry')
+  const [addValue, setAddValue] = useState('')
+
+  function handleAdd() {
+    if (!addValue.trim()) return
+    const payload =
+      addType === 'discipline' ? { discipline: addValue } :
+      addType === 'industry'   ? { industry: addValue } :
+                                 { slug: addValue }
+    onAdd(payload)
+    setAddValue('')
+  }
+
+  function assignmentLabel(a: Assignment) {
+    if (a.discipline) return `Discipline: ${a.discipline}`
+    if (a.industry)   return `Industry: ${a.industry}`
+    if (a.slug) {
+      const sim = simOptions.find(s => s.slug === a.slug)
+      return `Sim: ${sim?.title ?? a.slug}`
+    }
+    return 'Unknown'
+  }
+
+  function assignmentColor(a: Assignment) {
+    if (a.discipline) return 'bg-teal/10 text-teal border-teal/20'
+    if (a.industry)   return 'bg-violet-50 text-violet-700 border-violet-200'
+    return 'bg-amber-50 text-amber-700 border-amber-200'
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-slate-700 mb-1">Specific assignments</p>
+      <p className="text-xs text-slate-400 mb-3">
+        Grant access to simulations by industry or individual slug, in addition to the disciplines above.
+      </p>
+
+      {/* Existing assignments */}
+      <div className="flex flex-wrap gap-2 mb-4 min-h-[28px]">
+        {member.assignments.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">None yet.</p>
+        ) : (
+          member.assignments.map(a => (
+            <span
+              key={a.id}
+              className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${assignmentColor(a)}`}
+            >
+              {assignmentLabel(a)}
+              <button
+                onClick={() => onRemove(a.id)}
+                disabled={removingId === a.id}
+                className="hover:text-red-500 transition-colors disabled:opacity-40"
+                aria-label="Remove assignment"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+
+      {/* Add new assignment */}
+      <div className="flex gap-2 items-end flex-wrap">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Filter by</label>
+          <select
+            value={addType}
+            onChange={e => { setAddType(e.target.value as typeof addType); setAddValue('') }}
+            className="text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal/40"
+          >
+            <option value="discipline">Discipline</option>
+            <option value="industry">Industry</option>
+            <option value="slug">Simulation</option>
+          </select>
+        </div>
+
+        <div className="flex-1 min-w-[160px]">
+          <label className="block text-xs text-slate-500 mb-1">{ASSIGN_TYPE_LABELS[addType]}</label>
+          {addType === 'discipline' && (
+            <select
+              value={addValue}
+              onChange={e => setAddValue(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal/40"
+            >
+              <option value="">Select discipline…</option>
+              {ALL_DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          )}
+          {addType === 'industry' && (
+            <select
+              value={addValue}
+              onChange={e => setAddValue(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal/40"
+            >
+              <option value="">Select industry…</option>
+              {industries.length === 0
+                ? <option disabled>No industries found in simulations</option>
+                : industries.map(i => <option key={i} value={i}>{i}</option>)
+              }
+            </select>
+          )}
+          {addType === 'slug' && (
+            <select
+              value={addValue}
+              onChange={e => setAddValue(e.target.value)}
+              className="w-full text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal/40"
+            >
+              <option value="">Select simulation…</option>
+              {simOptions.map(s => (
+                <option key={s.slug} value={s.slug}>{s.title ?? s.slug}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <button
+          onClick={handleAdd}
+          disabled={!addValue.trim() || addingAssignment}
+          className="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-md hover:bg-slate-700 disabled:opacity-50 transition-colors"
+        >
+          {addingAssignment ? 'Adding…' : 'Add'}
+        </button>
+      </div>
     </div>
   )
 }
