@@ -135,7 +135,7 @@ export function useSimulation(
         const [{ data: dbResponses }, { data: dbAttachments }] = await Promise.all([
           supabase
             .from("simulation_responses")
-            .select("task_number, response_text, link_urls, file_urls")
+            .select("task_number, response_text, rationale_text, link_urls, file_urls")
             .eq("session_id", session.id)
             .order("task_number"),
           supabase
@@ -183,6 +183,7 @@ export function useSimulation(
             // task_number is 1-indexed; currentStep is 0-indexed
             loaded[r.task_number - 1] = {
               text: r.response_text ?? undefined,
+              rationale: r.rationale_text ?? undefined,
               url: r.link_urls?.[0] ?? undefined,
               file: fileByTask.get(r.task_number) ?? null,
             };
@@ -199,11 +200,11 @@ export function useSimulation(
   }, [simulationSlug]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SUPABASE SAVE ─────────────────────────────────────────────
-  const saveToSupabase = useCallback(async () => {
+  const saveToSupabase = useCallback(async (stepOverride?: number) => {
     const uid = userIdRef.current;
     const slug = simulationSlugRef.current;
     const disc = disciplineRef.current;
-    const step = currentStepRef.current;
+    const step = stepOverride ?? currentStepRef.current;
     const allResponses = responsesRef.current;
 
     if (!uid) return;
@@ -238,10 +239,11 @@ export function useSimulation(
 
       // Upsert the current step's response
       const stepResp = allResponses[step];
-      if (stepResp && (stepResp.text || stepResp.url || stepResp.file)) {
+      if (stepResp && (stepResp.text || stepResp.url || stepResp.file || stepResp.rationale)) {
         const taskNumber = step + 1;
         const payload = {
           response_text: stepResp.text ?? null,
+          rationale_text: stepResp.rationale ?? null,
           link_urls: stepResp.url ? [stepResp.url] : null,
           file_urls: stepResp.file?.filePath ? [stepResp.file.filePath] : null,
         };
@@ -313,10 +315,11 @@ export function useSimulation(
 
     // Persist all responses with content
     for (const [stepStr, stepResp] of Object.entries(allResponses)) {
-      if (!stepResp?.text && !stepResp?.url && !stepResp?.file) continue;
+      if (!stepResp?.text && !stepResp?.url && !stepResp?.file && !stepResp?.rationale) continue;
       const taskNumber = parseInt(stepStr) + 1;
       const payload = {
         response_text: stepResp.text ?? null,
+        rationale_text: stepResp.rationale ?? null,
         link_urls: stepResp.url ? [stepResp.url] : null,
         file_urls: stepResp.file?.filePath ? [stepResp.file.filePath] : null,
       };
@@ -391,9 +394,13 @@ export function useSimulation(
   useEffect(() => {
     if (!userEditedRef.current || !userIdRef.current) return;
 
+    // Capture the step NOW (at typing time), not when the timer fires —
+    // otherwise navigating away before 500ms causes the wrong task to be saved.
+    const capturedStep = currentStepRef.current;
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      void saveToSupabase();
+      void saveToSupabase(capturedStep);
     }, 500);
 
     return () => {
@@ -698,7 +705,11 @@ export function useSimulation(
   }
 
   function goPrev() {
-    if (currentStep > 0) setCurrentStep((s) => s - 1);
+    if (currentStep > 0) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      saveToStorage();
+      setCurrentStep((s) => s - 1);
+    }
   }
 
   function lastSavedText(): string {
