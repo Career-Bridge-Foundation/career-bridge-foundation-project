@@ -181,53 +181,24 @@ export function ResponseForm({
         </div>
       )}
 
-      {/* URL */}
+      {/* URL task — rationale only */}
       {showUrl && (
         <div className="mb-8">
           <span className="text-xs font-semibold uppercase text-[#888] tracking-brand-md block mb-1.5">
-            Your Submission
+            Your Submission Rationale
           </span>
-          <input
-            type="url"
-            value={urlValue}
-            onChange={(e) => onUpdate({ url: e.target.value })}
-            placeholder="Paste your public link here e.g. Figma, Notion, Google Docs"
-            className={cn(
-              "sim-input w-full p-3.5 text-sm text-[#333] mb-1",
-              urlValue && !isValidUrl(urlValue) ? "sim-input-error" : ""
-            )}
+          <p className="text-xs text-[#bbb] mb-3">
+            Explain your thinking and approach in 100 to 200 words.
+          </p>
+          <textarea
+            value={rationaleValue}
+            onChange={(e) => onUpdate({ rationale: e.target.value })}
+            placeholder="Explain your strategic choices and approach..."
+            className="sim-input w-full p-5 text-sm text-[#333] leading-[1.8] resize-none min-h-[160px]"
           />
-          {urlValue && !isValidUrl(urlValue) && (
-            <p className="text-xs text-[#e53e3e] mb-1">
-              Please enter a valid URL starting with https://
-            </p>
-          )}
-          {urlValue && isValidUrl(urlValue) && (
-            <p className="text-xs text-teal mb-1 flex items-center gap-1">
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                <polyline points="2,6 5,9 10,3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Valid URL
-            </p>
-          )}
-
-          <div className="mt-6">
-            <span className="text-xs font-semibold uppercase text-[#888] tracking-brand-md block mb-1.5">
-              Rationale
-            </span>
-            <p className="text-xs text-[#bbb] mb-3">
-              Explain your thinking and approach in 100 to 200 words.
-            </p>
-            <textarea
-              value={rationaleValue}
-              onChange={(e) => onUpdate({ rationale: e.target.value })}
-              placeholder="Explain your strategic choices and approach..."
-              className="sim-input w-full p-5 text-sm text-[#333] leading-[1.8] resize-none min-h-[160px]"
-            />
-            <p className={cn("mt-2 text-xs", rwcMet ? "text-teal" : "text-[#bbb]")}>
-              {rwc} / 100 words minimum
-            </p>
-          </div>
+          <p className={cn("mt-2 text-xs", rwcMet ? "text-teal" : "text-[#bbb]")}>
+            {rwc} / 100 words minimum
+          </p>
         </div>
       )}
     </>

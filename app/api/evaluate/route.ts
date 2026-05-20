@@ -1,9 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensurePortfolioProfile } from "@/lib/portfolio/ensureProfile";
-import { getActiveRubric } from "@/lib/portfolio/getActiveRubric"; // ← NEW
+import { getActiveRubric } from "@/lib/portfolio/getActiveRubric";
 import type { VerdictBand } from "@/types/database";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -19,6 +20,7 @@ interface TaskAttachment {
   type: "file" | "url";
   path?: string;
   url?: string;
+  isEvidence?: boolean;
 }
 
 interface TaskInput {
@@ -37,6 +39,249 @@ type EvaluationWarning = {
 function toVerdictBand(verdict: string): VerdictBand {
   if (verdict === "Pass with Merit") return "Merit";
   return verdict as VerdictBand;
+}
+
+// ── Content-block helpers ─────────────────────────────────────────
+
+type NativeBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp"; data: string } }
+  | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } };
+
+function mimeFromPath(filePath: string): string | null {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "pdf": return "application/pdf";
+    case "png": return "image/png";
+    case "jpg":
+    case "jpeg": return "image/jpeg";
+    case "gif": return "image/gif";
+    case "webp": return "image/webp";
+    case "csv": return "text/csv";
+    default: return null;
+  }
+}
+
+async function fetchFileBlock(signedUrl: string, mime: string): Promise<NativeBlock | null> {
+  try {
+    const res = await fetch(signedUrl, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    if (mime === "text/csv") {
+      let text = await res.text();
+      if (text.length > 3000) text = text.slice(0, 3000) + "…";
+      return { type: "text", text: `[CSV file contents]:\n${text}` };
+    }
+    const data = Buffer.from(await res.arrayBuffer()).toString("base64");
+    if (mime === "application/pdf") {
+      return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
+    }
+    const imageTypes = ["image/png", "image/jpeg", "image/gif", "image/webp"] as const;
+    if ((imageTypes as readonly string[]).includes(mime)) {
+      return { type: "image", source: { type: "base64", media_type: mime as typeof imageTypes[number], data } };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchUrlBlock(url: string): Promise<NativeBlock | string> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return `[URL: ${url} — could not be accessed (HTTP ${res.status})]`;
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/pdf")) {
+      const data = Buffer.from(await res.arrayBuffer()).toString("base64");
+      return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
+    }
+    if (contentType.includes("text/html") || contentType.includes("text/plain")) {
+      let text = await res.text();
+      text = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (text.length > 3000) text = text.slice(0, 3000) + "…";
+      return `[Content from ${url}]:\n${text}`;
+    }
+    return `[URL: ${url} — content type "${contentType}" cannot be read by the evaluator]`;
+  } catch {
+    return `[URL: ${url} — could not be fetched]`;
+  }
+}
+
+type DbAttachmentRow = {
+  task_id: number;
+  type: "file" | "url";
+  file_path: string | null;
+  url: string | null;
+  is_evidence: boolean;
+};
+
+function attachmentKey(att: TaskAttachment): string | null {
+  if (att.type === "file" && att.path) return `file:${att.path}`;
+  if (att.type === "url" && att.url) return `url:${att.url}`;
+  return null;
+}
+
+/** Merge DB rows into client payload; client entries win on duplicate keys. */
+function mergeAttachmentsFromDb(
+  responses: TaskInput[],
+  dbRows: DbAttachmentRow[]
+): TaskInput[] {
+  return responses.map((task) => {
+    const attachments = [...(task.attachments ?? [])];
+    const seen = new Set(
+      attachments.map(attachmentKey).filter((k): k is string => k !== null)
+    );
+
+    for (const row of dbRows.filter((r) => r.task_id === task.taskId)) {
+      if (row.type === "file" && row.file_path) {
+        const key = `file:${row.file_path}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        attachments.push({
+          type: "file",
+          path: row.file_path,
+          isEvidence: row.is_evidence,
+        });
+      } else if (row.type === "url" && row.url) {
+        const key = `url:${row.url}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        attachments.push({
+          type: "url",
+          url: row.url,
+          isEvidence: row.is_evidence,
+        });
+      }
+    }
+
+    return attachments.length > 0 ? { ...task, attachments } : task;
+  });
+}
+
+async function loadSessionAttachments(
+  supabase: SupabaseClient,
+  sessionId: string,
+  userId: string
+): Promise<DbAttachmentRow[]> {
+  const { data: session, error: sessionError } = await supabase
+    .from("simulation_sessions")
+    .select("id")
+    .eq("id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (sessionError || !session) {
+    console.warn("[evaluate] session not found for attachment load:", {
+      session_id: sessionId,
+      error: sessionError?.message,
+    });
+    return [];
+  }
+
+  const { data: rows, error } = await supabase
+    .from("simulation_session_attachments")
+    .select("task_id, type, file_path, url, is_evidence")
+    .eq("session_id", sessionId);
+
+  if (error) {
+    console.error("[evaluate] simulation_session_attachments load failed:", error.message);
+    return [];
+  }
+
+  return (rows ?? []) as DbAttachmentRow[];
+}
+
+async function appendAttachmentsToContentBlocks(
+  supabase: SupabaseClient,
+  responses: TaskInput[],
+  contentBlocks: NativeBlock[],
+  sessionId: string | undefined
+): Promise<void> {
+  const hasAttachments = responses.some((t) => (t.attachments ?? []).length > 0);
+  if (!hasAttachments) {
+    console.log("[evaluate] no attachments to send", { session_id: sessionId });
+    return;
+  }
+
+  contentBlocks.push({
+    type: "text",
+    text: "---\nThe candidate also submitted the following supporting materials:",
+  });
+
+  for (const t of responses) {
+    for (const att of t.attachments ?? []) {
+      const role = att.isEvidence ? "Supporting evidence" : "Primary submission file";
+      const label = `TASK ${t.taskId} (${t.title}) — ${role}:`;
+
+      if (att.type === "file" && att.path) {
+        const filename = att.path.split("/").pop() ?? att.path;
+        try {
+          const { data: signedData, error: signError } = await supabase.storage
+            .from("simulation-submissions")
+            .createSignedUrl(att.path, 3600);
+          const mime = mimeFromPath(att.path);
+          const block =
+            signedData?.signedUrl && mime
+              ? await fetchFileBlock(signedData.signedUrl, mime)
+              : null;
+
+          if (block) {
+            contentBlocks.push({ type: "text", text: label });
+            contentBlocks.push(block);
+            console.log("[evaluate] attachment sent to Claude:", {
+              session_id: sessionId,
+              taskId: t.taskId,
+              file: filename,
+              mime,
+              blockType: block.type,
+              isEvidence: !!att.isEvidence,
+            });
+          } else {
+            contentBlocks.push({
+              type: "text",
+              text: `${label}\n[File uploaded — content could not be read (unsupported format or fetch error)]`,
+            });
+            console.warn("[evaluate] attachment fetch failed:", {
+              session_id: sessionId,
+              taskId: t.taskId,
+              file: filename,
+              mime,
+              signError: signError?.message,
+              hasSignedUrl: !!signedData?.signedUrl,
+              isEvidence: !!att.isEvidence,
+            });
+          }
+        } catch (err) {
+          console.warn("[evaluate] attachment error:", {
+            session_id: sessionId,
+            taskId: t.taskId,
+            file: filename,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      } else if (att.type === "url" && att.url) {
+        const resolved = await fetchUrlBlock(att.url);
+        if (typeof resolved === "string") {
+          contentBlocks.push({ type: "text", text: `${label}\n${resolved}` });
+          console.log("[evaluate] attachment URL (text fallback):", {
+            session_id: sessionId,
+            taskId: t.taskId,
+            url: att.url,
+            isEvidence: !!att.isEvidence,
+          });
+        } else {
+          contentBlocks.push({ type: "text", text: label });
+          contentBlocks.push(resolved);
+          console.log("[evaluate] attachment URL sent to Claude:", {
+            session_id: sessionId,
+            taskId: t.taskId,
+            url: att.url,
+            blockType: resolved.type,
+            isEvidence: !!att.isEvidence,
+          });
+        }
+      }
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -122,48 +367,43 @@ export async function POST(request: NextRequest) {
   }
   // ──────────────────────────────────────────────────────────────────────────
 
-  // Generate signed URLs for any file attachments so Claude can reference them
-  const signedUrls = new Map<string, string>();
-  for (const t of responses) {
-    for (const att of t.attachments ?? []) {
-      if (att.type === "file" && att.path) {
-        try {
-          const { data } = await supabase.storage
-            .from("simulation-submissions")
-            .createSignedUrl(att.path, 3600);
-          if (data?.signedUrl) signedUrls.set(att.path, data.signedUrl);
-        } catch {
-          // Non-fatal — attachment reference will be omitted from the prompt
-        }
-      }
-    }
+  // Load attachments from DB so PDFs in simulation_session_attachments are always included
+  let responsesForEval = responses;
+  if (session_id) {
+    const clientAttachmentCount = responses.reduce(
+      (n, t) => n + (t.attachments?.length ?? 0),
+      0
+    );
+    const dbAttachments = await loadSessionAttachments(supabase, session_id, user.id);
+    responsesForEval = mergeAttachmentsFromDb(responses, dbAttachments);
+    const mergedAttachmentCount = responsesForEval.reduce(
+      (n, t) => n + (t.attachments?.length ?? 0),
+      0
+    );
+    console.log("[evaluate] attachments merged from session:", {
+      session_id,
+      fromClient: clientAttachmentCount,
+      fromDb: dbAttachments.length,
+      mergedTotal: mergedAttachmentCount,
+    });
   }
 
-  // Build the user message containing each task response + attachment references
-  const userMessage = responses
-    .map((t) => {
-      const attachmentLines = (t.attachments ?? [])
-        .map((a) => {
-          if (a.type === "url" && a.url) {
-            return `  [Candidate submitted URL: ${a.url}]`;
-          }
-          if (a.type === "file" && a.path) {
-            const signed = signedUrls.get(a.path);
-            return signed
-              ? `  [Candidate uploaded document (accessible for 1 hour): ${signed}]`
-              : `  [Candidate uploaded a document — file reference: ${a.path}]`;
-          }
-          return null;
-        })
-        .filter(Boolean)
-        .join("\n");
-
-      const body = t.response.trim();
-      return attachmentLines
-        ? `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${body}\n${attachmentLines}`
-        : `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${body}`;
-    })
+  // Build task text for the intro block
+  const taskText = responsesForEval
+    .map((t) => `TASK ${t.taskId} — ${t.title}\n${"─".repeat(40)}\n${t.response.trim()}`)
     .join("\n\n");
+
+  // Content blocks — Claude reads each natively (PDF/image) or as extracted text
+  const contentBlocks: NativeBlock[] = [
+    { type: "text", text: `Please evaluate the following simulation responses:\n\n${taskText}` },
+  ];
+
+  await appendAttachmentsToContentBlocks(
+    supabase,
+    responsesForEval,
+    contentBlocks,
+    session_id
+  );
 
   let rawContent: string;
 
@@ -175,11 +415,11 @@ export async function POST(request: NextRequest) {
       model: rubric.model,
       system: rubric.system_prompt,
       // ───────────────────────────────────────────────────────────
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [
         {
           role: "user",
-          content: `Please evaluate the following simulation responses:\n\n${userMessage}`,
+          content: contentBlocks,
         },
       ],
     });

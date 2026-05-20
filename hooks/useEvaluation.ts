@@ -78,6 +78,7 @@ export interface TaskAttachment {
   type: "file" | "url";
   path?: string;
   url?: string;
+  isEvidence?: boolean;
 }
 
 export interface TaskInput {

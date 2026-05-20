@@ -80,15 +80,13 @@ function buildResponseText(resp: StepResponse | undefined): string {
   if (!resp) return "";
   if (resp.text) return resp.text;
   if (resp.file?.name) return `[Uploaded document: ${resp.file.name}]`;
-  const parts: string[] = [];
-  if (resp.url) parts.push(`Document URL: ${resp.url}`);
-  if (resp.rationale) parts.push(resp.rationale ?? "");
-  return parts.filter(Boolean).join("\n\n");
+  if (resp.rationale) return resp.rationale;
+  return "";
 }
 
 function isResponseComplete(resp: StepResponse | undefined): boolean {
   if (!resp) return false;
-  return !!(resp.text?.trim() || resp.file?.name || resp.url?.trim());
+  return !!(resp.text?.trim() || resp.file?.name || resp.url?.trim() || resp.rationale?.trim());
 }
 
 export default function SimulationExecutionPage() {
@@ -177,6 +175,15 @@ export default function SimulationExecutionPage() {
       }
       if (stepResp.url) {
         attachments.push({ type: "url", url: stepResp.url });
+      }
+      const evidence = sim.evidenceByTask[p.id];
+      if (evidence) {
+        for (const f of evidence.files) {
+          if (f.filePath) attachments.push({ type: "file", path: f.filePath, isEvidence: true });
+        }
+        for (const u of evidence.urls) {
+          attachments.push({ type: "url", url: u, isEvidence: true });
+        }
       }
       return {
         taskId: p.id,

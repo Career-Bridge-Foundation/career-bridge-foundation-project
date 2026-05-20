@@ -5,15 +5,12 @@ import type { EvidenceFile } from "@/hooks/useSimulation";
 
 const ACCEPTED_MIME_TYPES = [
   "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "image/png",
   "image/jpeg",
+  "image/gif",
+  "image/webp",
   "text/csv",
+  "application/csv",
 ];
 
 function isValidUrl(url: string): boolean {
@@ -150,7 +147,7 @@ export function SupportingEvidence({
           </p>
           {!uploading && (
             <p className="text-xs text-[#bbb] mt-1.5">
-              PDF, DOCX, XLSX, PPTX, PNG, JPG, CSV — max 10MB each — up to 3 files
+              PDF, PNG, JPG, GIF, WEBP, CSV — max 10MB each — up to 3 files
             </p>
           )}
         </div>
@@ -159,7 +156,7 @@ export function SupportingEvidence({
           type="file"
           multiple
           disabled={uploading}
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.csv"
+          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.csv"
           className="hidden"
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
