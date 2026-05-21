@@ -28,8 +28,14 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
   const isAdminPath    = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
-  const isAdminLogin   = pathname === '/admin/login'
   const isReviewerPath = pathname.startsWith('/reviewer') || pathname.startsWith('/api/reviewer')
+
+  // Redirect legacy admin/login to the unified auth login
+  if (pathname === '/admin/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
 
   // ── Resolve role once (used by multiple guards below) ────────────────────
   let resolvedRole: string | null = null
@@ -74,7 +80,7 @@ export async function middleware(request: NextRequest) {
   const isAuthPath = pathname.startsWith('/auth') || pathname.startsWith('/api/auth')
   const isPublicApiPath = pathname.startsWith('/api/') && !pathname.startsWith('/api/admin') && !pathname.startsWith('/api/reviewer')
 
-  if (user && !isReviewerPath && !isAuthPath && !isAdminLogin && !isPublicApiPath) {
+  if (user && !isReviewerPath && !isAuthPath && !isPublicApiPath) {
     const role = await getRole()
     if (role === 'reviewer') {
       const url = request.nextUrl.clone()
@@ -85,7 +91,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Admin / staff routes ─────────────────────────────────────────────────
-  if (isAdminPath && !isAdminLogin) {
+  if (isAdminPath) {
     if (!user) {
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
