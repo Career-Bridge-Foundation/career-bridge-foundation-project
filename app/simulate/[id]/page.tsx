@@ -79,10 +79,14 @@ function PaywallScreen() {
 function buildResponseText(resp: StepResponse | undefined): string {
   if (!resp) return "";
   if (resp.text) return resp.text;
-  const parts: string[] = [];
-  if (resp.url) parts.push(`Document URL: ${resp.url}`);
-  if (resp.rationale) parts.push(resp.rationale ?? "");
-  return parts.filter(Boolean).join("\n\n");
+  if (resp.file?.name) return `[Uploaded document: ${resp.file.name}]`;
+  if (resp.rationale) return resp.rationale;
+  return "";
+}
+
+function isResponseComplete(resp: StepResponse | undefined): boolean {
+  if (!resp) return false;
+  return !!(resp.text?.trim() || resp.file?.name || resp.url?.trim() || resp.rationale?.trim());
 }
 
 export default function SimulationExecutionPage() {
@@ -139,10 +143,8 @@ export default function SimulationExecutionPage() {
   }, [isEvaluating]);
 
   function handleSubmitClick() {
-    // Validate all tasks have content
-    const incomplete = PROMPTS.some((_, i) =>
-      buildResponseText(sim.responses[i]).trim().length === 0
-    );
+    // Validate all tasks have content (text, uploaded file, or URL)
+    const incomplete = PROMPTS.some((_, i) => !isResponseComplete(sim.responses[i]));
     if (incomplete) {
       setValidationError("Please complete all tasks before submitting.");
       return;
@@ -165,11 +167,31 @@ export default function SimulationExecutionPage() {
       console.warn("[simulate] Credit consume returned", consumeRes.status);
     }
 
-    const responses = PROMPTS.map((p, i) => ({
-      taskId: p.id,
-      title: p.title,
-      response: buildResponseText(sim.responses[i]),
-    }));
+    const responses = PROMPTS.map((p, i) => {
+      const stepResp = sim.responses[i] ?? {};
+      const attachments: import("@/hooks/useEvaluation").TaskAttachment[] = [];
+      if (stepResp.file?.filePath) {
+        attachments.push({ type: "file", path: stepResp.file.filePath });
+      }
+      if (stepResp.url) {
+        attachments.push({ type: "url", url: stepResp.url });
+      }
+      const evidence = sim.evidenceByTask[p.id];
+      if (evidence) {
+        for (const f of evidence.files) {
+          if (f.filePath) attachments.push({ type: "file", path: f.filePath, isEvidence: true });
+        }
+        for (const u of evidence.urls) {
+          attachments.push({ type: "url", url: u, isEvidence: true });
+        }
+      }
+      return {
+        taskId: p.id,
+        title: p.title,
+        response: buildResponseText(stepResp),
+        ...(attachments.length > 0 ? { attachments } : {}),
+      };
+    });
 
     // Enforce a 1.5s minimum so the loading screen is always visible long enough
     const [redirectUrl] = await Promise.all([
@@ -354,14 +376,21 @@ export default function SimulationExecutionPage() {
               prompt={prompt}
               response={response}
               onUpdate={sim.updateResponse}
+              onFileSelect={(file) => sim.handleFileSelect(file, prompt.id)}
+              uploading={sim.uploadingTaskId === prompt.id}
+              uploadError={sim.uploadingTaskId === null ? sim.fileUploadError : null}
             />
 
             <SupportingEvidence
-              uploadedFiles={sim.uploadedFiles}
-              attachedUrls={sim.attachedUrls}
-              onFilesChange={sim.setUploadedFiles}
-              onUrlsChange={sim.setAttachedUrls}
-              fileInputRef={sim.fileInputRef}
+              taskId={prompt.id}
+              uploadedFiles={sim.evidenceByTask[prompt.id]?.files ?? []}
+              attachedUrls={sim.evidenceByTask[prompt.id]?.urls ?? []}
+              onFileSelect={(file) => sim.handleEvidenceFileSelect(file, prompt.id)}
+              onFileRemove={(filePath) => sim.handleEvidenceFileRemove(filePath, prompt.id)}
+              onUrlAdd={(url) => sim.handleEvidenceUrlAdd(url, prompt.id)}
+              onUrlRemove={(url) => sim.handleEvidenceUrlRemove(url, prompt.id)}
+              uploading={sim.evidenceUploading}
+              uploadError={sim.evidenceUploadError}
             />
 
             {/* ── NAVIGATION BUTTONS ───────────────────────────── */}

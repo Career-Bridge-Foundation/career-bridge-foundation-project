@@ -38,7 +38,7 @@ export interface Prompt {
 
 export interface StepResponse {
   text?: string;
-  file?: { name: string; size: number } | null;
+  file?: { name: string; size: number; filePath?: string } | null;
   url?: string;
   rationale?: string;
   mode?: "typed" | "upload";
