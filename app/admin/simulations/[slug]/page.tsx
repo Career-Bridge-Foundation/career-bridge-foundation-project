@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare, Video, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import {
   Button,
@@ -224,6 +224,93 @@ function SimPreview({ data }: { data: Partial<SimulationMeta> }) {
   )
 }
 
+function getEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    // YouTube
+    const ytId =
+      (u.hostname === 'youtu.be' && u.pathname.slice(1)) ||
+      (u.hostname.includes('youtube.com') && (u.searchParams.get('v') || u.pathname.split('/').pop()))
+    if (ytId) return `https://www.youtube.com/embed/${ytId}`
+    // Vimeo
+    if (u.hostname.includes('vimeo.com')) {
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      if (id) return `https://player.vimeo.com/video/${id}`
+    }
+    // Loom
+    if (u.hostname.includes('loom.com')) {
+      const id = u.pathname.split('/').filter(Boolean).pop()
+      if (id) return `https://www.loom.com/embed/${id}`
+    }
+  } catch {
+    // invalid URL
+  }
+  return null
+}
+
+function VideoPreviewPanel({ videoUrl }: { videoUrl: string | null }) {
+  if (!videoUrl) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+          <Video size={20} className="text-slate-400" />
+        </div>
+        <p className="text-sm font-medium text-slate-600">No video URL set</p>
+        <p className="text-xs text-slate-400">Add a video URL in the Metadata tab to enable preview.</p>
+      </div>
+    )
+  }
+
+  const embedUrl = getEmbedUrl(videoUrl)
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Video size={14} className="text-teal" />
+          <h3 className="text-sm font-semibold text-slate-900">Video Preview</h3>
+        </div>
+        <a
+          href={videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs text-teal hover:text-teal/80 transition-colors"
+        >
+          Open original <ExternalLink size={11} />
+        </a>
+      </div>
+
+      {embedUrl ? (
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            title="Simulation video preview"
+          />
+        </div>
+      ) : (
+        <div className="p-6 space-y-4">
+          <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+            <AlertCircle size={15} className="text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700">
+              This URL cannot be embedded directly. Use YouTube, Vimeo, or Loom for inline preview.
+            </p>
+          </div>
+          <video
+            src={videoUrl}
+            controls
+            className="w-full rounded-lg border border-slate-200"
+          >
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PageSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
@@ -251,7 +338,7 @@ export default function EditSimulationPage() {
 
   const [isLoading, setIsLoading] = useState(true)
   const [simData, setSimData] = useState<Record<string, unknown> | null>(null)
-  const [activeTab, setActiveTab] = useState<'metadata' | 'activity'>('metadata')
+  const [activeTab, setActiveTab] = useState<'metadata' | 'video' | 'activity'>('metadata')
   const [userRole, setUserRole] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<'submit' | 'approve' | 'reject' | null>(null)
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
@@ -482,6 +569,16 @@ export default function EditSimulationPage() {
             >
               Content
             </Link>
+            <Tab
+              id="video"
+              active={activeTab === 'video'}
+              onClick={() => setActiveTab('video')}
+            >
+              <span className="flex items-center gap-1.5">
+                <Video size={13} />
+                Video
+              </span>
+            </Tab>
             <Tab
               id="activity"
               active={activeTab === 'activity'}
@@ -743,6 +840,11 @@ export default function EditSimulationPage() {
               </div>
             </div>
           </form>
+        </TabPanel>
+
+        {/* Video preview */}
+        <TabPanel hidden={activeTab !== 'video'}>
+          <VideoPreviewPanel videoUrl={(simData?.video_url as string) || null} />
         </TabPanel>
 
         {/* Activity log */}

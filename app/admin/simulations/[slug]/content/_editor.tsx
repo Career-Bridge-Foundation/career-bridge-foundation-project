@@ -9,11 +9,13 @@ import { OverviewTab } from './_overview'
 import { PromptsTab } from './_prompts'
 import { SettingsTab } from './_settings'
 import { RubricTab } from './_rubric'
+import { PreviewTab } from './_preview'
 import { useBeforeUnload } from './_hooks/use-before-unload'
 import { useKeyboardShortcuts } from './_hooks/use-keyboard-shortcuts'
 
 interface ContentEditorProps {
   slug: string
+  videoUrl?: string | null
   initialData: {
     id: number | string
     title: string
@@ -33,7 +35,7 @@ interface ContentEditorProps {
   }
 }
 
-export function ContentEditor({ slug, initialData }: ContentEditorProps) {
+export function ContentEditor({ slug, videoUrl, initialData }: ContentEditorProps) {
   const { setOriginal, activeTab, content } = useEditorStore()
 
   // Initialize store with data
@@ -59,19 +61,22 @@ export function ContentEditor({ slug, initialData }: ContentEditorProps) {
   // Setup keyboard shortcuts (Cmd/Ctrl+S)
   useKeyboardShortcuts(slug)
 
-  if (!content) return <div className="text-white/70">Loading editor...</div>
+  if (!content) return (
+    <div className="flex items-center justify-center h-48">
+      <p className="text-sm text-slate-400">Loading editor…</p>
+    </div>
+  )
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#f8fafc' }}>
       <EditorHeader slug={slug} title={initialData.title} />
-      
       <EditorTabs />
-
-      <div className="space-y-6">
+      <div className="flex-1">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'prompts' && <PromptsTab />}
         {activeTab === 'settings' && <SettingsTab slug={slug} />}
         {activeTab === 'rubric' && <RubricTab slug={slug} />}
+        {activeTab === 'preview' && <PreviewTab videoUrl={videoUrl} />}
       </div>
     </div>
   )

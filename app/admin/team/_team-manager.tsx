@@ -152,6 +152,28 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
     }
   }
 
+  async function handleRoleChange(userId: string, newRole: string) {
+    setLoading(userId + ':role')
+    setError(null)
+    try {
+      const res = await fetch(`/api/admin/team/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error ?? 'Failed to update role')
+      }
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   async function handleRemoveAssignment(assignmentId: string) {
     setLoading(assignmentId)
     setError(null)
@@ -358,6 +380,33 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
                   {/* Expanded panel */}
                   {isOpen && !isSuperAdmin && (
                     <div className="px-6 pb-5 pt-2 bg-slate-50 border-t border-slate-100 space-y-5">
+                      {/* Role change */}
+                      {canManage && (
+                        <div>
+                          <p className="text-xs font-medium text-slate-700 mb-2">Role</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {(currentRole === 'super_admin'
+                              ? ['admin', 'reviewer', 'content_developer']
+                              : ['reviewer', 'content_developer']
+                            ).map(r => (
+                              <button
+                                key={r}
+                                type="button"
+                                disabled={member.role === r || loading === member.user_id + ':role'}
+                                onClick={() => handleRoleChange(member.user_id, r)}
+                                className={`text-xs px-3 py-1.5 rounded-full border transition-colors disabled:cursor-not-allowed ${
+                                  member.role === r
+                                    ? ROLE_STYLE[r] ?? 'bg-slate-100 border-slate-200 text-slate-700'
+                                    : 'bg-white text-slate-500 border-slate-200 hover:border-teal/50 disabled:opacity-40'
+                                }`}
+                              >
+                                {r.replace('_', ' ')}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Permission toggles (admin only) */}
                       {member.role === 'admin' && (
                         <div>

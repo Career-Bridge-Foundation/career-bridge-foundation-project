@@ -12,7 +12,7 @@ interface EditorStore {
   // UI state
   saveStatus: SaveStatus
   errorMessage: string | null
-  activeTab: 'overview' | 'prompts' | 'settings' | 'rubric'
+  activeTab: 'overview' | 'prompts' | 'settings' | 'rubric' | 'preview'
   expandedPromptId: string | number | null
 
   // Actions
@@ -27,7 +27,7 @@ interface EditorStore {
   // UI actions
   setSaveStatus: (status: SaveStatus) => void
   setErrorMessage: (message: string | null) => void
-  setActiveTab: (tab: 'overview' | 'prompts' | 'settings' | 'rubric') => void
+  setActiveTab: (tab: 'overview' | 'prompts' | 'settings' | 'rubric' | 'preview') => void
   setExpandedPromptId: (id: string | number | null) => void
 
   // Reset

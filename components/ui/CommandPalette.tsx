@@ -41,7 +41,7 @@ export function CommandPalette({ open, onClose, simulations = [] }: CommandPalet
     onClose()
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    router.push('/auth/login')
   }
 
   return (

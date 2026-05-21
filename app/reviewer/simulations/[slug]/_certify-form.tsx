@@ -29,7 +29,11 @@ export function CertifyForm({ slug, currentStatus, currentNotes }: Props) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Something went wrong')
       }
-      router.refresh()
+      if (status === 'certified' || status === 'rejected') {
+        router.push('/reviewer')
+      } else {
+        router.refresh()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {

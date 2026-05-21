@@ -2,25 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireReviewer } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 
-async function canAccess(reviewerId: string, sim: { discipline?: string | null; industry?: string | null; slug: string }): Promise<boolean> {
-  if (!sim.discipline) return true
+// Normalize discipline to a slug for comparison ("Product Management" ↔ "product-management")
+function normDisc(s: string | null | undefined): string {
+  return (s ?? '').toLowerCase().replace(/[\s&]+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-')
+}
 
+async function canAccess(reviewerId: string, sim: { discipline?: string | null; industry?: string | null; slug: string }): Promise<boolean> {
   const { data: disciplineRows } = await supabaseServer
     .from('reviewer_disciplines')
     .select('discipline')
     .eq('reviewer_id', reviewerId)
-  if ((disciplineRows ?? []).some(d => d.discipline === sim.discipline)) return true
 
   const { data: assignmentRows } = await supabaseServer
     .from('reviewer_assignments')
     .select('discipline, industry, slug')
     .eq('reviewer_id', reviewerId)
 
+  const simDisc = normDisc(sim.discipline)
+
   for (const a of assignmentRows ?? []) {
-    if (a.discipline && a.discipline === sim.discipline) return true
-    if (a.industry && a.industry === sim.industry) return true
     if (a.slug && a.slug === sim.slug) return true
+    if (a.industry && a.industry === sim.industry) return true
+    if (a.discipline && simDisc && normDisc(a.discipline) === simDisc) return true
   }
+
+  if (simDisc && (disciplineRows ?? []).some(d => normDisc(d.discipline) === simDisc)) return true
 
   return false
 }

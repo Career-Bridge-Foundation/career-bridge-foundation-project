@@ -82,8 +82,17 @@ export const SimulationExportRowSchema = SimulationMetadataSchema.extend({
   display_order: z.number().int().min(0).optional(),
 })
 
+// Import schema is more permissive: nullable DB columns must round-trip through JSON
+// export (which serialises nulls) without failing validation.
+const SimulationImportRowSchema = SimulationExportRowSchema.extend({
+  type:        z.string().max(60).nullable().optional(),
+  description: z.string().max(280).nullable().optional(),
+  discipline:  z.string().max(80).nullable().optional(),
+  video_url:   z.string().url('Enter a valid URL').or(z.literal('')).nullable().optional(),
+})
+
 export const SimulationImportSchema = z.object({
-  simulations: z.array(SimulationExportRowSchema).min(1),
+  simulations: z.array(SimulationImportRowSchema).min(1),
 })
 
 export type SimulationExportRow = z.infer<typeof SimulationExportRowSchema>

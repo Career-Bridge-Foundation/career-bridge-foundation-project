@@ -1,6 +1,4 @@
 import React from 'react'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { getSimBySlug } from '@/lib/data'
 import { notFound } from 'next/navigation'
 import { ContentEditor } from './_editor'
@@ -22,14 +20,8 @@ export default async function SimulationContentPage({
   if (!sim) notFound()
 
   return (
-    <div className="min-h-screen">
-      <div className="flex items-center gap-2 mb-6  bg- text-slate-800/70">
-        <Link href="/admin/simulations" className="hover:text-white transition-colors">
-          <ArrowLeft size={16} />
-        </Link>
-        <span className="text-sm">{sim.title}</span>
-      </div>
-      <ContentEditor slug={slug} initialData={sim as any} />
+    <div className="min-h-screen -mx-6 -mt-6">
+      <ContentEditor slug={slug} videoUrl={(sim as any).video_url ?? null} initialData={sim as any} />
     </div>
   )
 }

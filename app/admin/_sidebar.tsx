@@ -62,7 +62,7 @@ export function Sidebar({ role, email }: Props) {
     setIsLoggingOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/admin/login')
+    router.push('/auth/login')
   }
 
   return (
@@ -122,7 +122,7 @@ export function Sidebar({ role, email }: Props) {
       </nav>
 
       {/* User area */}
-      <div className="px-4 py-4 border-t border-slate-200">
+      <div className="px-4 py-4 border-t border-slate-200 space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold bg-teal/10 border border-teal/30 text-teal">
             {initial}
@@ -133,15 +133,15 @@ export function Sidebar({ role, email }: Props) {
             </div>
             <div className="text-xs truncate text-slate-500">{email ?? '…'}</div>
           </div>
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="transition-colors disabled:opacity-40 text-slate-400 hover:text-slate-600"
-            title="Sign out"
-          >
-            <LogOut size={14} />
-          </button>
         </div>
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors disabled:opacity-40 text-slate-500 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200"
+        >
+          <LogOut size={13} />
+          {isLoggingOut ? 'Signing out…' : 'Sign out'}
+        </button>
       </div>
     </aside>
   )

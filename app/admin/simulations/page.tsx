@@ -49,7 +49,6 @@ import {
   EmptyState,
   Skeleton,
   DropdownMenu,
-  SegmentedControl,
 } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { SimulationImportSchema } from '@/lib/schemas/simulation'
@@ -389,6 +388,48 @@ function SkeletonRows() {
   )
 }
 
+// ── Filter chip ───────────────────────────────────────────────────────────────
+function FilterChip({
+  label,
+  count,
+  active,
+  color,
+  onClick,
+}: {
+  label: string
+  count?: number
+  active: boolean
+  color?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+        active
+          ? 'border-teal bg-teal/10 text-teal'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+      )}
+      style={active && color ? { borderColor: color, backgroundColor: color + '18', color } : undefined}
+    >
+      {label}
+      {count !== undefined && (
+        <span
+          className={cn(
+            'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold',
+            active ? 'bg-teal text-white' : 'bg-slate-100 text-slate-500'
+          )}
+          style={active && color ? { backgroundColor: color, color: '#fff' } : undefined}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
+
 // ── Sortable row ──────────────────────────────────────────────────────────────
 function SortableRow({
   sim,
@@ -539,6 +580,7 @@ export default function SimulationsListPage() {
   const [highlightedSlug, setHighlightedSlug] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [canExport, setCanExport] = useState(false)
 
   const loadSims = useCallback(async () => {
     const res = await fetch('/api/admin/simulations')
@@ -547,6 +589,13 @@ export default function SimulationsListPage() {
   }, [])
 
   useEffect(() => { loadSims() }, [loadSims])
+
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => r.json())
+      .then(d => setCanExport(d.permissions?.canExportData === true))
+      .catch(() => {})
+  }, [])
 
   async function handleExport(format: 'json' | 'csv' | 'csv-meta' | 'tsv') {
     setIsExporting(true)
@@ -664,49 +713,68 @@ export default function SimulationsListPage() {
     return matchesSearch && matchesStatus && matchesDiff && matchesDiscipline
   })
 
+  // Counts per filter option (from all items, ignoring other filters for badges)
+  const statusCounts = items.reduce<Record<string, number>>((acc, s) => {
+    acc[s.status] = (acc[s.status] ?? 0) + 1
+    return acc
+  }, {})
+  const diffCounts = items.reduce<Record<string, number>>((acc, s) => {
+    acc[s.difficulty] = (acc[s.difficulty] ?? 0) + 1
+    return acc
+  }, {})
+  const disciplineCounts = items.reduce<Record<string, number>>((acc, s) => {
+    if (s.discipline) acc[s.discipline] = (acc[s.discipline] ?? 0) + 1
+    return acc
+  }, {})
+
+  const hasActiveFilter = !!(search || statusFilter || diffFilter || disciplineFilter)
+  const clearFilters = () => { setSearch(''); setStatusFilter(''); setDiffFilter(''); setDisciplineFilter('') }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">Simulations</h1>
-          <p className="text-sm mt-0.5 text-slate-600">
-            {isLoading ? '—' : `${items.length} total`}
+          <h1 className="font-bold text-2xl tracking-tight" style={{ color: '#003359' }}>Simulations</h1>
+          <p className="text-sm mt-1" style={{ color: 'rgba(0,51,89,0.45)' }}>
+            {isLoading ? '—' : `${items.length} simulation${items.length !== 1 ? 's' : ''} in library`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <DropdownMenu
-            align="end"
-            trigger={
-              <Button
-                variant="outline"
-                size="sm"
-                leftIcon={<Download size={13} />}
-                rightIcon={<ChevronDown size={12} />}
-                disabled={isExporting}
-              >
-                {isExporting ? 'Exporting…' : 'Export'}
-              </Button>
-            }
-          >
-            {(
-              [
-                { format: 'json',     label: 'JSON',             hint: 're-importable backup' },
-                { format: 'csv',      label: 'CSV (full)',        hint: 'all fields' },
-                { format: 'csv-meta', label: 'CSV (metadata)',    hint: 'no prompts / briefs' },
-                { format: 'tsv',      label: 'TSV',              hint: 'paste into Excel' },
-              ] as const
-            ).map(({ format, label, hint }) => (
-              <button
-                key={format}
-                onClick={() => handleExport(format)}
-                className="flex items-center justify-between gap-6 w-full px-3 py-2 z-[10] text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
-              >
-                <span>{label}</span>
-                <span className="text-xs text-slate-400">{hint}</span>
-              </button>
-            ))}
-          </DropdownMenu>
+          {canExport && (
+            <DropdownMenu
+              align="end"
+              trigger={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download size={13} />}
+                  rightIcon={<ChevronDown size={12} />}
+                  disabled={isExporting}
+                >
+                  {isExporting ? 'Exporting…' : 'Export'}
+                </Button>
+              }
+            >
+              {(
+                [
+                  { format: 'json',     label: 'JSON',             hint: 're-importable backup' },
+                  { format: 'csv',      label: 'CSV (full)',        hint: 'all fields' },
+                  { format: 'csv-meta', label: 'CSV (metadata)',    hint: 'no prompts / briefs' },
+                  { format: 'tsv',      label: 'TSV',              hint: 'paste into Excel' },
+                ] as const
+              ).map(({ format, label, hint }) => (
+                <button
+                  key={format}
+                  onClick={() => handleExport(format)}
+                  className="flex items-center justify-between gap-6 w-full px-3 py-2 z-[10] text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
+                >
+                  <span>{label}</span>
+                  <span className="text-xs text-slate-400">{hint}</span>
+                </button>
+              ))}
+            </DropdownMenu>
+          )}
           <Button
             variant="secondary"
             size="sm"
@@ -726,64 +794,109 @@ export default function SimulationsListPage() {
         </div>
       </div>
 
-      {/* Filter + table card */}
       {/* Table card */}
-      <div className="rounded-xl overflow-hidden bg-white border border-slate-300 shadow-sm">
-
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ backgroundColor: '#fff', border: '1px solid #d5dce8', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+      >
         {/* Toolbar */}
-        <div className="px-4 py-3 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50">
+        <div className="px-5 py-3.5 border-b" style={{ borderColor: '#d5dce8', backgroundColor: '#f8fafc' }}>
+          <div className="flex flex-wrap items-center gap-2.5">
 
-          {/* Search */}
-          <div className="relative flex-1 min-w-[180px] max-w-xs">
-            <Search
-              size={13}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Search by title or company…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={cn(
-                'w-full bg-white text-slate-900 text-sm',
-                'rounded-md pl-8 pr-3 py-1.5',
-                'placeholder:text-slate-400',
-                'border border-slate-300 focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none transition-all',
-              )}
-            />
-          </div>
+            {/* Search */}
+            <div className="relative min-w-[200px] max-w-xs flex-shrink-0">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(0,51,89,0.35)' }} />
+              <input
+                type="text"
+                placeholder="Search title or company…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full text-sm bg-white rounded-full pl-8 pr-3 py-1.5 border border-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition-all"
+                style={{ color: '#003359' }}
+              />
+            </div>
 
-          {/* Status filter */}
-          <SegmentedControl
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
+            {/* Divider */}
+            <div className="h-5 w-px bg-slate-200 shrink-0" />
 
-          {/* Difficulty filter */}
-          <SegmentedControl
-            options={DIFF_OPTIONS}
-            value={diffFilter}
-            onChange={setDiffFilter}
-          />
-
-          {/* Discipline filter */}
-          {disciplineOptions.length > 0 && (
-            <select
-              value={disciplineFilter}
-              onChange={e => setDisciplineFilter(e.target.value)}
-              className={cn(
-                'bg-white text-slate-900 text-sm rounded-md px-3 py-1.5',
-                'border border-slate-300 focus:border-teal focus:ring-2 focus:ring-teal/20 outline-none transition-all',
-              )}
-            >
-              <option value="">All disciplines</option>
-              {disciplineOptions.map(d => (
-                <option key={d} value={d}>{d}</option>
+            {/* Status chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <FilterChip
+                label="All"
+                count={items.length}
+                active={!statusFilter}
+                onClick={() => setStatusFilter('')}
+              />
+              {(['draft', 'pending_review', 'published', 'archived'] as const).map(s => (
+                statusCounts[s] ? (
+                  <FilterChip
+                    key={s}
+                    label={STATUS_LABEL[s]}
+                    count={statusCounts[s]}
+                    active={statusFilter === s}
+                    color={s === 'published' ? '#16a34a' : s === 'pending_review' ? '#1d4ed8' : s === 'archived' ? '#d97706' : undefined}
+                    onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+                  />
+                ) : null
               ))}
-            </select>
-          )}
+            </div>
+
+            {/* Divider */}
+            <div className="h-5 w-px bg-slate-200 shrink-0" />
+
+            {/* Difficulty chips */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(['Foundation', 'Practitioner', 'Advanced'] as const).map(d => (
+                diffCounts[d] ? (
+                  <FilterChip
+                    key={d}
+                    label={d}
+                    count={diffCounts[d]}
+                    active={diffFilter === d}
+                    color={d === 'Foundation' ? '#16a34a' : d === 'Practitioner' ? '#d97706' : '#e11d48'}
+                    onClick={() => setDiffFilter(diffFilter === d ? '' : d)}
+                  />
+                ) : null
+              ))}
+            </div>
+
+            {/* Discipline chips */}
+            {disciplineOptions.length > 0 && (
+              <>
+                <div className="h-5 w-px bg-slate-200 shrink-0" />
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {disciplineOptions.map(d => (
+                    <FilterChip
+                      key={d}
+                      label={d}
+                      count={disciplineCounts[d]}
+                      active={disciplineFilter === d}
+                      onClick={() => setDisciplineFilter(disciplineFilter === d ? '' : d)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Clear all */}
+            {hasActiveFilter && (
+              <button
+                onClick={clearFilters}
+                className="ml-auto text-xs font-medium transition-colors"
+                style={{ color: 'rgba(0,51,89,0.45)' }}
+              >
+                Clear filters ×
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Results count */}
+        {!isLoading && hasActiveFilter && (
+          <div className="px-5 py-2 border-b text-xs" style={{ borderColor: '#d5dce8', color: 'rgba(0,51,89,0.4)', backgroundColor: '#f8fafc' }}>
+            Showing <strong style={{ color: '#003359' }}>{filtered.length}</strong> of {items.length} simulations
+          </div>
+        )}
 
         {/* Table */}
         <DndContext
@@ -796,14 +909,14 @@ export default function SimulationsListPage() {
             strategy={verticalListSortingStrategy}
           >
             <Table className="bg-white">
-              <THead className="bg-slate-50 border-b border-slate-200">
+              <THead className="bg-[#f8fafc] border-b border-[#d5dce8]">
                 <TH className="pl-3 w-8">{null}</TH>
-                <TH className="text-slate-600">Title</TH>
-                <TH className="text-slate-600">Industry</TH>
-                <TH className="text-slate-600">Difficulty</TH>
-                <TH className="text-slate-600">Status</TH>
-                <TH className="text-slate-600">Time</TH>
-                <TH className="text-slate-600">Updated</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Simulation</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Industry</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Difficulty</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Status</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Time</TH>
+                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Updated</TH>
                 <TH className="w-10">{null}</TH>
               </THead>
               <TBody className="divide-y">

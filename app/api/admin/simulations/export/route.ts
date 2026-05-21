@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireStaff } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 
 const META_COLUMNS = [
@@ -35,6 +36,15 @@ function buildDelimited(
 }
 
 export async function GET(request: NextRequest) {
+  try {
+    const ctx = await requireStaff()
+    if (!ctx.permissions.canExportData) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const format = request.nextUrl.searchParams.get('format') ?? 'json'
 
   const { data, error } = await supabaseServer

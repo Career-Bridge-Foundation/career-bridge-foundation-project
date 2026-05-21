@@ -199,7 +199,7 @@ export default async function PortfolioPage({
             Back to Home
           </Link>
 
-          {/* <EditPortfolioButton isOwner={isOwner} /> */}
+          <EditPortfolioButton isOwner={isOwner} />
         </div>
 
         {/* ── Header ─────────────────────────────────────────────── */}

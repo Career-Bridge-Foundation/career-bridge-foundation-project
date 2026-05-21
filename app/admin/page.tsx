@@ -16,9 +16,13 @@ import {
   MessageSquare,
   Globe,
   Award,
+  Plus,
+  BookOpen,
+  SendHorizonal,
 } from 'lucide-react'
 import { getCurrentUserRole } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
+import { ImportButton } from './_import-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -131,11 +135,10 @@ export default async function AdminPage() {
   if (!ctx || !['admin', 'super_admin', 'content_developer'].includes(ctx.role)) {
     redirect('/auth/login')
   }
-  if (ctx.role === 'content_developer') {
-    redirect('/admin/simulations')
-  }
-
+  const isContentDev = ctx.role === 'content_developer'
   const isSuperAdmin = ctx.role === 'super_admin'
+  // Admins get the same full analytics view as super admins
+  const showFullAnalytics = ctx.role === 'super_admin' || ctx.role === 'admin'
 
   // ── Core simulation data ────────────────────────────────────────────────────
   const { data: simsRaw } = await supabaseServer
@@ -160,6 +163,182 @@ export default async function AdminPage() {
   const recent = sims.slice(0, 8)
   const pendingReview = sims.filter(s => s.status === 'pending_review')
 
+  // ── Content developer dashboard (early return) ──────────────────────────────
+  if (isContentDev) {
+    const draftCount   = byStatus.draft ?? 0
+    const pendingCount = byStatus.pending_review ?? 0
+    const publishedCount = byStatus.published ?? 0
+
+    const cdStatCards = [
+      { label: 'Total Simulations', value: total,        icon: BookOpen,      stripe: '#003259e4', iconBg: 'rgba(58,152,162,0.1)' },
+      { label: 'Drafts',            value: draftCount,   icon: Edit3,         stripe: '#6b7280',   iconBg: '#f8fafc' },
+      { label: 'Pending Review',    value: pendingCount, icon: SendHorizonal, stripe: '#1d4ed8',   iconBg: '#eff6ff' },
+      { label: 'Published',         value: publishedCount, icon: CheckCircle2, stripe: '#16a34a',  iconBg: '#f0fdf4' },
+    ]
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-bold text-2xl tracking-tight" style={{ color: '#003359' }}>Content Dashboard</h1>
+            <p className="text-sm mt-1" style={{ color: 'rgba(0,51,89,0.45)' }}>Manage and edit simulation content</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <ImportButton />
+            <Link
+              href="/admin/simulations/new"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#0d9488' }}
+            >
+              <Plus size={14} />
+              New Simulation
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-5">
+          {cdStatCards.map(card => <StatCard key={card.label} {...card} />)}
+        </div>
+
+        {/* Status breakdown bar */}
+        {total > 0 && (
+          <div
+            className="rounded-xl p-5"
+            style={{ backgroundColor: '#fff', border: '1px solid #d5dce8', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+          >
+            <div className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'rgba(0,51,89,0.45)' }}>
+              Simulations by status
+            </div>
+            <div className="flex gap-1 h-3 rounded-full overflow-hidden mb-3">
+              {Object.entries(STATUS_STYLE).map(([status, style]) => {
+                const count = byStatus[status] ?? 0
+                if (count === 0) return null
+                const pct = Math.round((count / total) * 100)
+                return (
+                  <div
+                    key={status}
+                    style={{ width: `${pct}%`, backgroundColor: style.color, opacity: 0.8 }}
+                    title={`${style.label}: ${count}`}
+                  />
+                )
+              })}
+            </div>
+            <div className="flex flex-wrap gap-5">
+              {Object.entries(STATUS_STYLE).map(([status, style]) => {
+                const count = byStatus[status] ?? 0
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                return (
+                  <div key={status} className="flex items-center gap-2 text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: style.color }} />
+                    <span style={{ color: 'rgba(0,51,89,0.6)' }}>{style.label}</span>
+                    <span className="font-semibold" style={{ color: '#003359' }}>{count}</span>
+                    <span style={{ color: 'rgba(0,51,89,0.35)' }}>({pct}%)</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Pending review queue */}
+        {pendingReview.length > 0 && (
+          <SectionCard
+            title={`Awaiting Review (${pendingReview.length})`}
+            icon={Clock}
+            action={{ href: '/admin/simulations?status=pending_review', label: 'View all' }}
+          >
+            <div>
+              {pendingReview.slice(0, 5).map(sim => (
+                <Link
+                  key={sim.slug}
+                  href={`/admin/simulations/${sim.slug}`}
+                  className="flex items-center gap-4 px-6 py-3.5 transition-colors hover:bg-[#f5f7fb]"
+                  style={{ borderBottom: '1px solid #f3f4f6' }}
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#eff6ff' }}>
+                    <Clock size={14} style={{ color: '#1d4ed8' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate" style={{ color: '#003359' }}>{sim.title ?? sim.slug}</div>
+                    {sim.industry && (
+                      <div className="text-xs mt-0.5" style={{ color: 'rgba(0,51,89,0.4)' }}>{sim.industry}</div>
+                    )}
+                  </div>
+                  <span className="text-xs shrink-0" style={{ color: 'rgba(0,51,89,0.3)' }}>
+                    {formatDistanceToNow(new Date(sim.updated_at ?? new Date()), { addSuffix: true })}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Recently edited */}
+        <SectionCard
+          title="Recently Edited"
+          icon={TrendingUp}
+          action={{ href: '/admin/simulations', label: 'View all' }}
+        >
+          <div>
+            {recent.length === 0 ? (
+              <div className="px-6 py-8 text-center">
+                <p className="text-sm" style={{ color: 'rgba(0,51,89,0.4)' }}>No simulations yet</p>
+                <Link
+                  href="/admin/simulations/new"
+                  className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium"
+                  style={{ color: '#0d9488' }}
+                >
+                  <Plus size={12} /> Create your first simulation
+                </Link>
+              </div>
+            ) : (
+              recent.map(sim => {
+                const diff = sim.difficulty ?? 'Unknown'
+                const ds = DIFFICULTY_STYLE[diff] ?? FALLBACK_DIFFICULTY
+                const ss = STATUS_STYLE[sim.status] ?? STATUS_STYLE.draft
+                return (
+                  <Link
+                    key={sim.slug}
+                    href={`/admin/simulations/${sim.slug}/content`}
+                    className="flex items-center gap-4 px-6 py-3.5 hover:bg-[#f5f7fb] transition-colors"
+                    style={{ borderBottom: '1px solid #f3f4f6' }}
+                  >
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(0,51,89,0.05)' }}>
+                      <FileText size={14} style={{ color: 'rgba(0,51,89,0.35)' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate" style={{ color: '#003359' }}>{sim.title ?? sim.slug}</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'rgba(0,51,89,0.4)' }}>
+                        {formatDistanceToNow(new Date(sim.updated_at ?? new Date()), { addSuffix: true })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {sim.difficulty && (
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full font-medium"
+                          style={{ backgroundColor: ds.bg, color: ds.color, border: `1px solid ${ds.border}` }}
+                        >
+                          {sim.difficulty}
+                        </span>
+                      )}
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        style={{ backgroundColor: ss.bg, color: ss.color, border: `1px solid ${ss.border}` }}
+                      >
+                        {ss.label}
+                      </span>
+                    </div>
+                    <Edit3 size={12} style={{ color: 'rgba(0,51,89,0.2)' }} />
+                  </Link>
+                )
+              })
+            )}
+          </div>
+        </SectionCard>
+      </div>
+    )
+  }
+
   // ── Super admin: additional queries ─────────────────────────────────────────
   let byRole: Record<string, number> = {}
   let recentCerts: Sim[] = []
@@ -174,7 +353,7 @@ export default async function AdminPage() {
   let publishedLast30 = 0
   let contentDevCount = 0
 
-  if (isSuperAdmin) {
+  if (showFullAnalytics) {
     // ── User roles ──
     const { data: roleRows } = await supabaseServer
       .from('user_roles')
@@ -280,7 +459,7 @@ export default async function AdminPage() {
       icon: CheckCircle2,
       stripe: '#16a34a',
       iconBg: '#f0fdf4',
-      sub: isSuperAdmin && publishedLast30 > 0 ? `+${publishedLast30} this month` : undefined,
+      sub: showFullAnalytics && publishedLast30 > 0 ? `+${publishedLast30} this month` : undefined,
     },
     {
       label: 'Pending Review',
@@ -288,7 +467,7 @@ export default async function AdminPage() {
       icon: Clock,
       stripe: '#1d4ed8',
       iconBg: '#eff6ff',
-      sub: isSuperAdmin && stalePending.length > 0 ? `${stalePending.length} overdue (7d+)` : undefined,
+      sub: showFullAnalytics && stalePending.length > 0 ? `${stalePending.length} overdue (7d+)` : undefined,
     },
     {
       label: 'Drafts',
@@ -305,7 +484,7 @@ export default async function AdminPage() {
       <div>
         <h1 className="font-bold text-2xl tracking-tight" style={{ color: '#003359' }}>Dashboard</h1>
         <p className="text-sm mt-1" style={{ color: 'rgba(0,51,89,0.45)' }}>
-          {isSuperAdmin ? 'Platform overview & analytics' : 'Overview of your simulation library'}
+          {showFullAnalytics ? 'Platform overview & analytics' : 'Overview of your simulation library'}
         </p>
       </div>
 
@@ -355,7 +534,7 @@ export default async function AdminPage() {
       )}
 
       {/* Stale pending alert (super admin) */}
-      {isSuperAdmin && stalePending.length > 0 && (
+      {showFullAnalytics && stalePending.length > 0 && (
         <div
           className="rounded-xl p-4 flex items-start gap-3"
           style={{ backgroundColor: '#fefce8', border: '1px solid #fde68a' }}
@@ -419,7 +598,7 @@ export default async function AdminPage() {
       )}
 
       {/* ── Super Admin analytics ──────────────────────────────────────────────── */}
-      {isSuperAdmin && (
+      {showFullAnalytics && (
         <>
           {/* Row: Certification health + Team composition */}
           <div className="grid grid-cols-2 gap-5">
@@ -718,7 +897,7 @@ export default async function AdminPage() {
       )}
 
       {/* ── Admin (non-super) dashboard ────────────────────────────────────────── */}
-      {!isSuperAdmin && (
+      {!showFullAnalytics && (
         <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 320px' }}>
           {/* Recently edited */}
           <SectionCard title="Recently Edited" action={{ href: '/admin/simulations', label: 'View all' }}>

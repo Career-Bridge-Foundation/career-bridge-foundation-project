@@ -12,6 +12,11 @@ const CERT_STYLE = {
 
 export const dynamic = 'force-dynamic'
 
+// Normalize discipline to a slug for comparison ("Product Management" ↔ "product-management")
+function normDisc(s: string | null | undefined): string {
+  return (s ?? '').toLowerCase().replace(/[\s&]+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-')
+}
+
 export default async function ReviewerPage() {
   const ctx = await getCurrentUserRole()
   if (!ctx || ctx.role !== 'reviewer') redirect('/auth/login?next=/reviewer')
@@ -21,14 +26,14 @@ export default async function ReviewerPage() {
     .from('reviewer_disciplines')
     .select('discipline')
     .eq('reviewer_id', ctx.userId)
-  const legacyDisciplines = new Set((disciplineRows ?? []).map(d => d.discipline))
+  const legacyDisciplines = new Set((disciplineRows ?? []).map(d => normDisc(d.discipline)))
 
   // Get granular assignments (discipline / industry / slug)
   const { data: assignmentRows } = await supabaseServer
     .from('reviewer_assignments')
     .select('discipline, industry, slug')
     .eq('reviewer_id', ctx.userId)
-  const assignedDisciplines = new Set((assignmentRows ?? []).map(a => a.discipline).filter(Boolean))
+  const assignedDisciplines = new Set((assignmentRows ?? []).map(a => normDisc(a.discipline)).filter(Boolean))
   const assignedIndustries  = new Set((assignmentRows ?? []).map(a => a.industry).filter(Boolean))
   const assignedSlugs       = new Set((assignmentRows ?? []).map(a => a.slug).filter(Boolean))
 
@@ -48,9 +53,10 @@ export default async function ReviewerPage() {
   // If they have no assignments at all, their queue is empty (admin must assign them first).
   const sims = hasAnyAssignment
     ? (allSims ?? []).filter(s => {
-        // Discipline match (legacy or new)
-        if (s.discipline && (legacyDisciplines.has(s.discipline) || assignedDisciplines.has(s.discipline))) return true
-        // Industry match (covers both classified and unclassified sims)
+        const simDisc = normDisc(s.discipline)
+        // Discipline match (legacy or new) — normalized to handle slug vs. title case mismatch
+        if (simDisc && (legacyDisciplines.has(simDisc) || assignedDisciplines.has(simDisc))) return true
+        // Industry match
         if (s.industry && assignedIndustries.has(s.industry)) return true
         // Direct slug assignment
         if (assignedSlugs.has(s.slug)) return true

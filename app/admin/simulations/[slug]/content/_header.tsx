@@ -5,9 +5,8 @@ import { useEditorStore } from '@/lib/stores/simulation-editor'
 import { SimulationContentSchema } from '@/lib/schemas/simulation'
 import { normalizeSimulationContent } from '@/lib/simulation-content-utils'
 import { Button } from '@/components/ui'
-import { ArrowLeft, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Save, Eye, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 
 interface EditorHeaderProps {
@@ -21,26 +20,20 @@ export function EditorHeader({ slug, title }: EditorHeaderProps) {
 
   const handleSave = async () => {
     if (!content || !isDirty) return
-
     setSaveStatus('saving')
     setErrorMessage(null)
     setIsSaving(true)
-
     try {
       const validated = SimulationContentSchema.parse(normalizeSimulationContent(content))
-      const payload = validated
-
       const response = await fetch(`/api/admin/simulations/${slug}/content`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(validated),
       })
-
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || 'Failed to save')
       }
-
       setSaveStatus('saved')
       toast.success('Content saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
@@ -65,72 +58,58 @@ export function EditorHeader({ slug, title }: EditorHeaderProps) {
   }
 
   return (
-    <div className="sticky top-0 z-40 bg-slate-900/10 backdrop-blur-sm border-b border-border px-8 py-4 mb-6 rounded-b-lg">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
-        {/* Left: breadcrumb */}
-        <div className="flex items-center gap-4">
+    <div
+      className="sticky top-0 z-40 bg-white border-b px-6 py-3"
+      style={{ borderColor: '#d5dce8', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: back + breadcrumb */}
+        <div className="flex items-center gap-3 min-w-0">
           <Link
-            href="/admin/simulations"
-            className="text-slate-500/60 hover:text-slate-900 transition-colors"
-            aria-label="Back to simulations"
+            href={`/admin/simulations/${slug}`}
+            className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-slate-100 transition-colors shrink-0"
+            style={{ color: 'rgba(0,51,89,0.5)' }}
+            aria-label="Back to simulation"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={15} />
           </Link>
-          <div>
-            <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
-            <p className="text-xs text-slate-800/50 font-mono">{slug}</p>
+          <div className="min-w-0">
+            <h1 className="text-sm font-semibold truncate" style={{ color: '#003359' }}>{title}</h1>
+            <p className="text-xs font-mono" style={{ color: 'rgba(0,51,89,0.4)' }}>{slug}</p>
           </div>
         </div>
 
-        {/* Right: status + actions */}
-        <div className="flex items-center gap-3">
-          <motion.div
-            key={saveStatus}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className={`text-sm px-3 py-1.5 rounded-full flex items-center gap-2 ${
-              saveStatus === 'error'
-                ? 'bg-red-950/40 text-red-300 border border-red-900/50'
-                : saveStatus === 'saving'
-                ? 'bg-accent/20 text-accent border border-accent/30'
-                : saveStatus === 'saved'
-                ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-900/50'
-                : isDirty
-                ? 'bg-white/10 text-slate-700/70 border border-white/20'
-                : 'bg-white/5 text-slate-700/50 border border-white/10'
-            }`}
-          >
+        {/* Right: save status + actions */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Save status indicator */}
+          <div className="flex items-center gap-1.5 text-xs">
             {saveStatus === 'saving' && (
               <>
-                <div className="inline-block animate-spin">●</div>
-                <span>Saving...</span>
+                <Loader2 size={12} className="animate-spin" style={{ color: '#0d9488' }} />
+                <span style={{ color: '#0d9488' }}>Saving…</span>
               </>
             )}
             {saveStatus === 'saved' && (
               <>
-                <span>✓</span>
-                <span>Saved</span>
+                <CheckCircle2 size={12} style={{ color: '#16a34a' }} />
+                <span style={{ color: '#16a34a' }}>Saved</span>
               </>
             )}
             {saveStatus === 'error' && (
               <>
-                <span>⚠</span>
-                <span>Error</span>
+                <AlertCircle size={12} style={{ color: '#e11d48' }} />
+                <span style={{ color: '#e11d48' }}>Error saving</span>
               </>
             )}
-            {isDirty && saveStatus !== 'saving' && saveStatus !== 'saved' && (
-              <span>Unsaved changes</span>
+            {saveStatus === 'idle' && isDirty && (
+              <span style={{ color: 'rgba(0,51,89,0.4)' }}>Unsaved changes</span>
             )}
-            {!isDirty && saveStatus === 'idle' && <span>All saved</span>}
-          </motion.div>
+            {saveStatus === 'idle' && !isDirty && (
+              <span style={{ color: 'rgba(0,51,89,0.3)' }}>All saved</span>
+            )}
+          </div>
 
-          <Button
-            onClick={handlePreview}
-            variant="secondary"
-            size="sm"
-            leftIcon={<Eye size={14} />}
-          >
+          <Button onClick={handlePreview} variant="secondary" size="sm" leftIcon={<Eye size={13} />}>
             Preview
           </Button>
 
@@ -139,7 +118,7 @@ export function EditorHeader({ slug, title }: EditorHeaderProps) {
             disabled={!isDirty || isSaving}
             variant="primary"
             size="sm"
-            leftIcon={<Save size={14} />}
+            leftIcon={<Save size={13} />}
           >
             Save
           </Button>
