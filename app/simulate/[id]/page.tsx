@@ -143,7 +143,7 @@ export default function SimulationExecutionPage() {
   }, [isEvaluating]);
 
   function handleSubmitClick() {
-    // Validate all tasks have content (text, uploaded file, or URL)
+    // Validate all tasks have content (text, uploaded file, or rationale)
     const incomplete = PROMPTS.some((_, i) => !isResponseComplete(sim.responses[i]));
     if (incomplete) {
       setValidationError("Please complete all tasks before submitting.");
@@ -173,16 +173,10 @@ export default function SimulationExecutionPage() {
       if (stepResp.file?.filePath) {
         attachments.push({ type: "file", path: stepResp.file.filePath });
       }
-      if (stepResp.url) {
-        attachments.push({ type: "url", url: stepResp.url });
-      }
       const evidence = sim.evidenceByTask[p.id];
       if (evidence) {
         for (const f of evidence.files) {
           if (f.filePath) attachments.push({ type: "file", path: f.filePath, isEvidence: true });
-        }
-        for (const u of evidence.urls) {
-          attachments.push({ type: "url", url: u, isEvidence: true });
         }
       }
       return {
@@ -382,13 +376,9 @@ export default function SimulationExecutionPage() {
             />
 
             <SupportingEvidence
-              taskId={prompt.id}
               uploadedFiles={sim.evidenceByTask[prompt.id]?.files ?? []}
-              attachedUrls={sim.evidenceByTask[prompt.id]?.urls ?? []}
               onFileSelect={(file) => sim.handleEvidenceFileSelect(file, prompt.id)}
               onFileRemove={(filePath) => sim.handleEvidenceFileRemove(filePath, prompt.id)}
-              onUrlAdd={(url) => sim.handleEvidenceUrlAdd(url, prompt.id)}
-              onUrlRemove={(url) => sim.handleEvidenceUrlRemove(url, prompt.id)}
               uploading={sim.evidenceUploading}
               uploadError={sim.evidenceUploadError}
             />

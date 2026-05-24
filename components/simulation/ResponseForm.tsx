@@ -7,15 +7,6 @@ function countWords(text: string): number {
   return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
 }
 
-function isValidUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 interface ResponseFormProps {
   prompt: Prompt;
   response: StepResponse;
@@ -63,8 +54,6 @@ export function ResponseForm({
   const mode = response.mode ?? "typed";
   const textValue = response.text ?? "";
   const rationaleValue = response.rationale ?? "";
-  const urlValue = response.url ?? "";
-
   const wc = countWords(textValue);
   const rwc = countWords(rationaleValue);
   const wcMet = wc >= prompt.minWords;

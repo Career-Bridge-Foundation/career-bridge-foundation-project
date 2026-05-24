@@ -16,6 +16,18 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // ─────────────────────────────────────────────────────────────────
 // const SYSTEM_PROMPT = `You are a professional assessment evaluator for Career Bridge Portfolio Simulations. ...`;
 
+/** Appended to every rubric so feedback matches the candidate's response language. */
+const LANGUAGE_MATCHING_INSTRUCTION = `
+LANGUAGE (required):
+- For each task, detect the primary language of the candidate's written response and substantive attachments. Evaluate content in that language.
+- Write all narrative feedback in that same language: per-task summary, each criterion's feedback, verdictDescription, strengths, and development areas. If tasks use different languages, match each task's feedback to that task's language.
+- Keep JSON property names unchanged. Keep these fields exactly in English as specified by the rubric: verdict (e.g. "Pass", "Distinction"), and each criterion level ("Weak", "Competent", "Strong"). Criterion names may stay in English if the rubric defines them in English.
+`.trim();
+
+function buildEvaluationSystemPrompt(rubricSystemPrompt: string): string {
+  return `${rubricSystemPrompt.trim()}\n\n${LANGUAGE_MATCHING_INSTRUCTION}`;
+}
+
 interface TaskAttachment {
   type: "file" | "url";
   path?: string;
@@ -423,7 +435,10 @@ export async function POST(request: NextRequest) {
 
   // Content blocks — Claude reads each natively (PDF/image) or as extracted text
   const contentBlocks: NativeBlock[] = [
-    { type: "text", text: `Please evaluate the following simulation responses:\n\n${taskText}` },
+    {
+      type: "text",
+      text: `Evaluate the following simulation responses. Detect each task's language and write scoring feedback in that language.\n\n${taskText}`,
+    },
   ];
 
   await appendAttachmentsToContentBlocks(
@@ -441,7 +456,7 @@ export async function POST(request: NextRequest) {
       // model: "claude-sonnet-4-6",
       // system: SYSTEM_PROMPT,
       model: rubric.model,
-      system: rubric.system_prompt,
+      system: buildEvaluationSystemPrompt(rubric.system_prompt),
       // ───────────────────────────────────────────────────────────
       max_tokens: 8192,
       messages: [
