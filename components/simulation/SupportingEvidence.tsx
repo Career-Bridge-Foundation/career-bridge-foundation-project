@@ -208,6 +208,18 @@ export function SupportingEvidence({
           <span className="text-xs font-medium text-[#888]">Attach a URL</span>
         </div>
 
+        {/* Public link warning */}
+        <div className="flex items-start gap-1.5 mb-2 px-2.5 py-2 bg-[#fffbeb] border border-[#f6d860]">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <p className="text-xs text-[#92400e] leading-snug">
+            Links must be <strong>publicly accessible</strong>. Private or login-protected pages cannot be read. Upload the file directly instead.
+          </p>
+        </div>
+
         <div className="flex gap-2">
           <input
             type="url"

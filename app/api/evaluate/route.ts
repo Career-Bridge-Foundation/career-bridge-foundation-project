@@ -86,23 +86,51 @@ async function fetchFileBlock(signedUrl: string, mime: string): Promise<NativeBl
 }
 
 async function fetchUrlBlock(url: string): Promise<NativeBlock | string> {
+  // Direct fetch first — handles plain PDFs without going through Jina
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) return `[URL: ${url} — could not be accessed (HTTP ${res.status})]`;
-    const contentType = res.headers.get("content-type") ?? "";
-    if (contentType.includes("application/pdf")) {
-      const data = Buffer.from(await res.arrayBuffer()).toString("base64");
-      return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
+    const directRes = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    if (directRes.ok) {
+      const contentType = directRes.headers.get("content-type") ?? "";
+      if (contentType.includes("application/pdf")) {
+        const data = Buffer.from(await directRes.arrayBuffer()).toString("base64");
+        return { type: "document", source: { type: "base64", media_type: "application/pdf", data } };
+      }
     }
-    if (contentType.includes("text/html") || contentType.includes("text/plain")) {
-      let text = await res.text();
-      text = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      if (text.length > 3000) text = text.slice(0, 3000) + "…";
+  } catch {
+    // fall through to Jina
+  }
+
+  // Jina Reader — extracts clean readable text from JS-rendered pages
+  // (Notion, Google Drive, Medium, etc.) — free tier, no API key needed
+  try {
+    const jinaRes = await fetch(`https://r.jina.ai/${url}`, {
+      signal: AbortSignal.timeout(20_000),
+      headers: { Accept: "text/plain" },
+    });
+
+    if (jinaRes.ok) {
+      let text = await jinaRes.text();
+      // Detect auth walls — Jina returns them as text but they contain no real content
+      const lower = text.toLowerCase();
+      const isAuthWall =
+        text.length < 500 ||
+        lower.includes("sign in") ||
+        lower.includes("log in") ||
+        lower.includes("access denied") ||
+        lower.includes("this page is private") ||
+        lower.includes("you need permission");
+
+      if (isAuthWall) {
+        return `[URL: ${url} — page is private or requires login. Share the link publicly so it can be read by the evaluator.]`;
+      }
+
+      if (text.length > 4000) text = text.slice(0, 4000) + "…";
       return `[Content from ${url}]:\n${text}`;
     }
-    return `[URL: ${url} — content type "${contentType}" cannot be read by the evaluator]`;
+
+    return `[URL: ${url} — could not be accessed (HTTP ${jinaRes.status}). Make sure the link is publicly shared.]`;
   } catch {
-    return `[URL: ${url} — could not be fetched]`;
+    return `[URL: ${url} — could not be fetched. Check the link is correct and publicly accessible.]`;
   }
 }
 
