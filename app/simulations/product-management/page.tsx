@@ -38,19 +38,21 @@ export default function ProductManagementPage() {
   const [industryFilter, setIndustryFilter] = useState("All");
 
   const [simsList, setSimsList] = useState<SimulationListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(()=>{
     async function load(){
       const supabase = createClient();
       const { data, error } = await supabase.from('simulations').select('*').order('display_order', { ascending: true });
-      
+
       if (error) {
         console.error("Error fetching simulations:", error);
         console.error("Error code:", error.code);
         console.error("Error message:", error.message);
       }
-      
+
       setSimsList(data ?? []);
+      setIsLoading(false);
     }
     load();
   },[])
@@ -121,11 +123,35 @@ export default function ProductManagementPage() {
       {/* ── SIMULATIONS GRID ────────────────────────────────── */}
       <section className="px-6 py-16 bg-grey-bg">
         <div className="max-w-6xl mx-auto">
-          <p className="text-xs font-medium uppercase text-[#999] tracking-brand-sm mb-8">
-            {filtered.length} simulation{filtered.length !== 1 ? "s" : ""} showing
-          </p>
+          {!isLoading && (
+            <p className="text-xs font-medium uppercase text-[#999] tracking-brand-sm mb-8">
+              {filtered.length} simulation{filtered.length !== 1 ? "s" : ""} showing
+            </p>
+          )}
 
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-border-light">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white p-8 flex flex-col gap-4 animate-pulse">
+                  <div className="flex gap-2 mb-1">
+                    <div className="h-4 w-20 bg-[#e8edf3] rounded-sm" />
+                    <div className="h-4 w-16 bg-[#e8edf3] rounded-sm" />
+                  </div>
+                  <div className="h-5 w-3/4 bg-[#dce3ec] rounded-sm" />
+                  <div className="h-4 w-1/2 bg-[#e8edf3] rounded-sm" />
+                  <div className="space-y-2 mt-1">
+                    <div className="h-3 w-full bg-[#eef1f5] rounded-sm" />
+                    <div className="h-3 w-5/6 bg-[#eef1f5] rounded-sm" />
+                    <div className="h-3 w-4/6 bg-[#eef1f5] rounded-sm" />
+                  </div>
+                  <div className="mt-auto pt-4 flex justify-between items-center">
+                    <div className="h-4 w-24 bg-[#e8edf3] rounded-sm" />
+                    <div className="h-8 w-28 bg-[#dce3ec] rounded-sm" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="py-20 text-center">
               <p className="text-base text-[#888]">No simulations match your filters.</p>
               <button
