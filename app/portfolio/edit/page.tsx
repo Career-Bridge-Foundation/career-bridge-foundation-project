@@ -14,6 +14,20 @@ const PAGE_BACKGROUND = `
   #FAFAFA
 `;
 
+type EvidenceItem = {
+  id:            string;
+  simulation_id: string;
+  session_id:    string | null;
+  title:         string;
+  description:   string | null;
+  evidence_type: 'image' | 'pdf' | 'document' | 'link';
+  file_url:      string | null;
+  external_url:  string | null;
+  is_visible:    boolean;
+  sort_order:    number;
+  uploaded_at:   string;
+};
+
 type EditableSimulation = {
   simulationSlug:   string;
   title:            string;
@@ -23,6 +37,7 @@ type EditableSimulation = {
   showOnPortfolio:  boolean;
   showScores:       boolean;
   showFeedback:     boolean;
+  evidence:         EvidenceItem[];
 };
 
 async function loadEditableSimulations(userId: string): Promise<EditableSimulation[]> {
@@ -34,6 +49,7 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
     { data: evals },
     { data: visibility },
     { data: simRows },
+    { data: evidenceRows },
   ] = await Promise.all([
     adminSupabase
       .from('simulation_sessions')
@@ -51,6 +67,11 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
     adminSupabase
       .from('simulations')
       .select('slug, title'),
+    adminSupabase
+      .from('portfolio_evidence')
+      .select('id, simulation_id, session_id, title, description, evidence_type, file_url, external_url, is_visible, sort_order, uploaded_at')
+      .eq('user_id', userId)
+      .order('sort_order', { ascending: true }),
   ]);
 
   const disciplineBySlug = new Map<string, string>();
@@ -78,6 +99,13 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
     evalsBySlug.set(e.simulation_slug, bucket);
   }
 
+  const evidenceBySlug = new Map<string, EvidenceItem[]>();
+  for (const row of evidenceRows ?? []) {
+    const bucket = evidenceBySlug.get(row.simulation_id) ?? [];
+    bucket.push(row as EvidenceItem);
+    evidenceBySlug.set(row.simulation_id, bucket);
+  }
+
   const slugs = Array.from(disciplineBySlug.keys());
   const out: EditableSimulation[] = [];
 
@@ -95,6 +123,7 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
       showOnPortfolio: vis?.showOnPortfolio ?? true,
       showScores:      vis?.showScores      ?? true,
       showFeedback:    vis?.showFeedback     ?? false,
+      evidence:        evidenceBySlug.get(slug) ?? [],
     });
   }
 
