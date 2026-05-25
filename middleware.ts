@@ -56,21 +56,15 @@ export async function middleware(request: NextRequest) {
 
   // ── Home page guard ──────────────────────────────────────────────────────
   // Unauthenticated → /auth/login
-  // Authenticated   → role-based: admins/reviewers stay on /, others go to /simulations
+  // Authenticated → all users can access home page
   if (pathname === '/') {
     const url = request.nextUrl.clone()
     if (!user) {
       url.pathname = '/auth/login'
       return NextResponse.redirect(url)
     }
-    const role = await getRole()
-    // Allow admins and reviewers to access the homepage
-    if (role === 'super_admin' || role === 'admin' || role === 'content_developer' || role === 'reviewer') {
-      return supabaseResponse
-    } else {
-      url.pathname = '/simulations'
-      return NextResponse.redirect(url)
-    }
+    // All authenticated users can access the home page
+    return supabaseResponse
   }
 
   // ── Reviewer isolation ───────────────────────────────────────────────────
@@ -117,7 +111,7 @@ export async function middleware(request: NextRequest) {
         })
       }
       const url = request.nextUrl.clone()
-      url.pathname = '/simulations'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }
