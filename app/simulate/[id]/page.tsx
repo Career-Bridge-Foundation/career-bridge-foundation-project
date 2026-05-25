@@ -14,7 +14,10 @@ import { RightSidebar } from "@/components/simulation/RightSidebar";
 import { TaskPrompt } from "@/components/simulation/TaskPrompt";
 import { ResponseForm } from "@/components/simulation/ResponseForm";
 import { SupportingEvidence } from "@/components/simulation/SupportingEvidence";
+import { SubmitConfirmationModal } from "@/components/simulation/SubmitConfirmationModal";
 import { ChatWidget } from "@/components/simulation/ChatWidget";
+import { collectSubmitWarnings } from "@/lib/simulation/submitWarnings";
+import type { SubmitWarning } from "@/lib/simulation/submitWarnings";
 import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
@@ -98,6 +101,7 @@ export default function SimulationExecutionPage() {
   const { submitForEvaluation, isSubmitting } = useEvaluation();
 
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitWarnings, setSubmitWarnings] = useState<SubmitWarning[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
@@ -151,6 +155,9 @@ export default function SimulationExecutionPage() {
     }
     setValidationError(null);
     setSubmitError(null);
+    setSubmitWarnings(
+      collectSubmitWarnings(PROMPTS, sim.responses, sim.evidenceByTask)
+    );
     setShowConfirm(true);
   }
 
@@ -443,42 +450,13 @@ export default function SimulationExecutionPage() {
 
       <ChatWidget prompt={prompt} />
 
-      {/* ── CONFIRMATION MODAL ──────────────────────────────── */}
-      {showConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-        >
-          <div
-            className="bg-white w-full max-w-sm p-8 flex flex-col gap-5"
-            style={{ borderRadius: "4px" }}
-          >
-            <p className="text-base font-semibold" style={{ color: "#003359" }}>
-              Ready to submit?
-            </p>
-            <p className="text-sm" style={{ color: "#555", lineHeight: 1.75 }}>
-              You won&apos;t be able to edit your responses after submission.
-              Make sure you&apos;re happy with all five tasks before continuing.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="text-sm font-medium px-5 py-2.5 border"
-                style={{ borderColor: "#003359", color: "#003359", backgroundColor: "#fff" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSubmit}
-                className="text-sm font-semibold px-5 py-2.5 text-white"
-                style={{ backgroundColor: "#003359" }}
-              >
-                Yes, Submit
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SubmitConfirmationModal
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleConfirmSubmit}
+        warnings={submitWarnings}
+        isSubmitting={isSubmitting || isEvaluating}
+      />
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
