@@ -263,7 +263,7 @@ export default function PortfolioSimulationsPage() {
                 </p>
               </div>
               <a
-                href="/simulations"
+                href="/portfolio-simulations/cyber-threat-intelligence"
                 className="btn-apply shrink-0 inline-flex items-center gap-2 text-xs font-medium uppercase px-7 py-3.5 whitespace-nowrap self-start"
               >
                 Explore the pathway
@@ -315,7 +315,7 @@ export default function PortfolioSimulationsPage() {
             available at a launch price.
           </p>
           <a
-            href="/simulations"
+            href="/portfolio-simulations/cyber-threat-intelligence"
             className="btn-hero-primary inline-flex items-center gap-2 text-xs font-medium uppercase px-8 py-4 mt-2"
           >
             Explore the Verified Cyber Threat Intelligence Work Portfolio

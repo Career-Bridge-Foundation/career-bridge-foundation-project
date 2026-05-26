@@ -29,7 +29,54 @@ const EVAL_MESSAGES = [
 ];
 
 // ── Access gate states ────────────────────────────────────────
-type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated";
+type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated" | "profile_incomplete";
+
+// ── Profile incomplete screen ─────────────────────────────────
+function ProfileIncompleteScreen() {
+  return (
+    <div className="min-h-screen bg-white flex flex-col">
+      <Header variant="solid" />
+      <div
+        className="flex-1 flex flex-col items-center justify-center gap-6 px-6 text-center"
+        style={{ paddingTop: "120px", paddingBottom: "80px" }}
+      >
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#003359"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+        </svg>
+        <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+          Complete your profile first
+        </h1>
+        <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
+          Add your name to your profile before starting a simulation. It takes less than a minute.
+        </p>
+        <a
+          href="/account/profile?onboarding=1"
+          className="text-sm font-semibold px-8 py-3.5 text-white"
+          style={{ backgroundColor: "#003359" }}
+        >
+          Complete Your Profile →
+        </a>
+        <a
+          href="/simulations"
+          className="text-sm font-medium"
+          style={{ color: "#003359" }}
+        >
+          Back to Simulations
+        </a>
+      </div>
+    </div>
+  );
+}
 
 // ── Paywall screen ────────────────────────────────────────────
 function PaywallScreen() {
@@ -117,6 +164,18 @@ export default function SimulationExecutionPage() {
 
       if (!user) {
         setAccessStatus("unauthenticated");
+        return;
+      }
+
+      // Profile gate: full_name must be set and not be the placeholder
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const name = profile?.full_name?.trim() ?? "";
+      if (!name || name === "Career Bridge Candidate") {
+        setAccessStatus("profile_incomplete");
         return;
       }
 
@@ -224,6 +283,10 @@ export default function SimulationExecutionPage() {
         <span className="text-sm text-gray-400">Loading…</span>
       </div>
     );
+  }
+
+  if (accessStatus === "profile_incomplete") {
+    return <ProfileIncompleteScreen />;
   }
 
   if (accessStatus === "denied") {

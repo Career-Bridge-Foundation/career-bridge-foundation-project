@@ -315,6 +315,44 @@ export interface ReviewerDiscipline {
   discipline: string
 }
 
+// ── debriefs ─────────────────────────────────────────────────
+
+export type DebriefStatus =
+  | 'pending'
+  | 'in_progress'
+  | 'pending_review'
+  | 'approved'
+  | 'discarded'
+  | 'failed'
+
+export interface DebriefQuestion {
+  question: string
+  rationale: string
+}
+
+export interface DebriefSummary {
+  approach: string
+  would_do_differently: string
+  what_learned: string
+}
+
+export interface Debrief {
+  id: string
+  user_id: string
+  session_id: string
+  evaluation_id: string | null
+  status: DebriefStatus
+  is_visible: boolean
+  vapi_call_id: string | null
+  questions_generated: DebriefQuestion[] | null
+  raw_transcript: string | null
+  structured_summary: DebriefSummary | null
+  candidate_edited_summary: DebriefSummary | null
+  approved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 // ── Database convenience type (for createClient<Database>()) ──
 
 export interface Database {
@@ -369,6 +407,11 @@ export interface Database {
         Row: Purchase
         Insert: PurchaseInsert
         Update: Partial<PurchaseInsert>
+      }
+      debriefs: {
+        Row: Debrief
+        Insert: Omit<Debrief, 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Omit<Debrief, 'id' | 'user_id' | 'session_id' | 'created_at' | 'updated_at'>>
       }
     }
   }

@@ -14,6 +14,8 @@ import {
 import { SIM, PROMPTS } from "@/lib/simulation-prompts";
 import { claimCredential } from "@/lib/certifier";
 import { createClient } from "@/lib/supabase/client";
+import { DebriefCard } from "@/components/debrief/DebriefCard";
+import { DebriefModal } from "@/components/debrief/DebriefModal";
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -825,6 +827,7 @@ export default function ResultsPage() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [debriefModalOpen, setDebriefModalOpen] = useState(false);
   const [credentialState, setCredentialState] = useState<"idle" | "claiming" | "claimed" | "error">("idle");
   const [credentialUrl, setCredentialUrl] = useState<string | null>(null);
   const [credentialError, setCredentialError] = useState<string | null>(null);
@@ -1198,6 +1201,12 @@ export default function ResultsPage() {
           ))}
         </div>
 
+        {/* ── DEBRIEF ───────────────────────────────────────────── */}
+        <DebriefCard
+          sessionId={sessionId}
+          onStartDebrief={() => setDebriefModalOpen(true)}
+        />
+
         {/* ── ACTIONS ───────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
           {result.credentialIssued ? (
@@ -1225,6 +1234,14 @@ export default function ResultsPage() {
       </main>
 
       <Footer />
+
+      {sessionId && (
+        <DebriefModal
+          open={debriefModalOpen}
+          sessionId={sessionId}
+          onClose={() => setDebriefModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 export function HeroSection() {
   const [user, setUser] = useState<User | null>(null);
   const [portfolioSlug, setPortfolioSlug] = useState<string | null>(null);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -20,6 +21,7 @@ export function HeroSection() {
   useEffect(() => {
     if (!user?.id) return;
     const supabase = createClient();
+
     supabase
       .from('portfolio_profiles')
       .select('slug')
@@ -27,6 +29,16 @@ export function HeroSection() {
       .maybeSingle()
       .then(({ data }) => {
         if (data?.slug) setPortfolioSlug(data.slug);
+      });
+
+    supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const name = data?.full_name?.trim() ?? '';
+        setProfileIncomplete(!name || name === 'Career Bridge Candidate');
       });
   }, [user?.id]);
 
@@ -38,6 +50,37 @@ export function HeroSection() {
       <div className="hero-dot-grid absolute inset-0 pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto w-full pt-24 pb-20">
+        {/* Profile incomplete banner */}
+        {user && profileIncomplete && (
+          <a
+            href="/account/profile?onboarding=1"
+            className="flex items-center gap-3 mb-8 px-4 py-3 border border-teal/40 bg-teal/10 hover:bg-teal/15 transition-colors group"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#0d9488"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span className="text-sm text-teal font-medium flex-1">
+              Complete your profile to start a simulation.
+            </span>
+            <span className="text-xs text-teal/70 font-medium uppercase tracking-brand-sm group-hover:text-teal transition-colors">
+              Set up now →
+            </span>
+          </a>
+        )}
+
         {/* Teal line + label */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-8 h-px bg-teal" />

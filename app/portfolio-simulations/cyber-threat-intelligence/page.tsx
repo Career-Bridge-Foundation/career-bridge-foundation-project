@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
@@ -167,8 +168,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function CtaButton({ className }: { className?: string }) {
   // TODO: wire to Stripe checkout once cti_founding PriceType is added to the DB and pricing lib
+  const router = useRouter();
+  
   function handleClick() {
-    window.location.href = "/auth/signup?redirect=/portfolio-simulations/cyber-threat-intelligence";
+    router.push("/auth/signup?redirect=/portfolio-simulations/cyber-threat-intelligence");
   }
   return (
     <button
