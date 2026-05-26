@@ -38,6 +38,8 @@ type EditableSimulation = {
   showScores:       boolean;
   showFeedback:     boolean;
   evidence:         EvidenceItem[];
+  debriefId:        string | null;
+  showDebrief:      boolean;
 };
 
 async function loadEditableSimulations(userId: string): Promise<EditableSimulation[]> {
@@ -50,6 +52,7 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
     { data: visibility },
     { data: simRows },
     { data: evidenceRows },
+    { data: debriefRows },
   ] = await Promise.all([
     adminSupabase
       .from('simulation_sessions')
@@ -72,6 +75,11 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
       .select('id, simulation_id, session_id, title, description, evidence_type, file_url, external_url, is_visible, sort_order, uploaded_at')
       .eq('user_id', userId)
       .order('sort_order', { ascending: true }),
+    adminSupabase
+      .from('debriefs')
+      .select('id, is_visible, simulation_sessions!inner(simulation_slug)')
+      .eq('user_id', userId)
+      .eq('status', 'approved'),
   ]);
 
   const disciplineBySlug = new Map<string, string>();
@@ -106,6 +114,14 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
     evidenceBySlug.set(row.simulation_id, bucket);
   }
 
+  const debriefBySlug = new Map<string, { id: string; is_visible: boolean }>();
+  for (const d of debriefRows ?? []) {
+    const raw = d.simulation_sessions as unknown;
+    const sessions = (Array.isArray(raw) ? raw[0] : raw) as { simulation_slug: string } | null;
+    const slug = sessions?.simulation_slug;
+    if (slug) debriefBySlug.set(slug, { id: d.id, is_visible: d.is_visible });
+  }
+
   const slugs = Array.from(disciplineBySlug.keys());
   const out: EditableSimulation[] = [];
 
@@ -124,6 +140,8 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
       showScores:      vis?.showScores      ?? true,
       showFeedback:    vis?.showFeedback     ?? false,
       evidence:        evidenceBySlug.get(slug) ?? [],
+      debriefId:       debriefBySlug.get(slug)?.id ?? null,
+      showDebrief:     debriefBySlug.get(slug)?.is_visible ?? true,
     });
   }
 
