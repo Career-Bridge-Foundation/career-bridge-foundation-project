@@ -63,7 +63,8 @@ export function ExpandableDetails({ sim }: { sim: SimulationOnPortfolio }) {
   const hasExpandable =
     (sim.showScores  && sim.overallScore !== null) ||
     (sim.showFeedback && !!sim.feedbackText)        ||
-    sim.evidence.length > 0;
+    sim.evidence.length > 0                         ||
+    !!sim.debrief;
 
   if (!hasExpandable) return null;
 
@@ -133,6 +134,29 @@ export function ExpandableDetails({ sim }: { sim: SimulationOnPortfolio }) {
                 {sim.evidence.map(item => (
                   <EvidenceThumb key={item.id} item={item} />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Candidate Reflection */}
+          {sim.debrief && (
+            <div style={{ borderTop: `1px solid ${BORDER}`, paddingTop: '20px' }}>
+              <p style={{ fontSize: '11px', color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '16px' }}>
+                Candidate&apos;s Reflection
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 600, color: NAVY, marginBottom: '4px' }}>Approach</p>
+                  <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.75 }}>{sim.debrief.approach}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 600, color: NAVY, marginBottom: '4px' }}>What I&apos;d Do Differently</p>
+                  <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.75 }}>{sim.debrief.would_do_differently}</p>
+                </div>
+                <div>
+                  <p style={{ fontSize: '11px', fontWeight: 600, color: NAVY, marginBottom: '4px' }}>What I Learned</p>
+                  <p style={{ fontSize: '14px', color: '#555', lineHeight: 1.75 }}>{sim.debrief.what_learned}</p>
+                </div>
               </div>
             </div>
           )}

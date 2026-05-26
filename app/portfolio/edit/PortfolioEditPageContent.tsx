@@ -64,6 +64,8 @@ export type EditableSimulation = {
   showScores:       boolean;
   showFeedback:     boolean;
   evidence:         EvidenceItem[];
+  debriefId:        string | null;
+  showDebrief:      boolean;
 };
 
 type Props = {
@@ -547,6 +549,10 @@ function SimulationCard({
     userSelect:     'none',
   };
 
+  const [showDebrief,        setShowDebrief]        = useState(sim.showDebrief);
+  const [debriefToggling,    setDebriefToggling]    = useState(false);
+  const [debriefToggleError, setDebriefToggleError] = useState<string | null>(null);
+
   const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
   const [evidence,           setEvidence]           = useState<EvidenceItem[]>(sim.evidence ?? []);
   const [evidenceError,      setEvidenceError]      = useState<string | null>(null);
@@ -563,6 +569,30 @@ function SimulationCard({
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
     };
   }, []);
+
+  async function handleToggleDebrief() {
+    if (!sim.debriefId || debriefToggling) return;
+    const next = !showDebrief;
+    setShowDebrief(next);
+    setDebriefToggling(true);
+    setDebriefToggleError(null);
+    try {
+      const res = await fetch(`/api/debrief/${sim.debriefId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ is_visible: next }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as { error?: string }).error ?? `Failed (${res.status})`);
+      }
+    } catch (err) {
+      setShowDebrief(!next);
+      setDebriefToggleError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setDebriefToggling(false);
+    }
+  }
 
   const atLimit = evidence.length >= MAX_EVIDENCE;
 
@@ -816,6 +846,22 @@ function SimulationCard({
               onChange={(e) => onChange({ showFeedback: e.target.checked })}
             />
           </label>
+          {sim.debriefId && (
+            <label style={{ ...toggleStyle, opacity: sim.showOnPortfolio && !debriefToggling ? 1 : 0.5 }}>
+              <span>Show reflection</span>
+              <input
+                type="checkbox"
+                checked={showDebrief}
+                disabled={!sim.showOnPortfolio || debriefToggling}
+                onChange={handleToggleDebrief}
+              />
+            </label>
+          )}
+          {debriefToggleError && (
+            <p style={{ fontSize: '11px', color: '#c0392b', margin: '2px 0 0' }}>
+              {debriefToggleError}
+            </p>
+          )}
         </div>
       </div>
 

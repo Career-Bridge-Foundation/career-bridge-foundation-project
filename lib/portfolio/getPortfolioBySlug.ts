@@ -46,6 +46,12 @@ export type EvidenceItem = {
   sort_order: number;
 };
 
+export type DebriefReflection = {
+  approach: string;
+  would_do_differently: string;
+  what_learned: string;
+};
+
 export type SimulationOnPortfolio = {
   simulationSlug: string;
   discipline: string;
@@ -61,6 +67,8 @@ export type SimulationOnPortfolio = {
   evidence: EvidenceItem[];
   showScores: boolean;
   showFeedback: boolean;
+  // null when no approved+visible debrief exists for this simulation
+  debrief: DebriefReflection | null;
 };
 
 export type PortfolioData = {
@@ -121,6 +129,7 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
     { data: evidenceRows },
     { data: visibilityRows },
     { data: sessionRows },
+    { data: debriefRows },
   ] = await Promise.all([
     supabase
       .from('profiles')
@@ -155,6 +164,13 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
       .select('simulation_slug, discipline')
       .eq('user_id', userId)
       .eq('status', 'evaluated'),
+
+    supabase
+      .from('debriefs')
+      .select('structured_summary, candidate_edited_summary, simulation_sessions!inner(simulation_slug)')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .eq('is_visible', true),
   ]);
 
   // ── Build lookup maps ─────────────────────────────────────────────
@@ -202,6 +218,16 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
     evidenceMap.set(e.simulation_id, bucket);
   }
 
+  const debriefMap = new Map<string, DebriefReflection>();
+  for (const d of debriefRows ?? []) {
+    const raw = d.simulation_sessions as unknown;
+    const sessions = (Array.isArray(raw) ? raw[0] : raw) as { simulation_slug: string } | null;
+    const slug = sessions?.simulation_slug;
+    if (!slug) continue;
+    const summary = (d.candidate_edited_summary ?? d.structured_summary) as DebriefReflection | null;
+    if (summary) debriefMap.set(slug, summary);
+  }
+
   // ── Group evaluation rows by simulation_slug ──────────────────────
   const resultsBySlug = new Map<string, typeof evalRows>();
   for (const r of evalRows ?? []) {
@@ -240,6 +266,7 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
       evidence:       evidenceMap.get(simSlug) ?? [],
       showScores,
       showFeedback,
+      debrief:        debriefMap.get(simSlug) ?? null,
     });
   }
 
