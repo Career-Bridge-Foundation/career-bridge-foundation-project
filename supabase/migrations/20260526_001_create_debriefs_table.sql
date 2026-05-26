@@ -78,7 +78,7 @@ CREATE POLICY "debriefs_public_read"
     AND is_visible = true
     AND EXISTS (
       SELECT 1 FROM public.portfolio_profiles pp
-      WHERE pp.candidate_user_id = debriefs.user_id
+      WHERE pp.user_id = debriefs.user_id
         AND pp.is_public = true
     )
   );
