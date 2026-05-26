@@ -75,17 +75,17 @@ export const PROMPTS: Prompt[] = [
   },
   {
     id: 5,
-    type: "url",
+    type: "either",
     title: "Strategic Summary",
     question:
-      "Using any tool of your choice, produce a one page strategic summary outlining your recommended approach, key assumptions, and the biggest risks you see at this stage. Share the link to your completed document below and explain your strategic choices in the rationale field.",
+      "Using any tool of your choice, produce a one page strategic summary outlining your recommended approach, key assumptions, and the biggest risks you see at this stage. Write your summary below or upload it as a PDF or Word document.",
     guidance: [
       "Keep it to one page maximum",
       "Be explicit about what you know versus what you are assuming",
       "Prioritise clarity over comprehensiveness",
       "Think about what a CEO needs to see to feel confident moving forward",
     ],
-    minWords: 100,
+    minWords: 150,
   },
 ];
 

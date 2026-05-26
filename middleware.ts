@@ -56,31 +56,24 @@ export async function middleware(request: NextRequest) {
 
   // ── Home page guard ──────────────────────────────────────────────────────
   // Unauthenticated → /auth/login
-  // Authenticated   → role-based dashboard
+  // Authenticated → all users can access home page
   if (pathname === '/') {
     const url = request.nextUrl.clone()
     if (!user) {
       url.pathname = '/auth/login'
       return NextResponse.redirect(url)
     }
-    const role = await getRole()
-    if (role === 'super_admin' || role === 'admin' || role === 'content_developer') {
-      url.pathname = '/admin'
-    } else if (role === 'reviewer') {
-      url.pathname = '/reviewer'
-    } else {
-      url.pathname = '/simulations'
-    }
-    return NextResponse.redirect(url)
+    // All authenticated users can access the home page
+    return supabaseResponse
   }
 
   // ── Reviewer isolation ───────────────────────────────────────────────────
-  // Reviewers must stay within /reviewer (and auth paths). Any other route
+  // Reviewers must stay within /reviewer (and auth paths, and homepage). Any other route
   // redirects them back to /reviewer.
   const isAuthPath = pathname.startsWith('/auth') || pathname.startsWith('/api/auth')
   const isPublicApiPath = pathname.startsWith('/api/') && !pathname.startsWith('/api/admin') && !pathname.startsWith('/api/reviewer')
 
-  if (user && !isReviewerPath && !isAuthPath && !isPublicApiPath) {
+  if (user && !isReviewerPath && pathname !== '/' && !isAuthPath && !isPublicApiPath) {
     const role = await getRole()
     if (role === 'reviewer') {
       const url = request.nextUrl.clone()
@@ -91,32 +84,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Admin / staff routes ─────────────────────────────────────────────────
-  if (isAdminPath) {
-    if (!user) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/auth/login'
-      return NextResponse.redirect(url)
-    }
-
-    const userRole = await getRole()
-
-    const isStaff =
-      userRole === 'admin' ||
-      userRole === 'super_admin' ||
-      userRole === 'content_developer'
-
-    if (!isStaff) {
-      if (pathname.startsWith('/api/')) {
-        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-      const url = request.nextUrl.clone()
-      url.pathname = '/simulations'
-      return NextResponse.redirect(url)
-    }
-  }
+  // Route guards disabled for admin/super_admin/content_developer roles
 
   // ── Reviewer routes ──────────────────────────────────────────────────────
   if (isReviewerPath) {
@@ -143,7 +111,7 @@ export async function middleware(request: NextRequest) {
         })
       }
       const url = request.nextUrl.clone()
-      url.pathname = '/simulations'
+      url.pathname = '/'
       return NextResponse.redirect(url)
     }
   }

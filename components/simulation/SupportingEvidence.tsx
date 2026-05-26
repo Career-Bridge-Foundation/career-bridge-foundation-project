@@ -13,40 +13,22 @@ const ACCEPTED_MIME_TYPES = [
   "application/csv",
 ];
 
-function isValidUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 interface SupportingEvidenceProps {
-  taskId: number;
   uploadedFiles: EvidenceFile[];
-  attachedUrls: string[];
   onFileSelect: (file: File) => Promise<void>;
   onFileRemove: (filePath: string) => void;
-  onUrlAdd: (url: string) => void;
-  onUrlRemove: (url: string) => void;
   uploading?: boolean;
   uploadError?: string | null;
 }
 
 export function SupportingEvidence({
   uploadedFiles,
-  attachedUrls,
   onFileSelect,
   onFileRemove,
-  onUrlAdd,
-  onUrlRemove,
   uploading = false,
   uploadError,
 }: SupportingEvidenceProps) {
   const [fileError, setFileError] = useState("");
-  const [urlInput, setUrlInput] = useState("");
-  const [urlError, setUrlError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,36 +53,24 @@ export function SupportingEvidence({
     }
   }
 
-  function addUrl() {
-    const trimmed = urlInput.trim();
-    if (!trimmed) return;
-    if (!isValidUrl(trimmed)) {
-      setUrlError("Please enter a valid URL starting with https://");
-      return;
-    }
-    if (attachedUrls.includes(trimmed)) {
-      setUrlError("This URL has already been added.");
-      return;
-    }
-    onUrlAdd(trimmed);
-    setUrlInput("");
-    setUrlError("");
-  }
-
   return (
     <div className="mb-8">
-      {/* Section header */}
       <div className="flex items-baseline gap-2 mb-4">
-        <span className="text-xs font-semibold uppercase text-navy tracking-brand-sm" style={{ fontSize: "11px" }}>
+        <span
+          className="text-xs font-semibold uppercase text-navy tracking-brand-sm"
+          style={{ fontSize: "11px" }}
+        >
           Supporting Evidence
         </span>
         <span className="text-xs text-[#aaa]">(optional)</span>
       </div>
 
-      {/* Drop zone */}
       <div
         className="mb-4"
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => {
           e.preventDefault();
@@ -114,22 +84,33 @@ export function SupportingEvidence({
             uploading
               ? "cursor-wait opacity-70 border-border-light bg-white"
               : dragOver
-              ? "cursor-pointer border-teal bg-teal/[0.04]"
-              : "cursor-pointer border-border-light bg-white"
+                ? "cursor-pointer border-teal bg-teal/[0.04]"
+                : "cursor-pointer border-border-light bg-white"
           }`}
         >
           {uploading ? (
             <svg
-              width="28" height="28" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               className="mb-2 stroke-teal animate-spin"
             >
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
             </svg>
           ) : (
             <svg
-              width="28" height="28" viewBox="0 0 24 24" fill="none"
-              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
               className={`mb-2 ${dragOver ? "stroke-teal" : "stroke-[#bbb]"}`}
             >
               <polyline points="16,16 12,12 8,16" />
@@ -138,7 +119,9 @@ export function SupportingEvidence({
             </svg>
           )}
           <p className="text-sm text-[#555]">
-            {uploading ? "Uploading…" : (
+            {uploading ? (
+              "Uploading…"
+            ) : (
               <>
                 Drag &amp; drop files here, or{" "}
                 <span className="underline text-link-blue">browse</span>
@@ -147,7 +130,7 @@ export function SupportingEvidence({
           </p>
           {!uploading && (
             <p className="text-xs text-[#bbb] mt-1.5">
-              PDF, PNG, JPG, GIF, WEBP, CSV — max 10MB each — up to 3 files
+              PDF, PNG, JPG, WEBP, CSV — max 10MB each — up to 3 files
             </p>
           )}
         </div>
@@ -166,24 +149,49 @@ export function SupportingEvidence({
         />
       </div>
 
-      {/* Errors */}
       {fileError && <p className="text-xs text-[#e53e3e] mb-2">{fileError}</p>}
-      {uploadError && <p className="text-xs text-[#e53e3e] mb-2">{uploadError}</p>}
+      {uploadError && (
+        <p className="text-xs text-[#e53e3e] mb-2">{uploadError}</p>
+      )}
 
-      {/* File chips — show uploaded files with their persisted paths */}
       {uploadedFiles.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2">
           {uploadedFiles.map((f, i) => (
-            <div key={f.filePath || i} className="flex items-center gap-2 px-3 py-1.5 text-xs bg-grey-bg text-navy">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <div
+              key={f.filePath || i}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-grey-bg text-navy"
+            >
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <path d="M13,2H6A2,2,0,0,0,4,4V20a2,2,0,0,0,2,2H18a2,2,0,0,0,2-2V9Z" />
                 <polyline points="13,2 13,9 20,9" />
               </svg>
               <span className="font-medium">{f.name}</span>
-              <span className="text-[#aaa]">({(f.size / 1024).toFixed(0)} KB)</span>
+              <span className="text-[#aaa]">
+                ({(f.size / 1024).toFixed(0)} KB)
+              </span>
               {f.filePath && (
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" className="text-teal">
-                  <polyline points="2,6 5,9 10,3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="text-teal"
+                >
+                  <polyline
+                    points="2,6 5,9 10,3"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
               <button
@@ -197,63 +205,6 @@ export function SupportingEvidence({
           ))}
         </div>
       )}
-
-      {/* URL attachment */}
-      <div>
-        <div className="flex items-center gap-1.5 mb-2">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round">
-            <path d="M10,13a5,5,0,0,0,7.54.54l3-3a5,5,0,0,0-7.07-7.07l-1.72,1.71" />
-            <path d="M14,11a5,5,0,0,0-7.54-.54l-3,3a5,5,0,0,0,7.07,7.07l1.71-1.71" />
-          </svg>
-          <span className="text-xs font-medium text-[#888]">Attach a URL</span>
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            type="url"
-            value={urlInput}
-            onChange={(e) => { setUrlInput(e.target.value); setUrlError(""); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); addUrl(); }
-            }}
-            placeholder="https://docs.google.com/..."
-            className="sim-input flex-1 px-3 py-2 text-sm text-[#333]"
-          />
-          <button
-            onClick={addUrl}
-            className="px-4 py-2 text-xs font-medium text-white bg-link-blue shrink-0"
-          >
-            Add
-          </button>
-        </div>
-
-        {urlError && <p className="text-xs text-[#e53e3e] mt-1">{urlError}</p>}
-
-        {/* URL chips */}
-        {attachedUrls.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {attachedUrls.map((url, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs bg-url-chip text-link-blue max-w-full"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M10,13a5,5,0,0,0,7.54.54l3-3a5,5,0,0,0-7.07-7.07l-1.72,1.71" />
-                  <path d="M14,11a5,5,0,0,0-7.54-.54l-3,3a5,5,0,0,0,7.07,7.07l1.71-1.71" />
-                </svg>
-                <span className="truncate max-w-[240px]">{url}</span>
-                <button
-                  onClick={() => onUrlRemove(url)}
-                  className="ml-1 font-bold text-[#6aabce] shrink-0"
-                  aria-label="Remove URL"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
