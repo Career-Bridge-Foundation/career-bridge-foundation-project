@@ -54,26 +54,41 @@ export async function middleware(request: NextRequest) {
     return resolvedRole as string
   }
 
+  // ── Public routes (no authentication required) ──────────────────────────
+  // Portfolio simulations routes are publicly accessible
+  const isPublicPortfolioSimulation = 
+    pathname === '/portfolio-simulations' || 
+    pathname.startsWith('/portfolio-simulations/cyber-threat-intelligence')
+  
+  if (isPublicPortfolioSimulation) {
+    return supabaseResponse
+  }
+
   // ── Home page guard ──────────────────────────────────────────────────────
   // Unauthenticated → /auth/login
-  // Authenticated → all users can access home page
+  // Reviewers → /reviewer (they have no business on the candidate home page)
+  // All other authenticated users → allowed
   if (pathname === '/') {
     const url = request.nextUrl.clone()
     if (!user) {
       url.pathname = '/auth/login'
       return NextResponse.redirect(url)
     }
-    // All authenticated users can access the home page
+    const role = await getRole()
+    if (role === 'reviewer') {
+      url.pathname = '/reviewer'
+      return NextResponse.redirect(url)
+    }
     return supabaseResponse
   }
 
   // ── Reviewer isolation ───────────────────────────────────────────────────
-  // Reviewers must stay within /reviewer (and auth paths, and homepage). Any other route
-  // redirects them back to /reviewer.
+  // Reviewers may only access /reviewer/** and /auth/** (for sign-in/out).
+  // Every other route — including public pages and non-reviewer APIs — redirects
+  // them back to /reviewer.
   const isAuthPath = pathname.startsWith('/auth') || pathname.startsWith('/api/auth')
-  const isPublicApiPath = pathname.startsWith('/api/') && !pathname.startsWith('/api/admin') && !pathname.startsWith('/api/reviewer')
 
-  if (user && !isReviewerPath && pathname !== '/' && !isAuthPath && !isPublicApiPath) {
+  if (user && !isReviewerPath && !isAuthPath) {
     const role = await getRole()
     if (role === 'reviewer') {
       const url = request.nextUrl.clone()

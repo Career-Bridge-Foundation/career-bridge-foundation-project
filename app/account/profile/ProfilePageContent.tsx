@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 
@@ -34,6 +35,9 @@ const inputClass =
 const labelClass = 'block text-xs font-semibold uppercase tracking-widest text-slate-500 mb-1.5'
 
 export function ProfilePageContent({ initial }: { initial: InitialData }) {
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === '1'
+
   const [fullName, setFullName] = useState(initial.full_name)
   const [headline, setHeadline] = useState(initial.headline)
   const [bio, setBio] = useState(initial.bio)
@@ -86,6 +90,38 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
       <Header variant="solid" />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+        {/* Onboarding welcome banner */}
+        {isOnboarding && (
+          <div
+            className="mb-8 rounded-xl px-5 py-4 flex items-start gap-4"
+            style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#16a34a"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0 mt-0.5"
+              aria-hidden="true"
+            >
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-emerald-800 mb-1">
+                Welcome to Career Bridge — one quick step before you start.
+              </p>
+              <p className="text-sm text-emerald-700 leading-relaxed">
+                Add your name below and save. That&apos;s all that&apos;s needed to unlock simulations.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Page header */}
         <div className="mb-8">
           <h1

@@ -8,6 +8,12 @@ function sanitizeNextPath(nextValue: string | null): string {
   return nextValue
 }
 
+function isProfileIncomplete(fullName: string | null | undefined): boolean {
+  if (!fullName) return true
+  const t = fullName.trim()
+  return t === '' || t === 'Career Bridge Candidate'
+}
+
 function getOrigin(request: NextRequest): string {
   const forwardedHost = request.headers.get('x-forwarded-host')
   if (forwardedHost) {
@@ -37,6 +43,17 @@ async function roleBasedRedirect(
   if (role === 'admin' || role === 'super_admin' || role === 'content_developer') {
     return `${origin}/admin`
   }
+
+  // Candidates: send incomplete profiles to onboarding before the dashboard
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle()
+  if (isProfileIncomplete(profile?.full_name)) {
+    return `${origin}/account/profile?onboarding=1`
+  }
+
   return `${origin}/`
 }
 
