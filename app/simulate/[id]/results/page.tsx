@@ -11,7 +11,7 @@ import {
   type EvaluationTask,
   type EvaluationCriterion,
 } from "@/hooks/useEvaluation";
-import { SIM, PROMPTS } from "@/lib/simulation-prompts";
+import { useSimulationContent } from "@/hooks/useSimulationContent";
 import { claimCredential } from "@/lib/certifier";
 import { createClient } from "@/lib/supabase/client";
 import { DebriefCard } from "@/components/debrief/DebriefCard";
@@ -219,7 +219,8 @@ function TaskCard({
 
 function EvaluatingScreen() {
   const messages = [
-    ...PROMPTS.map((p) => `Reviewing your ${p.title}…`),
+    "Reviewing your responses…",
+    "Assessing against the rubric…",
     "Compiling your assessment report…",
   ];
 
@@ -375,12 +376,12 @@ function ErrorScreen({ simulationId }: { simulationId: string }) {
 
 // ── Share section ─────────────────────────────────────────────────
 
-function ShareSection({ result, portfolioSlug }: { result: EvaluationResult; portfolioSlug: string | null }) {
+function ShareSection({ result, portfolioSlug, simTitle }: { result: EvaluationResult; portfolioSlug: string | null; simTitle: string }) {
   const [tooltip, setTooltip] = useState<string | null>(null);
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const verdictLabel = result.verdict === "Pass with Merit" ? "Merit" : result.verdict;
-  const shareText = `I just completed the Product Strategy simulation on @CareerBridgeHQ and achieved ${verdictLabel}! Prove your capability at`;
+  const shareText = `I just completed the ${simTitle} simulation on @CareerBridgeHQ and achieved ${verdictLabel}! Prove your capability at`;
 
   function showTooltip(msg: string) {
     setTooltip(msg);
@@ -760,7 +761,7 @@ function CredentialCard({
       <div className="px-6 py-5 flex flex-col gap-1.5">
         <p className="text-xl font-bold" style={{ color: NAVY }}>{recipientName || "Candidate"}</p>
         <p className="text-sm font-semibold" style={{ color: TEAL }}>
-          {simulationTitle.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+          {simulationTitle}
         </p>
         <p className="text-sm font-semibold" style={{ color: TEAL }}>{verdictBand}</p>
         <p className="text-xs mt-0.5" style={{ color: "#aaa" }}>Issued {issueDate}</p>
@@ -821,6 +822,10 @@ export default function ResultsPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const simulationId = params?.id ?? "product-strategy";
+  const content = useSimulationContent(simulationId);
+  const simTitle = content.sim?.title ?? "";
+  const simCompany = content.sim?.company ?? "";
+  const simIndustry = content.sim?.industry ?? "";
   const sessionId = searchParams?.get("session_id") ?? null;
   const submissionWarning = searchParams?.get("warning") ?? null;
 
@@ -1012,10 +1017,10 @@ export default function ResultsPage() {
           {/* 1. Simulation identity */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-1" style={{ color: NAVY }}>
-              {SIM.title}
+              {simTitle}
             </h1>
             <p className="text-sm" style={{ color: "#aaa" }}>
-              {SIM.company} · {SIM.industry}
+              {simCompany} · {simIndustry}
             </p>
             <div className="mt-6 h-px" style={{ backgroundColor: BORDER }} />
           </div>
@@ -1085,7 +1090,7 @@ export default function ResultsPage() {
               credentialUrl={credentialUrl}
               imageUrl={credentialImageUrl}
               recipientName={recipientName}
-              simulationTitle={SIM.title}
+              simulationTitle={simTitle}
               verdictBand={result.verdict === "Pass with Merit" ? "Merit" : result.verdict}
               issueDate={issueDate}
             />
@@ -1109,7 +1114,7 @@ export default function ResultsPage() {
                 </svg>
                 <div className="flex-1">
                   <p className="text-sm font-semibold mb-2" style={{ color: NAVY }}>
-                    Portfolio Verification: {SIM.title} — {SIM.industry}
+                    Portfolio Verification: {simTitle} — {simIndustry}
                   </p>
                   {result.credentialIssued ? (
                     <>
@@ -1210,7 +1215,7 @@ export default function ResultsPage() {
         {/* ── ACTIONS ───────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
           {result.credentialIssued ? (
-            <ShareSection result={result} portfolioSlug={portfolioSlug} />
+            <ShareSection result={result} portfolioSlug={portfolioSlug} simTitle={simTitle} />
           ) : (
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <a
