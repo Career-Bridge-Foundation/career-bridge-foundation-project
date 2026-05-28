@@ -22,7 +22,9 @@ export const disciplines: Discipline[] = [
     name: "Cyber Security",
     description:
       "Simulations aligned to the UK Cyber Security Council Career Framework and verified by expert consultants. Build credible evidence for roles across the cyber security sector.",
-    status: "coming-soon",
+    status: "available",
+    count: "Foundation to Advanced",
+    href: "/simulations/cyber-security",
   },
   {
     id: 4,
