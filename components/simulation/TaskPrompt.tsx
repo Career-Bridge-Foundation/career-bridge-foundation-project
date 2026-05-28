@@ -1,6 +1,5 @@
 "use client";
 
-import { SIM, BRIEF_SHORT, BRIEF_FULL, VIDEO_TRANSCRIPT } from "@/lib/simulation-prompts";
 import type { Prompt } from "@/types";
 
 interface TaskPromptProps {
@@ -12,6 +11,10 @@ interface TaskPromptProps {
   onToggleTranscript: () => void;
   muted: boolean;
   onToggleMute: () => void;
+  sim: { title: string; company: string; industry: string; role: string } | null;
+  briefShort: string;
+  briefFull: string;
+  transcript: string;
   videoUrl?: string | null;
 }
 
@@ -24,6 +27,10 @@ export function TaskPrompt({
   onToggleTranscript,
   muted,
   onToggleMute,
+  sim,
+  briefShort,
+  briefFull,
+  transcript,
   videoUrl,
 }: TaskPromptProps) {
   return (
@@ -35,10 +42,10 @@ export function TaskPrompt({
             Simulation Context
           </span>
           <p className="text-sm font-bold text-navy mb-2">
-            {SIM.role} · {SIM.company}
+            {sim?.role} · {sim?.company}
           </p>
           <p className="text-sm text-[#555] leading-[1.75]">
-            {briefExpanded ? BRIEF_FULL : BRIEF_SHORT}
+            {briefExpanded ? briefFull : briefShort}
           </p>
           <button
             onClick={onToggleBrief}
@@ -67,8 +74,7 @@ export function TaskPrompt({
                   <polygon points="5,3 19,12 5,21" />
                 </svg>
               </div>
-              <p className="text-sm text-white/60">Video briefing · {SIM.company}</p>
-              <p className="text-xs mt-1 text-white/35">From Sarah Chen, Head of Product</p>
+              <p className="text-sm text-white/60">Video briefing · {sim?.company}</p>
             </div>
           </div>
         )}
@@ -95,7 +101,7 @@ export function TaskPrompt({
               <span className="text-xs font-semibold uppercase text-[#bbb] tracking-brand-sm block mb-2">
                 Transcript
               </span>
-              <p className="text-xs text-[#777] leading-[1.8]">{VIDEO_TRANSCRIPT}</p>
+              <p className="text-xs text-[#777] leading-[1.8]">{transcript}</p>
             </div>
           )}
         </div>

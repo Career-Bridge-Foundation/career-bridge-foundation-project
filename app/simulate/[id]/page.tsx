@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { PROMPTS, TIME_REMAINING } from "@/lib/simulation-prompts";
+import { useSimulationContent } from "@/hooks/useSimulationContent";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useEvaluation } from "@/hooks/useEvaluation";
 import { Header } from "@/components/layout/Header";
@@ -21,12 +21,6 @@ import type { SubmitWarning } from "@/lib/simulation/submitWarnings";
 import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
-
-// ── Evaluation cycling messages ───────────────────────────────
-const EVAL_MESSAGES = [
-  ...PROMPTS.map((p, i) => `Reviewing Task ${i + 1}: ${p.title}…`),
-  "Compiling your verdict…",
-];
 
 // ── Access gate states ────────────────────────────────────────
 type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated" | "profile_incomplete";
@@ -142,9 +136,12 @@ function isResponseComplete(resp: StepResponse | undefined): boolean {
 export default function SimulationExecutionPage() {
   const params = useParams<{ id: string }>();
   const simulationId = params?.id ?? "product-strategy";
+  const content = useSimulationContent(simulationId);
+  const prompts = content.prompts;
+  const timeRemaining = content.timeRemaining;
   const router = useRouter();
 
-  const sim = useSimulation(simulationId);
+  const sim = useSimulation(simulationId, content.discipline ?? "Product Management");
   const { submitForEvaluation, isSubmitting } = useEvaluation();
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -155,6 +152,11 @@ export default function SimulationExecutionPage() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evalMsgIndex, setEvalMsgIndex] = useState(0);
   const [evalVisible, setEvalVisible] = useState(true);
+
+  const EVAL_MESSAGES = [
+    ...prompts.map((p, i) => `Reviewing Task ${i + 1}: ${p.title}…`),
+    "Compiling your verdict…",
+  ];
 
   // ── Access check on mount ────────────────────────────────────
   useEffect(() => {
@@ -207,7 +209,7 @@ export default function SimulationExecutionPage() {
 
   function handleSubmitClick() {
     // Validate all tasks have content (text, uploaded file, or rationale)
-    const incomplete = PROMPTS.some((_, i) => !isResponseComplete(sim.responses[i]));
+    const incomplete = prompts.some((_, i) => !isResponseComplete(sim.responses[i]));
     if (incomplete) {
       setValidationError("Please complete all tasks before submitting.");
       return;
@@ -215,7 +217,7 @@ export default function SimulationExecutionPage() {
     setValidationError(null);
     setSubmitError(null);
     setSubmitWarnings(
-      collectSubmitWarnings(PROMPTS, sim.responses, sim.evidenceByTask)
+      collectSubmitWarnings(prompts, sim.responses, sim.evidenceByTask)
     );
     setShowConfirm(true);
   }
@@ -233,7 +235,7 @@ export default function SimulationExecutionPage() {
       console.warn("[simulate] Credit consume returned", consumeRes.status);
     }
 
-    const responses = PROMPTS.map((p, i) => {
+    const responses = prompts.map((p, i) => {
       const stepResp = sim.responses[i] ?? {};
       const attachments: import("@/hooks/useEvaluation").TaskAttachment[] = [];
       if (stepResp.file?.filePath) {
@@ -267,7 +269,6 @@ export default function SimulationExecutionPage() {
     }
   }
 
-  const prompt = PROMPTS[sim.currentStep];
   const response = sim.responses[sim.currentStep] ?? {};
 
   // ── Access gate ───────────────────────────────────────────────
@@ -291,6 +292,38 @@ export default function SimulationExecutionPage() {
 
   if (accessStatus === "denied") {
     return <PaywallScreen />;
+  }
+
+  if (content.loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <span className="text-sm text-gray-400">Loading…</span>
+      </div>
+    );
+  }
+
+  if (content.notFound || prompts.length === 0) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header variant="solid" />
+        <div
+          className="flex-1 flex flex-col items-center justify-center gap-6 px-6 text-center"
+          style={{ paddingTop: "120px", paddingBottom: "80px" }}
+        >
+          <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+            Simulation not found.
+          </h1>
+          <a
+            href="/simulations"
+            className="text-sm font-medium"
+            style={{ color: "#003359" }}
+          >
+            Back to Simulations
+          </a>
+        </div>
+        <Footer />
+      </div>
+    );
   }
 
   // ── Evaluating state: Header + card + Footer, no overlay ──────
@@ -367,6 +400,8 @@ export default function SimulationExecutionPage() {
     );
   }
 
+  const prompt = prompts[sim.currentStep];
+
   return (
     <div className="min-h-screen bg-white">
       <Header variant="solid" />
@@ -375,16 +410,16 @@ export default function SimulationExecutionPage() {
       <div className="lg:hidden fixed z-40 left-0 right-0 top-[73px] bg-white px-5 py-3 border-b border-border-light">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-medium text-navy">
-            Task {sim.currentStep + 1} of 5 · {prompt.title}
+            Task {sim.currentStep + 1} of {prompts.length} · {prompt.title}
           </span>
           <span className="text-xs text-[#999]">
-            ~{TIME_REMAINING[sim.currentStep]} mins left
+            ~{timeRemaining[sim.currentStep]} mins left
           </span>
         </div>
         <div className="w-full h-1 rounded-full bg-border-light">
           <div
             className="h-1 rounded-full bg-teal transition-all duration-300"
-            style={{ width: `${((sim.currentStep + 1) / 5) * 100}%` }}
+            style={{ width: `${((sim.currentStep + 1) / prompts.length) * 100}%` }}
           />
         </div>
       </div>
@@ -395,6 +430,8 @@ export default function SimulationExecutionPage() {
         <LeftSidebar
           currentStep={sim.currentStep}
           lastSavedText={sim.lastSavedText}
+          sim={content.sim}
+          prompts={prompts}
         />
 
         {/* ── MAIN CONTENT ────────────────────────────────────── */}
@@ -403,7 +440,7 @@ export default function SimulationExecutionPage() {
 
             {/* Top bar */}
             <div className="flex items-center justify-between mb-7">
-              <span className="text-xs text-[#999]">Task {sim.currentStep + 1} of 5</span>
+              <span className="text-xs text-[#999]">Task {sim.currentStep + 1} of {prompts.length}</span>
               <div className="flex items-center gap-3">
                 {sim.saveStatus === "saving" && (
                   <span className="text-xs italic text-[#bbb]">Saving…</span>
@@ -434,6 +471,11 @@ export default function SimulationExecutionPage() {
               onToggleTranscript={() => sim.setTranscriptOpen(!sim.transcriptOpen)}
               muted={sim.muted}
               onToggleMute={() => sim.setMuted(!sim.muted)}
+              sim={content.sim}
+              briefShort={content.briefShort}
+              briefFull={content.briefFull}
+              transcript={content.transcript}
+              videoUrl={content.videoUrl}
             />
 
             <ResponseForm
@@ -478,15 +520,15 @@ export default function SimulationExecutionPage() {
                   )}
                 </div>
                 <button
-                  onClick={sim.currentStep < 4 ? sim.goNext : handleSubmitClick}
+                  onClick={sim.currentStep < prompts.length - 1 ? sim.goNext : handleSubmitClick}
                   disabled={isSubmitting || isEvaluating}
                   className={cn(
                     "text-sm font-semibold px-7 py-3 text-white flex items-center gap-2",
-                    sim.currentStep === 4 ? "bg-teal text-[0.9375rem]" : "bg-navy",
+                    sim.currentStep === prompts.length - 1 ? "bg-teal text-[0.9375rem]" : "bg-navy",
                     (isSubmitting || isEvaluating) && "opacity-70 cursor-not-allowed"
                   )}
                 >
-                  {sim.currentStep === 4 && isSubmitting ? (
+                  {sim.currentStep === prompts.length - 1 && isSubmitting ? (
                     <>
                       <svg
                         width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -498,7 +540,7 @@ export default function SimulationExecutionPage() {
                       Submitting...
                     </>
                   ) : (
-                    sim.currentStep < 4 ? "Save and Continue →" : "Submit Simulation →"
+                    sim.currentStep < prompts.length - 1 ? "Save and Continue →" : "Submit Simulation →"
                   )}
                 </button>
               </div>
@@ -507,7 +549,7 @@ export default function SimulationExecutionPage() {
           </div>
         </main>
 
-        <RightSidebar prompt={prompt} currentStep={sim.currentStep} />
+        <RightSidebar prompt={prompt} currentStep={sim.currentStep} timeRemaining={timeRemaining} />
 
       </div>
 
