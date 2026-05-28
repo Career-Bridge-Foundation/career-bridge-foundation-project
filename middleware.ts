@@ -54,16 +54,6 @@ export async function middleware(request: NextRequest) {
     return resolvedRole as string
   }
 
-  // ── Public routes (no authentication required) ──────────────────────────
-  // Portfolio simulations routes are publicly accessible
-  const isPublicPortfolioSimulation = 
-    pathname === '/portfolio-simulations' || 
-    pathname.startsWith('/portfolio-simulations/cyber-threat-intelligence')
-  
-  if (isPublicPortfolioSimulation) {
-    return supabaseResponse
-  }
-
   // ── Home page guard ──────────────────────────────────────────────────────
   // Unauthenticated → /auth/login
   // Reviewers → /reviewer (they have no business on the candidate home page)
