@@ -15,7 +15,7 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
   function handleStart() {
     if (hasAccess === null) return;
     router.push(hasAccess
-      ? `/simulations/product-management/${sim.slug}`
+      ? `/simulations/${sim.discipline}/${sim.slug}`
       : "/pricing"
     );
   }

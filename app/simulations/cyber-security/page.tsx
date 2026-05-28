@@ -20,7 +20,7 @@ type SimulationListItem = {
   description: string;
 };
 
-export default function ProductManagementPage() {
+export default function CyberSecurityPage() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
@@ -46,7 +46,7 @@ export default function ProductManagementPage() {
       const { data, error } = await supabase
         .from('simulations')
         .select('*')
-        .eq('discipline', 'product-management')
+        .eq('discipline', 'cyber-security')
         .eq('status', 'published')
         .order('display_order', { ascending: true });
 
@@ -90,17 +90,16 @@ export default function ProductManagementPage() {
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-px bg-teal" />
             <span className="text-xs font-medium uppercase text-teal tracking-brand-xl">
-              Product Management
+              Cyber Security
             </span>
           </div>
           <h1 className="font-bold text-white text-[clamp(2rem,4vw,3.25rem)] leading-hero mb-5">
-            Build Your Product Management Portfolio
+            Build Your Cyber Security Portfolio
           </h1>
           <p className="text-base font-light text-white/70 leading-[1.75] mb-8 max-w-xl">
-            Browse multiple Product Management workplace simulations, each designed around real
-            industry scenarios and verified by experienced practitioners and product managers.
-            Filter by scenario type, difficulty, or industry and start building evidence of your
-            capability today.
+            Browse realistic cyber security workplace simulations, each built around real-world
+            threat scenarios and verified by experienced practitioners. Filter by scenario type,
+            difficulty, or industry and start building evidence of your capability today.
           </p>
           <div className="flex flex-wrap gap-3">
             <span className="text-xs font-medium uppercase px-4 py-2 border border-teal text-teal tracking-brand-sm">

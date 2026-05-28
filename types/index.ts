@@ -10,6 +10,7 @@ export interface Simulation {
   difficulty: "Foundation" | "Practitioner" | "Advanced";
   time: string;
   description: string;
+  discipline?: string;
 }
 
 // ── Disciplines ──────────────────────────────────────────
