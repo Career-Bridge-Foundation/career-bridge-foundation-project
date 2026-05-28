@@ -188,6 +188,13 @@ export default function SimulationExecutionPage() {
     checkAccess().catch(() => setAccessStatus("unauthenticated"));
   }, []);
 
+  // ── Redirect unauthenticated users (side effect, not during render) ──
+  useEffect(() => {
+    if (accessStatus === "unauthenticated") {
+      router.replace(`/auth/login?redirect=/simulate/${simulationId}`);
+    }
+  }, [accessStatus, simulationId, router]);
+
   // ── Evaluation message cycling ────────────────────────────────
   useEffect(() => {
     if (!isEvaluating) return;
@@ -273,8 +280,6 @@ export default function SimulationExecutionPage() {
 
   // ── Access gate ───────────────────────────────────────────────
   if (accessStatus === "unauthenticated") {
-    // Redirect to login; preserve the current URL as the redirect target
-    router.replace(`/auth/login?redirect=/simulate/${simulationId}`);
     return null;
   }
 
