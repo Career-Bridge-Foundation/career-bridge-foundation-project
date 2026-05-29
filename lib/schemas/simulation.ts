@@ -41,7 +41,7 @@ export const GuidanceBulletSchema = z
   .max(200, 'Guidance must be 200 characters or less')
 
 export const PromptSchema = z.object({
-  id: z.union([z.string().uuid(), z.string()]).optional(),
+  id: z.union([z.string().uuid(), z.string()]),
   type: z.enum(['typed', 'url', 'either']),
   title: z.string().min(1, 'Title is required').max(200),
   question: z.string().min(1, 'Question is required').max(2000),
@@ -49,6 +49,14 @@ export const PromptSchema = z.object({
   minWords: z.number().int().min(0).max(5000),
   timeRemainingMinutes: z.number().int().min(1).max(180).optional(),
 })
+
+// Import-side variant: id is optional because new simulations get DB-assigned UUIDs.
+// The editor and runner use PromptSchema (id required).
+export const PromptImportSchema = PromptSchema.extend({
+  id: z.union([z.string().uuid(), z.string()]).optional(),
+})
+
+export type PromptImport = z.infer<typeof PromptImportSchema>
 
 export type Prompt = z.infer<typeof PromptSchema>
 
@@ -102,6 +110,7 @@ const SimulationImportRowSchema = SimulationExportRowSchema.extend({
   description: z.string().max(280).nullable().optional(),
   discipline:  z.string().max(80).nullable().optional(),
   video_url:   z.string().url('Enter a valid URL').or(z.literal('')).nullable().optional(),
+  prompts:     z.array(PromptImportSchema).optional(),
   rubric:      RubricImportSchema.optional(),
 })
 
