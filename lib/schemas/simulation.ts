@@ -41,15 +41,28 @@ export const GuidanceBulletSchema = z
   .max(200, 'Guidance must be 200 characters or less')
 
 export const PromptSchema = z.object({
-  id: z.union([z.string().uuid(), z.string()]),
+  id: z.union([z.string().uuid(), z.string()]).optional(),
   type: z.enum(['typed', 'url', 'either']),
   title: z.string().min(1, 'Title is required').max(200),
   question: z.string().min(1, 'Question is required').max(2000),
   guidance: z.array(GuidanceBulletSchema).min(0).max(20),
   minWords: z.number().int().min(0).max(5000),
+  timeRemainingMinutes: z.number().int().min(1).max(180).optional(),
 })
 
 export type Prompt = z.infer<typeof PromptSchema>
+
+export const RubricImportSchema = z.object({
+  systemPrompt: z.string().min(1, 'Rubric system_prompt is required'),
+  criteria: z.unknown(),
+  maxScore: z.number().int().min(1),
+  scoringScale: z.unknown(),
+  verdictBands: z.unknown(),
+  model: z.string().default('claude-sonnet-4-6'),
+  outputInstructions: z.string().nullable().optional(),
+})
+
+export type RubricImport = z.infer<typeof RubricImportSchema>
 
 export const SimulationContentSchema = z
   .object({
@@ -71,7 +84,7 @@ export type SimulationContent = z.infer<typeof SimulationContentSchema>
 // ── Import/Export ─────────────────────────────────────────────────────────────
 
 export const SimulationExportRowSchema = SimulationMetadataSchema.extend({
-  id: z.string().uuid(),
+  id: z.string().uuid().optional(),
   published_at: z.string().nullable().optional(),
   sim_role: z.string().nullable().optional(),
   brief_short: z.string().nullable().optional(),
@@ -89,6 +102,7 @@ const SimulationImportRowSchema = SimulationExportRowSchema.extend({
   description: z.string().max(280).nullable().optional(),
   discipline:  z.string().max(80).nullable().optional(),
   video_url:   z.string().url('Enter a valid URL').or(z.literal('')).nullable().optional(),
+  rubric:      RubricImportSchema.optional(),
 })
 
 export const SimulationImportSchema = z.object({
