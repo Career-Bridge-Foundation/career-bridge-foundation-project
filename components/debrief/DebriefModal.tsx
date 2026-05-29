@@ -539,6 +539,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
   } | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vapiCallIdRef = useRef<string | null>(null);
+  const callEndedCleanlyRef = useRef(false);
 
   // Initialise VAPI once on mount
   useEffect(() => {
@@ -547,6 +548,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
       vapiRef.current = vapi as typeof vapiRef.current;
 
       vapi.on("call-start", (...args: unknown[]) => {
+        callEndedCleanlyRef.current = false;
         const call = args[0];
         const callId = (call as { id?: string } | null)?.id ?? null;
         if (callId) vapiCallIdRef.current = callId;
@@ -559,6 +561,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
       });
 
       vapi.on("call-end", () => {
+        callEndedCleanlyRef.current = true;
         if (callTimerRef.current) clearInterval(callTimerRef.current);
         setCallDuration(0);
         setIsAiSpeaking(false);
@@ -569,6 +572,8 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
       vapi.on("speech-end", () => setIsAiSpeaking(false));
 
       vapi.on("error", () => {
+        // VAPI fires an error as part of normal call teardown — ignore it
+        if (callEndedCleanlyRef.current) return;
         if (callTimerRef.current) clearInterval(callTimerRef.current);
         setError(
           "The voice call encountered an error. Please check your microphone and try again."
