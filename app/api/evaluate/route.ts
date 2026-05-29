@@ -486,6 +486,13 @@ export async function POST(request: NextRequest) {
       );
     }
     rawContent = block.text;
+    console.log("[evaluate] Claude returned:", {
+      session_id,
+      simulation_slug,
+      length: rawContent.length,
+      preview_start: rawContent.slice(0, 300),
+      preview_end: rawContent.slice(-300),
+    });
   } catch (err) {
     console.error("[evaluate] Claude API call failed:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -503,6 +510,14 @@ export async function POST(request: NextRequest) {
       .replace(/\s*```\s*$/i, "")
       .trim();
     evaluation = JSON.parse(jsonStr);
+    console.log("[evaluate] JSON parsed:", {
+      session_id,
+      simulation_slug,
+      top_level_keys: Object.keys(evaluation),
+      has_verdict: evaluation.verdict != null,
+      has_tasks: Array.isArray(evaluation.tasks),
+      task_count: Array.isArray(evaluation.tasks) ? evaluation.tasks.length : null,
+    });
   } catch {
     return new Response(
       JSON.stringify({ error: "Failed to parse evaluation JSON", raw: rawContent }),
@@ -544,6 +559,7 @@ export async function POST(request: NextRequest) {
         }))
       );
 
+      console.log("[evaluate] attempting upsert:", { session_id, simulation_slug, rubric_id: rubric.id });
       const { error: evaluationWriteError } = await supabase.from("evaluation_results").upsert(
         {
           session_id,
