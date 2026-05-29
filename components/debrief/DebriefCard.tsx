@@ -9,10 +9,11 @@ const BORDER = "#D5DCE8";
 interface DebriefCardProps {
   sessionId: string | null;
   onStartDebrief: () => void;
+  passed: boolean;
 }
 
-export function DebriefCard({ sessionId, onStartDebrief }: DebriefCardProps) {
-  if (!sessionId) return null;
+export function DebriefCard({ sessionId, onStartDebrief, passed }: DebriefCardProps) {
+  if (!sessionId || !passed) return null;
 
   return (
     <div className="mb-14">

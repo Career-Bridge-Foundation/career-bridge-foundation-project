@@ -1210,6 +1210,7 @@ export default function ResultsPage() {
         <DebriefCard
           sessionId={sessionId}
           onStartDebrief={() => setDebriefModalOpen(true)}
+          passed={bandIndex >= 2}
         />
 
         {/* ── ACTIONS ───────────────────────────────────────────── */}
