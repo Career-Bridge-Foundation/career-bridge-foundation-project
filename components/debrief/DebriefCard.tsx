@@ -9,10 +9,11 @@ const BORDER = "#D5DCE8";
 interface DebriefCardProps {
   sessionId: string | null;
   onStartDebrief: () => void;
+  onSkip: () => void;
   passed: boolean;
 }
 
-export function DebriefCard({ sessionId, onStartDebrief, passed }: DebriefCardProps) {
+export function DebriefCard({ sessionId, onStartDebrief, onSkip, passed }: DebriefCardProps) {
   if (!sessionId || !passed) return null;
 
   return (
@@ -53,17 +54,27 @@ export function DebriefCard({ sessionId, onStartDebrief, passed }: DebriefCardPr
               Reflect on Your Work
             </p>
             <p className="text-sm mb-5" style={{ color: "#555", lineHeight: 1.75 }}>
-              Have a short voice conversation with an AI coach. You&apos;ll be asked
-              2–3 reflective questions about your approach. Your reflection can be
-              added to your portfolio alongside your results.
+              An AI coach will ask you 2–3 short questions about your approach.
+              Speak naturally — you can take your time. The conversation will be
+              transcribed and summarised for your portfolio. You&apos;ll review
+              and approve the summary before it appears.
             </p>
-            <button
-              onClick={onStartDebrief}
-              className="text-sm font-semibold px-6 py-3 text-white"
-              style={{ backgroundColor: TEAL, cursor: "pointer" }}
-            >
-              Start Voice Debrief →
-            </button>
+            <div className="flex flex-col items-start gap-3">
+              <button
+                onClick={onStartDebrief}
+                className="text-sm font-semibold px-6 py-3 text-white"
+                style={{ backgroundColor: TEAL, cursor: "pointer" }}
+              >
+                Start voice debrief (5 minutes)
+              </button>
+              <button
+                onClick={onSkip}
+                className="text-xs"
+                style={{ color: "#aaa", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+              >
+                Skip for now
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -833,6 +833,7 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [debriefModalOpen, setDebriefModalOpen] = useState(false);
+  const [debriefSkipped, setDebriefSkipped] = useState(false);
   const [credentialState, setCredentialState] = useState<"idle" | "claiming" | "claimed" | "error">("idle");
   const [credentialUrl, setCredentialUrl] = useState<string | null>(null);
   const [credentialError, setCredentialError] = useState<string | null>(null);
@@ -1207,11 +1208,14 @@ export default function ResultsPage() {
         </div>
 
         {/* ── DEBRIEF ───────────────────────────────────────────── */}
-        <DebriefCard
-          sessionId={sessionId}
-          onStartDebrief={() => setDebriefModalOpen(true)}
-          passed={bandIndex >= 2}
-        />
+        {!debriefSkipped && (
+          <DebriefCard
+            sessionId={sessionId}
+            onStartDebrief={() => setDebriefModalOpen(true)}
+            onSkip={() => setDebriefSkipped(true)}
+            passed={bandIndex >= 2}
+          />
+        )}
 
         {/* ── ACTIONS ───────────────────────────────────────────── */}
         <div className="flex flex-col items-center gap-4">
@@ -1246,6 +1250,8 @@ export default function ResultsPage() {
           open={debriefModalOpen}
           sessionId={sessionId}
           onClose={() => setDebriefModalOpen(false)}
+          candidateName={recipientName || undefined}
+          verdictBand={result?.verdict ?? undefined}
         />
       )}
     </div>

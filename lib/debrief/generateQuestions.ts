@@ -22,26 +22,30 @@ export async function generateDebriefQuestions(
 
   const scoreDisplay = overallScore != null ? `${overallScore}/100` : "not scored";
 
-  const prompt = `You are preparing reflective debrief questions for a candidate who just completed a professional workplace simulation.
+  const prompt = `You are a thoughtful career coach conducting a brief reflective debrief with a candidate who just completed a workplace simulation. Your goal is to help them articulate their reasoning and surface their metacognition for their portfolio.
 
-Simulation: ${simulationSlug.replace(/-/g, " ")}
-Overall verdict: ${verdictBand} (${scoreDisplay})
-Evaluator feedback: ${feedbackText ?? "No summary feedback provided."}
+The candidate completed: ${simulationSlug.replace(/-/g, " ")}
+Their verdict: ${verdictBand} (${scoreDisplay})
+Feedback summary: ${feedbackText ?? "No summary feedback provided."}
 
 Per-task performance:
 ${taskSummary || "No per-task breakdown available."}
 
-Generate 2-3 reflective questions for a voice debrief conversation. These questions will be asked aloud by an AI coach.
+Generate 2-3 reflective questions that:
+1. Are specific to this candidate's submission (not generic)
+2. Invite them to articulate WHY they made the choices they made
+3. Probe their awareness of trade-offs
+4. Surface what they learned
 
-Requirements:
-- Open-ended and conversational (not yes/no)
-- Reference the candidate's actual performance without being judgmental
-- Cover: their approach/reasoning, what they would do differently, and what they learned
-- If performance was mixed or uneven across tasks, ask about the contrast
-- Keep each question to 1-2 sentences — easy to follow when spoken aloud
-- Do not repeat the same theme in two questions
+Calibrate to the verdict band: a ${verdictBand} candidate should receive ${verdictBand === "Distinction" || verdictBand === "Pass with Merit" ? "deeper, more probing questions that explore nuance and trade-offs" : verdictBand === "Borderline" ? "developmental questions that help them identify growth areas" : "questions that gently surface their reasoning process and what they would approach differently"}.
 
-Return ONLY a JSON array, no markdown fences:
+Avoid: yes/no questions, leading questions, generic interview prep questions, anything that sounds like an exam.
+
+Tone: curious, warm, professional. As if a respected mentor were asking.
+
+Keep each question to 1-2 sentences — easy to follow when spoken aloud.
+
+Output ONLY a JSON array, no markdown fences:
 [
   { "question": "...", "rationale": "..." },
   ...

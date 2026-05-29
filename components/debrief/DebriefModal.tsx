@@ -36,6 +36,8 @@ interface DebriefModalProps {
   open: boolean;
   sessionId: string;
   onClose: () => void;
+  candidateName?: string;
+  verdictBand?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -68,7 +70,6 @@ function LoadingView() {
 }
 
 function PreCallView({
-  debrief,
   onBegin,
   onClose,
 }: {
@@ -76,8 +77,6 @@ function PreCallView({
   onBegin: () => void;
   onClose: () => void;
 }) {
-  const questions = debrief.questions_generated ?? [];
-
   return (
     <div className="p-7 flex flex-col gap-6">
       {/* Header */}
@@ -92,38 +91,12 @@ function PreCallView({
           Reflect on Your Work
         </h3>
         <p className="text-sm mt-2" style={{ color: "#666", lineHeight: 1.75 }}>
-          A short 5–8 minute voice call with an AI coach. Your answers are
-          transcribed and turned into a written reflection for your portfolio.
+          An AI coach will ask you 2–3 short questions about your approach.
+          Speak naturally — you can take your time. The conversation will be
+          transcribed and summarised for your portfolio. You&apos;ll review and
+          approve the summary before it appears.
         </p>
       </div>
-
-      {/* Questions preview */}
-      {questions.length > 0 && (
-        <div
-          className="p-4 flex flex-col gap-3"
-          style={{ backgroundColor: "#F8FAFB", border: `1px solid ${BORDER}` }}
-        >
-          <p
-            className="text-xs font-semibold uppercase"
-            style={{ color: "#999", letterSpacing: "0.12em" }}
-          >
-            You&apos;ll be asked
-          </p>
-          {questions.map((q, i) => (
-            <div key={i} className="flex gap-3">
-              <span
-                className="text-xs font-bold shrink-0 mt-0.5"
-                style={{ color: TEAL }}
-              >
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <p className="text-sm" style={{ color: NAVY, lineHeight: 1.7 }}>
-                {q.question}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Instructions */}
       <div className="flex flex-col gap-2">
@@ -153,21 +126,23 @@ function PreCallView({
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3">
         <button
           onClick={onBegin}
-          className="flex-1 text-sm font-semibold py-3 text-white text-center"
+          className="w-full text-sm font-semibold py-3 text-white text-center"
           style={{ backgroundColor: TEAL, cursor: "pointer" }}
         >
-          Begin Voice Call →
+          Start voice debrief (5 minutes)
         </button>
-        <button
-          onClick={onClose}
-          className="text-sm font-medium px-5 py-3"
-          style={{ border: `1px solid ${BORDER}`, color: "#888", cursor: "pointer", background: "white" }}
-        >
-          Maybe Later
-        </button>
+        <div className="text-center">
+          <button
+            onClick={onClose}
+            className="text-xs"
+            style={{ color: "#aaa", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+          >
+            Maybe later
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -196,7 +171,6 @@ function CallConnectingView() {
 }
 
 function InCallView({
-  debrief,
   isAiSpeaking,
   callDuration,
   onEndCall,
@@ -206,8 +180,6 @@ function InCallView({
   callDuration: number;
   onEndCall: () => void;
 }) {
-  const questions = debrief.questions_generated ?? [];
-  const [showQuestions, setShowQuestions] = useState(false);
 
   return (
     <div className="flex flex-col gap-6 p-7">
@@ -282,36 +254,6 @@ function InCallView({
           {isAiSpeaking ? "AI coach is speaking…" : "Your turn — speak naturally"}
         </p>
       </div>
-
-      {/* Questions toggle */}
-      {questions.length > 0 && (
-        <div>
-          <button
-            onClick={() => setShowQuestions((v) => !v)}
-            className="flex items-center gap-2 text-xs font-medium w-full"
-            style={{ color: "#888", cursor: "pointer", background: "none", border: "none", padding: 0 }}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points={showQuestions ? "18 15 12 9 6 15" : "6 9 12 15 18 9"} />
-            </svg>
-            {showQuestions ? "Hide questions" : "Show questions"}
-          </button>
-          {showQuestions && (
-            <div className="mt-3 flex flex-col gap-2">
-              {questions.map((q, i) => (
-                <div key={i} className="flex gap-2.5">
-                  <span className="text-xs font-bold shrink-0" style={{ color: TEAL }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <p className="text-xs" style={{ color: "#666", lineHeight: 1.6 }}>
-                    {q.question}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* End call */}
       <button
@@ -646,7 +588,7 @@ function ErrorView({
 
 // ── Main modal ────────────────────────────────────────────────
 
-export function DebriefModal({ open, sessionId, onClose }: DebriefModalProps) {
+export function DebriefModal({ open, sessionId, onClose, candidateName, verdictBand }: DebriefModalProps) {
   const [flowState, setFlowState] = useState<FlowState>("loading");
   const [debrief, setDebrief] = useState<DebriefRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -793,7 +735,11 @@ export function DebriefModal({ open, sessionId, onClose }: DebriefModalProps) {
     try {
       await vapiRef.current.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID!, {
         metadata: { debriefId: debrief.id },
-        variableValues: { questions: questionsText },
+        variableValues: {
+          questions: questionsText,
+          candidateName: candidateName ?? "there",
+          verdictBand: verdictBand ?? "",
+        },
       });
     } catch (err) {
       console.error("[vapi] start failed:", err);
