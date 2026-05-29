@@ -155,7 +155,9 @@ export default function SimulationExecutionPage() {
 
   const EVAL_MESSAGES = [
     ...prompts.map((p, i) => `Reviewing Task ${i + 1}: ${p.title}…`),
-    "Compiling your verdict…",
+    "Checking your work against the rubric…",
+    "Drafting per-task feedback…",
+    "Compiling your assessment report…",
   ];
 
   // ── Access check on mount ────────────────────────────────────
@@ -207,7 +209,7 @@ export default function SimulationExecutionPage() {
           setEvalVisible(true);
         }
       }, 300);
-    }, 2500);
+    }, 7000);
     return () => {
       cancelled = true;
       clearInterval(id);
@@ -392,6 +394,24 @@ export default function SimulationExecutionPage() {
             >
               {EVAL_MESSAGES[evalMsgIndex]}
             </p>
+            <div
+              style={{
+                marginTop: "20px",
+                paddingTop: "16px",
+                borderTop: "1px solid #e5e7eb",
+                fontSize: "12px",
+                color: "#666",
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 500 }}>
+                Evaluations typically take around 90 seconds.
+              </p>
+              <p style={{ margin: "4px 0 0 0" }}>
+                Please keep this tab open and don't refresh — your responses are being assessed.
+              </p>
+            </div>
           </div>
         </main>
         <Footer />
