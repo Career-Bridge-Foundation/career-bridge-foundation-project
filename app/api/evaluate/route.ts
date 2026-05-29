@@ -7,6 +7,10 @@ import { ensurePortfolioProfile } from "@/lib/portfolio/ensureProfile";
 import { getActiveRubric } from "@/lib/portfolio/getActiveRubric";
 import type { VerdictBand } from "@/types/database";
 
+// Vercel/Next.js function timeout — Claude evaluation calls can take 30–90s
+// on long system prompts. Default (60s for Pro, 10s for Hobby) is insufficient.
+export const maxDuration = 300;
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 
