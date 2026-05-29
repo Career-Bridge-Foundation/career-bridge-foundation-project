@@ -496,19 +496,30 @@ export async function POST(request: NextRequest) {
   }
 
   // Parse Claude's JSON response — robustly extract JSON from any wrapping
-  // (markdown fences, prose preamble, hybrid documents)
+  // (markdown fences, prose preamble, hybrid documents, prose with stray braces)
   let evaluation: Record<string, unknown>;
   try {
-    // Strategy: find the first '{' and the last '}' and parse between them.
-    // This handles: pure JSON, ```json-fenced JSON, JSON with prose prefix,
-    // JSON with prose suffix, and any combination thereof.
     const firstBrace = rawContent.indexOf("{");
-    const lastBrace = rawContent.lastIndexOf("}");
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    if (firstBrace === -1) {
       throw new Error("No JSON object found in Claude response");
     }
-    const jsonStr = rawContent.slice(firstBrace, lastBrace + 1);
-    evaluation = JSON.parse(jsonStr);
+    // Try last-brace-first (cheapest, handles the common case). If trailing
+    // prose contains a stray '}', fall back to scanning backwards through
+    // each candidate '}' position until JSON.parse succeeds.
+    let parsed: Record<string, unknown> | null = null;
+    let lastBrace = rawContent.lastIndexOf("}");
+    while (lastBrace > firstBrace) {
+      try {
+        parsed = JSON.parse(rawContent.slice(firstBrace, lastBrace + 1));
+        break;
+      } catch {
+        lastBrace = rawContent.lastIndexOf("}", lastBrace - 1);
+      }
+    }
+    if (parsed === null) {
+      throw new Error("No parseable JSON object found in Claude response");
+    }
+    evaluation = parsed;
   } catch {
     return new Response(
       JSON.stringify({ error: "Failed to parse evaluation JSON", raw: rawContent }),
