@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const rateLimit = checkRateLimit({
     key: `debrief:start:${user.id}`,
-    limit: 5,
+    limit: 20,
     windowMs: 60 * 60_000,
   });
 
