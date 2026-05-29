@@ -315,14 +315,10 @@ function ReviewView({
 }: {
   debrief: DebriefRecord;
   isSubmitting: boolean;
-  onApprove: (edited?: DebriefSummary) => void;
+  onApprove: () => void;
   onDiscard: () => void;
 }) {
-  const baseSummary = debrief.candidate_edited_summary ?? debrief.structured_summary;
-  const [editMode, setEditMode] = useState(false);
-  const [draft, setDraft] = useState<DebriefSummary>(
-    baseSummary ?? { approach: "", would_do_differently: "", what_learned: "" }
-  );
+  const summary = debrief.structured_summary;
   const [showTranscript, setShowTranscript] = useState(false);
 
   const sections: { key: keyof DebriefSummary; label: string }[] = [
@@ -331,15 +327,7 @@ function ReviewView({
     { key: "what_learned", label: "What I Learned" },
   ];
 
-  function handleApprove() {
-    if (editMode) {
-      onApprove(draft);
-    } else {
-      onApprove();
-    }
-  }
-
-  if (!baseSummary) {
+  if (!summary) {
     return (
       <div className="p-7 flex flex-col gap-5">
         <h3 className="text-lg font-bold" style={{ color: NAVY }}>
@@ -352,7 +340,7 @@ function ReviewView({
         </p>
         <div className="flex gap-3 mt-2">
           <button
-            onClick={() => onApprove()}
+            onClick={onApprove}
             disabled={isSubmitting}
             className="flex-1 text-sm font-semibold py-3 text-white"
             style={{ backgroundColor: TEAL, cursor: isSubmitting ? "not-allowed" : "pointer", opacity: isSubmitting ? 0.7 : 1 }}
@@ -376,48 +364,16 @@ function ReviewView({
     <div className="flex flex-col" style={{ maxHeight: "85vh", overflowY: "auto" }}>
       <div className="p-7 flex flex-col gap-6">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase mb-1.5" style={{ color: TEAL, letterSpacing: "0.16em" }}>
-              Your Reflection
-            </p>
-            <h3 className="text-lg font-bold" style={{ color: NAVY }}>
-              Review Before Publishing
-            </h3>
-          </div>
-          {!editMode && (
-            <button
-              onClick={() => setEditMode(true)}
-              className="text-xs font-medium px-3 py-1.5 shrink-0"
-              style={{ border: `1px solid ${BORDER}`, color: "#666", cursor: "pointer", background: "white" }}
-            >
-              Edit
-            </button>
-          )}
-          {editMode && (
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setDraft(baseSummary);
-                  setEditMode(false);
-                }}
-                className="text-xs font-medium px-3 py-1.5"
-                style={{ border: `1px solid ${BORDER}`, color: "#888", cursor: "pointer", background: "white" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setEditMode(false)}
-                className="text-xs font-semibold px-3 py-1.5 text-white"
-                style={{ backgroundColor: NAVY, cursor: "pointer" }}
-              >
-                Done
-              </button>
-            </div>
-          )}
+        <div>
+          <p className="text-xs font-semibold uppercase mb-1.5" style={{ color: TEAL, letterSpacing: "0.16em" }}>
+            Your Reflection
+          </p>
+          <h3 className="text-lg font-bold" style={{ color: NAVY }}>
+            Review Before Publishing
+          </h3>
         </div>
 
-        {/* Summary sections */}
+        {/* Summary sections — read-only, Claude-generated */}
         <div className="flex flex-col gap-5">
           {sections.map(({ key, label }) => (
             <div key={key}>
@@ -427,31 +383,14 @@ function ReviewView({
               >
                 {label}
               </p>
-              {editMode ? (
-                <textarea
-                  value={draft[key]}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, [key]: e.target.value }))
-                  }
-                  rows={4}
-                  className="w-full text-sm resize-none outline-none p-3"
-                  style={{
-                    border: `1px solid ${TEAL}`,
-                    color: NAVY,
-                    lineHeight: 1.75,
-                    borderRadius: "3px",
-                  }}
-                />
-              ) : (
-                <p className="text-sm" style={{ color: "#444", lineHeight: 1.8 }}>
-                  {draft[key] || <em style={{ color: "#bbb" }}>Not captured</em>}
-                </p>
-              )}
+              <p className="text-sm" style={{ color: "#444", lineHeight: 1.8 }}>
+                {summary[key] || <em style={{ color: "#bbb" }}>Not captured</em>}
+              </p>
             </div>
           ))}
         </div>
 
-        {/* Raw transcript toggle */}
+        {/* Raw transcript toggle — full height, no cap */}
         {debrief.raw_transcript && (
           <div>
             <button
@@ -473,8 +412,6 @@ function ReviewView({
                   color: "#666",
                   lineHeight: 1.7,
                   whiteSpace: "pre-wrap",
-                  maxHeight: "180px",
-                  overflowY: "auto",
                 }}
               >
                 {debrief.raw_transcript}
@@ -486,7 +423,7 @@ function ReviewView({
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
-            onClick={handleApprove}
+            onClick={onApprove}
             disabled={isSubmitting}
             className="flex-1 text-sm font-semibold py-3 text-white"
             style={{
@@ -601,6 +538,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     on: (event: string, cb: (...args: unknown[]) => void) => void;
   } | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const vapiCallIdRef = useRef<string | null>(null);
 
   // Initialise VAPI once on mount
   useEffect(() => {
@@ -608,7 +546,10 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
       const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
       vapiRef.current = vapi as typeof vapiRef.current;
 
-      vapi.on("call-start", () => {
+      vapi.on("call-start", (...args: unknown[]) => {
+        const call = args[0];
+        const callId = (call as { id?: string } | null)?.id ?? null;
+        if (callId) vapiCallIdRef.current = callId;
         setFlowState("in_call");
         let secs = 0;
         callTimerRef.current = setInterval(() => {
@@ -687,39 +628,60 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     init();
   }, [open, sessionId]);
 
-  // Poll for pending_review once processing starts
+  // Call the process endpoint when the call ends
   useEffect(() => {
     if (flowState !== "processing" || !debrief?.id) return;
 
     const debriefId = debrief.id;
-    let attempts = 0;
-    const maxAttempts = 40; // 2 minutes at 3s intervals
+    let cancelled = false;
 
-    const interval = setInterval(async () => {
-      attempts++;
+    async function process() {
       try {
-        const res = await fetch(`/api/debrief/${debriefId}`);
-        if (res.ok) {
-          const data = (await res.json()) as DebriefRecord;
-          if (data.status === "pending_review") {
-            setDebrief(data);
-            setFlowState("reviewing");
-          } else if (data.status === "failed") {
-            setError("Your debrief could not be processed. Please try again.");
-            setFlowState("error");
-          }
-        }
-      } catch { /* continue polling */ }
+        const res = await fetch(`/api/debrief/${debriefId}/process`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vapi_call_id: vapiCallIdRef.current }),
+        });
 
-      if (attempts >= maxAttempts) {
-        setError(
-          "Processing is taking longer than expected. Please check back later."
-        );
+        if (cancelled) return;
+
+        if (res.status === 503) {
+          // Transcript not ready yet — retry once after a short wait
+          await new Promise((r) => setTimeout(r, 4000));
+          if (cancelled) return;
+          const retry = await fetch(`/api/debrief/${debriefId}/process`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ vapi_call_id: vapiCallIdRef.current }),
+          });
+          if (cancelled) return;
+          if (!retry.ok) {
+            const b = (await retry.json()) as { error?: string };
+            throw new Error(b.error ?? "Processing failed");
+          }
+          const data = (await retry.json()) as DebriefRecord;
+          setDebrief(data);
+          setFlowState("reviewing");
+          return;
+        }
+
+        if (!res.ok) {
+          const b = (await res.json()) as { error?: string };
+          throw new Error(b.error ?? "Processing failed");
+        }
+
+        const data = (await res.json()) as DebriefRecord;
+        setDebrief(data);
+        setFlowState("reviewing");
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to process your debrief. Please try again.");
         setFlowState("error");
       }
-    }, 3000);
+    }
 
-    return () => clearInterval(interval);
+    process();
+    return () => { cancelled = true; };
   }, [flowState, debrief?.id]);
 
   async function beginCall() {
@@ -733,14 +695,15 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     setFlowState("call_connecting");
 
     try {
-      await vapiRef.current.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID!, {
+      const call = await vapiRef.current.start(process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID!, {
         metadata: { debriefId: debrief.id },
         variableValues: {
           questions: questionsText,
           candidateName: candidateName ?? "there",
           verdictBand: verdictBand ?? "",
         },
-      });
+      }) as { id?: string } | null;
+      if (call?.id) vapiCallIdRef.current = call.id;
     } catch (err) {
       console.error("[vapi] start failed:", err);
       setError(
@@ -754,18 +717,15 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     vapiRef.current?.stop();
   }
 
-  async function approveDebrief(editedSummary?: DebriefSummary) {
+  async function approveDebrief() {
     if (!debrief?.id) return;
     setFlowState("approving");
 
     try {
-      const body: Record<string, unknown> = {};
-      if (editedSummary) body.candidate_edited_summary = editedSummary;
-
       const res = await fetch(`/api/debrief/${debrief.id}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({}),
       });
 
       if (!res.ok) {
@@ -807,7 +767,13 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
         >
           <motion.div
             className="absolute inset-0 bg-black/50"
-            onClick={handleClose}
+            onClick={
+              flowState === "call_connecting" ||
+              flowState === "in_call" ||
+              flowState === "processing"
+                ? undefined
+                : handleClose
+            }
           />
           <motion.div
             className="relative z-10 w-full max-w-xl bg-white shadow-2xl overflow-hidden"

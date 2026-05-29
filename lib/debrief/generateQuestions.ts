@@ -37,7 +37,7 @@ Generate 2-3 reflective questions that:
 3. Probe their awareness of trade-offs
 4. Surface what they learned
 
-Calibrate to the verdict band: a ${verdictBand} candidate should receive ${verdictBand === "Distinction" || verdictBand === "Pass with Merit" ? "deeper, more probing questions that explore nuance and trade-offs" : verdictBand === "Borderline" ? "developmental questions that help them identify growth areas" : "questions that gently surface their reasoning process and what they would approach differently"}.
+Calibrate to the verdict band: a ${verdictBand} candidate should receive ${verdictBand === "Distinction" || verdictBand === "Merit" ? "deeper, more probing questions that explore nuance and trade-offs" : verdictBand === "Borderline" ? "developmental questions that help them identify growth areas" : "questions that gently surface their reasoning process and what they would approach differently"}.
 
 Avoid: yes/no questions, leading questions, generic interview prep questions, anything that sounds like an exam.
 
