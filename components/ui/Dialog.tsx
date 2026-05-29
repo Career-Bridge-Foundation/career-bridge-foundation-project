@@ -12,9 +12,11 @@ export function Dialog({ open, onClose, children }: DialogProps){
     return ()=> document.removeEventListener('keydown', onKey)
   },[open,onClose])
 
-  useEffect(()=>{
-    if(open) document.body.style.overflow = 'hidden'; else document.body.style.overflow = ''
-  },[open])
+  useEffect(() => {
+    if (!open) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [open])
 
   return (
     <AnimatePresence>
