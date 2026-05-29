@@ -502,13 +502,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Parse Claude's JSON response — strip markdown fences Claude sometimes wraps output in
+  // Parse Claude's JSON response — robustly extract JSON from any wrapping
+  // (markdown fences, prose preamble, hybrid documents)
   let evaluation: Record<string, unknown>;
   try {
-    const jsonStr = rawContent
-      .replace(/^```(?:json)?\s*/i, "")
-      .replace(/\s*```\s*$/i, "")
-      .trim();
+    // Strategy: find the first '{' and the last '}' and parse between them.
+    // This handles: pure JSON, ```json-fenced JSON, JSON with prose prefix,
+    // JSON with prose suffix, and any combination thereof.
+    const firstBrace = rawContent.indexOf("{");
+    const lastBrace = rawContent.lastIndexOf("}");
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error("No JSON object found in Claude response");
+    }
+    const jsonStr = rawContent.slice(firstBrace, lastBrace + 1);
     evaluation = JSON.parse(jsonStr);
     console.log("[evaluate] JSON parsed:", {
       session_id,
