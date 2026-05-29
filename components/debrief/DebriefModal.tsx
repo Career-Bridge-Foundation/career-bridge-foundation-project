@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { DebriefSummary, DebriefQuestion } from "@/types/database";
 
@@ -72,10 +72,12 @@ function LoadingView() {
 function PreCallView({
   onBegin,
   onClose,
+  vapiReady,
 }: {
   debrief: DebriefRecord;
   onBegin: () => void;
   onClose: () => void;
+  vapiReady: boolean;
 }) {
   return (
     <div className="p-7 flex flex-col gap-6">
@@ -129,10 +131,15 @@ function PreCallView({
       <div className="flex flex-col gap-3">
         <button
           onClick={onBegin}
+          disabled={!vapiReady}
           className="w-full text-sm font-semibold py-3 text-white text-center"
-          style={{ backgroundColor: TEAL, cursor: "pointer" }}
+          style={{
+            backgroundColor: TEAL,
+            cursor: vapiReady ? "pointer" : "not-allowed",
+            opacity: vapiReady ? 1 : 0.6,
+          }}
         >
-          Start voice debrief (5 minutes)
+          {vapiReady ? "Start voice debrief (5 minutes)" : "Preparing…"}
         </button>
         <div className="text-center">
           <button
@@ -531,6 +538,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
   const [error, setError] = useState<string | null>(null);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [vapiReady, setVapiReady] = useState(false);
 
   const vapiRef = useRef<{
     start: (id: string, overrides: unknown) => Promise<unknown>;
@@ -546,6 +554,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     import("@vapi-ai/web").then(({ default: Vapi }) => {
       const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
       vapiRef.current = vapi as typeof vapiRef.current;
+      setVapiReady(true);
 
       vapi.on("call-start", (...args: unknown[]) => {
         callEndedCleanlyRef.current = false;
@@ -633,12 +642,39 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
     init();
   }, [open, sessionId]);
 
-  // Call the process endpoint when the call ends
+  // Call the process endpoint when the call ends, with webhook polling fallback
   useEffect(() => {
     if (flowState !== "processing" || !debrief?.id) return;
 
     const debriefId = debrief.id;
     let cancelled = false;
+
+    // Poll the debrief record until the VAPI webhook has updated it
+    async function pollUntilReady() {
+      const maxAttempts = 20; // 20 × 3s = 60s max
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (cancelled) return;
+
+        try {
+          const res = await fetch(`/api/debrief/${debriefId}`);
+          if (!res.ok) continue;
+          const data = (await res.json()) as DebriefRecord;
+          if (data.status === "pending_review" || data.status === "approved") {
+            setDebrief(data);
+            setFlowState("reviewing");
+            return;
+          }
+        } catch {
+          // network blip — keep polling
+        }
+      }
+
+      if (!cancelled) {
+        setError("Your debrief is taking longer than expected. Please close and try again.");
+        setFlowState("error");
+      }
+    }
 
     async function process() {
       try {
@@ -650,38 +686,25 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
 
         if (cancelled) return;
 
-        if (res.status === 503) {
-          // Transcript not ready yet — retry once after a short wait
-          await new Promise((r) => setTimeout(r, 4000));
-          if (cancelled) return;
-          const retry = await fetch(`/api/debrief/${debriefId}/process`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ vapi_call_id: vapiCallIdRef.current }),
-          });
-          if (cancelled) return;
-          if (!retry.ok) {
-            const b = (await retry.json()) as { error?: string };
-            throw new Error(b.error ?? "Processing failed");
-          }
-          const data = (await retry.json()) as DebriefRecord;
+        if (res.ok) {
+          const data = (await res.json()) as DebriefRecord;
           setDebrief(data);
           setFlowState("reviewing");
           return;
         }
 
-        if (!res.ok) {
-          const b = (await res.json()) as { error?: string };
-          throw new Error(b.error ?? "Processing failed");
+        // 503 = transcript not ready yet, or function timed out — fall back to polling
+        if (res.status === 503) {
+          await pollUntilReady();
+          return;
         }
 
-        const data = (await res.json()) as DebriefRecord;
-        setDebrief(data);
-        setFlowState("reviewing");
-      } catch (err) {
+        const b = (await res.json()) as { error?: string };
+        throw new Error(b.error ?? "Processing failed");
+      } catch {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to process your debrief. Please try again.");
-        setFlowState("error");
+        // Fetch itself failed (e.g. function timeout on free Vercel tier) — poll instead
+        await pollUntilReady();
       }
     }
 
@@ -809,6 +832,7 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
               <PreCallView
                 debrief={debrief}
                 onBegin={beginCall}
+                vapiReady={vapiReady}
                 onClose={handleClose}
               />
             )}
