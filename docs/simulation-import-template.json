@@ -1,0 +1,251 @@
+{
+  "_README": "Bulk-import template. POST/PUT this shape to /api/admin/simulations/import (staff auth required). Each entry in `simulations` becomes one simulation (upserted by `slug`) plus its prompts and one active rubric. For new simulations, omit `id` entirely — it is optional and the database assigns it. Rows are matched by `slug`. Replace every [BRACKETED] placeholder. Imported simulations land in `draft` status for reviewer signoff.",
+
+  "simulations": [
+    {
+      "slug": "cti-supply-chain-finserv",
+      "title": "Threat Intelligence: Supply-Chain Compromise at [Org Name]",
+      "company": "[Financial Services Org]",
+      "industry": "Financial Services",
+      "type": "Threat Intelligence Analysis",
+      "difficulty": "Practitioner",
+      "time": "45 minutes",
+      "description": "[One-line scenario summary — e.g. triage a suspected third-party software update compromise affecting a retail bank.]",
+      "discipline": "cyber-security",
+      "video_url": "",
+      "status": "draft",
+      "sim_role": "Cyber Threat Intelligence Analyst",
+      "brief_short": "[2-3 sentence framing the candidate reads before starting. e.g. A CERT advisory reports a trojanised update from a payments vendor used by your bank.]",
+      "brief_full": "[Full briefing. Describe the org, the alert source (national CERT advisory), the affected third-party component, and what the SOC has observed so far. Keep it specific but fictional — do not reference any real vendor or breach.]",
+      "video_transcript": "[Optional transcript of a stakeholder video brief. Leave as empty string if there is no video.]",
+      "prompts": [
+        {
+          "type": "typed",
+          "title": "Indicator triage",
+          "question": "[Given the attached CERT advisory excerpt, identify which indicators of compromise (hashes, domains, IPs) are most credible and explain how you prioritised them.]",
+          "guidance": [
+            "Distinguish high-confidence atomic indicators from low-confidence ones",
+            "Note any indicators that require enrichment before action",
+            "State your confidence level and why"
+          ],
+          "minWords": 200,
+          "timeRemainingMinutes": 10
+        },
+        {
+          "type": "either",
+          "title": "Attribution & TTP mapping",
+          "question": "[Map the observed behaviour to MITRE ATT&CK techniques and assess whether attribution to a known actor is supportable from the evidence provided.]",
+          "guidance": [
+            "Cite specific ATT&CK technique IDs",
+            "Separate what the evidence shows from what you are inferring",
+            "Avoid over-attribution — say so if attribution is not supportable"
+          ],
+          "minWords": 250,
+          "timeRemainingMinutes": 12
+        },
+        {
+          "type": "typed",
+          "title": "Business-risk assessment",
+          "question": "[Assess the risk this compromise poses to the bank's payment operations and customer data. What is the realistic worst case?]",
+          "guidance": [
+            "Tie technical impact to a concrete business outcome",
+            "State assumptions explicitly",
+            "Quantify likelihood and impact where you can"
+          ],
+          "minWords": 200,
+          "timeRemainingMinutes": 8
+        },
+        {
+          "type": "url",
+          "title": "Containment recommendation",
+          "question": "[Link to a one-page containment plan (Google Doc / Notion) recommending immediate actions for the SOC and the vendor-management team.]",
+          "guidance": [
+            "Order actions by priority and feasibility",
+            "Separate immediate containment from longer-term remediation",
+            "Identify who owns each action"
+          ],
+          "minWords": 150,
+          "timeRemainingMinutes": 10
+        },
+        {
+          "type": "typed",
+          "title": "Stakeholder brief",
+          "question": "[Write a 5-line executive summary for the CISO that a non-technical board member could also follow.]",
+          "guidance": [
+            "Lead with the bottom line",
+            "Avoid jargon or define it inline",
+            "End with a clear ask or recommendation"
+          ],
+          "minWords": 120,
+          "timeRemainingMinutes": 5
+        }
+      ],
+      "rubric": {
+        "systemPrompt": "You are an expert Cyber Threat Intelligence assessor evaluating a candidate's response to a supply-chain compromise scenario in financial services. Score each task against its three criteria using the scoring scale. Be specific, cite evidence from the candidate's response, and never invent details the candidate did not provide. [Replace with your finalised assessor instructions.]",
+        "criteria": [
+          {
+            "task": 1,
+            "title": "Indicator triage",
+            "criteria": [
+              { "name": "Indicator credibility", "description": "[Correctly separates high- vs low-confidence indicators and justifies the split.]" },
+              { "name": "Prioritisation", "description": "[Prioritises indicators by actionability and risk, not volume.]" },
+              { "name": "Confidence framing", "description": "[States confidence levels and the reasoning behind them.]" }
+            ]
+          },
+          {
+            "task": 2,
+            "title": "Attribution & TTP mapping",
+            "criteria": [
+              { "name": "ATT&CK accuracy", "description": "[Maps behaviour to correct, specific ATT&CK techniques.]" },
+              { "name": "Evidence discipline", "description": "[Separates observed evidence from inference; avoids over-attribution.]" },
+              { "name": "Analytic rigour", "description": "[Reasoning is structured and falsifiable.]" }
+            ]
+          },
+          {
+            "task": 3,
+            "title": "Business-risk assessment",
+            "criteria": [
+              { "name": "Impact linkage", "description": "[Connects technical impact to a concrete business outcome.]" },
+              { "name": "Likelihood reasoning", "description": "[Assesses likelihood with stated assumptions.]" },
+              { "name": "Worst-case realism", "description": "[Worst case is plausible, not catastrophised.]" }
+            ]
+          },
+          {
+            "task": 4,
+            "title": "Containment recommendation",
+            "criteria": [
+              { "name": "Action prioritisation", "description": "[Actions ordered by priority and feasibility.]" },
+              { "name": "Containment vs remediation", "description": "[Separates immediate containment from longer-term fixes.]" },
+              { "name": "Ownership clarity", "description": "[Assigns clear owners to each action.]" }
+            ]
+          },
+          {
+            "task": 5,
+            "title": "Stakeholder brief",
+            "criteria": [
+              { "name": "Clarity for non-technical readers", "description": "[Understandable to a board member; jargon defined or avoided.]" },
+              { "name": "Bottom-line-up-front", "description": "[Leads with the key message.]" },
+              { "name": "Actionable ask", "description": "[Ends with a clear recommendation or decision request.]" }
+            ]
+          }
+        ],
+        "maxScore": 45,
+        "scoringScale": {
+          "1": "Weak",
+          "2": "Competent",
+          "3": "Strong"
+        },
+        "verdictBands": [
+          { "label": "Fail", "min": 0, "max": 22 },
+          { "label": "Pass", "min": 23, "max": 33 },
+          { "label": "Merit", "min": 34, "max": 40 },
+          { "label": "Distinction", "min": 41, "max": 45 }
+        ],
+        "model": "claude-sonnet-4-6",
+        "outputInstructions": "[Optional. Return-format instructions appended to the assessor prompt, e.g. a JSON schema for per-task scores. Set to null if not used.]"
+      }
+    },
+
+    {
+      "slug": "cti-ransomware-indicator-triage",
+      "title": "Threat Intelligence: Ransomware Indicator Triage at [Org Name]",
+      "company": "[Regional Bank]",
+      "industry": "Financial Services",
+      "type": "Threat Intelligence Analysis",
+      "difficulty": "Foundation",
+      "time": "30 minutes",
+      "description": "[One-line summary — e.g. assess a single ransomware indicator flagged in a CERT advisory and decide whether it warrants escalation.]",
+      "discipline": "cyber-security",
+      "video_url": "",
+      "status": "draft",
+      "sim_role": "Junior Threat Intelligence Analyst",
+      "brief_short": "[2-3 sentence framing. e.g. A CERT advisory lists a file hash linked to an active ransomware campaign; your manager wants a triage note.]",
+      "brief_full": "[Full briefing describing the advisory, the indicator, and what your SOC tooling has and has not seen. Keep fictional.]",
+      "video_transcript": "",
+      "prompts": [
+        {
+          "type": "typed",
+          "title": "Indicator assessment",
+          "question": "[Assess the single indicator from the advisory: is it actionable, and what enrichment would raise your confidence?]",
+          "guidance": [
+            "State whether the indicator is atomic, computed, or behavioural",
+            "List the enrichment sources you would consult",
+            "Give a clear actionable / not-actionable verdict"
+          ],
+          "minWords": 200,
+          "timeRemainingMinutes": 12
+        },
+        {
+          "type": "typed",
+          "title": "Escalation decision",
+          "question": "[Recommend whether to escalate to incident response and justify the threshold you applied.]",
+          "guidance": [
+            "Make the escalation criterion explicit",
+            "Weigh cost of escalation against risk of inaction",
+            "Be decisive"
+          ],
+          "minWords": 150,
+          "timeRemainingMinutes": 10
+        },
+        {
+          "type": "url",
+          "title": "Triage note",
+          "question": "[Link to a short triage note (Google Doc / Notion) capturing the indicator, your verdict, and next steps for the on-call analyst.]",
+          "guidance": [
+            "Keep it scannable",
+            "Record the decision and its rationale",
+            "List concrete next steps"
+          ],
+          "minWords": 120,
+          "timeRemainingMinutes": 8
+        }
+      ],
+      "rubric": {
+        "systemPrompt": "You are an expert Cyber Threat Intelligence assessor evaluating a junior analyst's triage of a ransomware indicator. Score each task against its three criteria using the scoring scale. Cite evidence from the candidate's response and never invent details. [Replace with your finalised assessor instructions.]",
+        "criteria": [
+          {
+            "task": 1,
+            "title": "Indicator assessment",
+            "criteria": [
+              { "name": "Indicator classification", "description": "[Correctly classifies the indicator type.]" },
+              { "name": "Enrichment plan", "description": "[Names relevant, realistic enrichment sources.]" },
+              { "name": "Actionability verdict", "description": "[Reaches a clear, justified verdict.]" }
+            ]
+          },
+          {
+            "task": 2,
+            "title": "Escalation decision",
+            "criteria": [
+              { "name": "Explicit threshold", "description": "[Escalation criterion is stated, not implied.]" },
+              { "name": "Cost/risk balance", "description": "[Weighs escalation cost against risk of inaction.]" },
+              { "name": "Decisiveness", "description": "[Commits to a recommendation.]" }
+            ]
+          },
+          {
+            "task": 3,
+            "title": "Triage note",
+            "criteria": [
+              { "name": "Scannability", "description": "[Note is concise and easy to scan.]" },
+              { "name": "Decision record", "description": "[Captures verdict and rationale.]" },
+              { "name": "Next steps", "description": "[Lists concrete follow-up actions.]" }
+            ]
+          }
+        ],
+        "maxScore": 27,
+        "scoringScale": {
+          "1": "Weak",
+          "2": "Competent",
+          "3": "Strong"
+        },
+        "verdictBands": [
+          { "label": "Fail", "min": 0, "max": 13 },
+          { "label": "Pass", "min": 14, "max": 20 },
+          { "label": "Merit", "min": 21, "max": 24 },
+          { "label": "Distinction", "min": 25, "max": 27 }
+        ],
+        "model": "claude-sonnet-4-6",
+        "outputInstructions": null
+      }
+    }
+  ]
+}
