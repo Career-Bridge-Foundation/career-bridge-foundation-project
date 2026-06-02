@@ -149,7 +149,7 @@ export async function POST(request: Request) {
     // concurrent double-redeem race.
     const { error: redeemError } = await supabaseServer
       .from('partner_tokens')
-      .update({ redeemed_at: new Date().toISOString(), redeemed_by: user.id })
+      .update({ redeemed_at: new Date().toISOString(), redeemed_by: portfolioId })
       .eq('id', row.id)
       .is('redeemed_at', null)
 
