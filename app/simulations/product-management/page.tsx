@@ -29,7 +29,7 @@ export default function ProductManagementPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setHasAccess(false); return; }
-      const { hasAccess } = await checkSimulationAccess(user.id);
+      const { hasAccess } = await checkSimulationAccess(user.id, "product-management");
       setHasAccess(hasAccess);
     }
     fetchAccess();
