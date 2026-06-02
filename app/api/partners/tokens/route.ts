@@ -29,6 +29,10 @@ const AVAILABLE_DISCIPLINES = disciplines
   .filter((d) => d.status === 'available')
   .map((d) => d.name)
 
+const DISCIPLINE_NAME_TO_SLUG = new Map(
+  disciplines.map((d) => [d.name, d.slug] as const)
+)
+
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
@@ -104,12 +108,28 @@ export async function POST(request: Request) {
     }
     const body = parsed.data
 
+    // Map validated discipline names to canonical slugs (matches simulations
+    // table + candidate_entitlements). Zod already guaranteed each name is an
+    // available discipline, so every name resolves; guard anyway.
+    const disciplineSlugs: string[] = []
+    for (const name of body.disciplines) {
+      const slug = DISCIPLINE_NAME_TO_SLUG.get(name)
+      if (!slug) {
+        console.error('[partners/tokens] no slug for discipline', name)
+        return NextResponse.json(
+          { error: 'internal error' },
+          { status: 500 }
+        )
+      }
+      disciplineSlugs.push(slug)
+    }
+
     // 3. SIGN
     const { token, expires_at } = await signPartnerToken({
       partnerId,
       candidateEmail: body.candidate_email,
       candidateName: body.candidate_name ?? null,
-      disciplines: body.disciplines,
+      disciplines: disciplineSlugs,
       expiresInSeconds: body.expires_in_days * 86400,
     })
 
@@ -121,7 +141,7 @@ export async function POST(request: Request) {
         token_hash: hashPartnerToken(token),
         candidate_email: body.candidate_email.toLowerCase().trim(),
         candidate_name: body.candidate_name?.trim() ?? null,
-        disciplines: body.disciplines,
+        disciplines: disciplineSlugs,
         expires_at: expires_at.toISOString(),
       })
 
