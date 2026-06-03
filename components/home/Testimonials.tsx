@@ -1,7 +1,7 @@
 const testimonials = [
   {
     quote:
-      "Career Bridge has been a turning point in my career. The simulated work gave me the opportunity to apply agile principles in real projects, sharpen my coaching and facilitation skills, and accelerate my development in a way traditional learning never could.",
+      "Evidentize has been a turning point in my career. The simulated work gave me the opportunity to apply agile principles in real projects, sharpen my coaching and facilitation skills, and accelerate my development in a way traditional learning never could.",
     name: "Henry A.",
     role: "Scrum Master",
   },

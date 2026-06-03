@@ -21,8 +21,8 @@ const NAV_LINKS = [
   { label: "Pricing", href: "/pricing", homeHref: "/pricing" },
   {
     label: "About",
-    href: "https://www.careerbridgefoundation.com/",
-    homeHref: "https://www.careerbridgefoundation.com/",
+    href: "https://evidentize.io",
+    homeHref: "https://evidentize.io",
   },
 ];
 
@@ -105,8 +105,8 @@ export function Header({
         {/* Logo */}
         <Link href="/">
           <img
-            src="/logo-colour.png"
-            alt="Career Bridge Foundation"
+            src={isSolid ? "/evidentize-logo-colour.png" : "/evidentize-logo-white.png"}
+            alt="Evidentize"
             className="h-10 w-auto"
           />
         </Link>
