@@ -26,9 +26,9 @@ export function ReviewerNav() {
     <header className="bg-white border-b border-slate-200">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <Image src="/logo.png" alt="Logo" width={28} height={28} className="rounded" />
+          <Image src="/evidentize-icon.png" alt="Evidentize" width={28} height={28} className="rounded" />
           <div>
-            <span className="text-slate-900 font-bold text-sm">CareerBridge</span>
+            <span className="text-slate-900 font-bold text-sm">Evidentize</span>
             <span className="ml-2 text-xs font-semibold tracking-widest uppercase text-teal">
               Reviewer
             </span>

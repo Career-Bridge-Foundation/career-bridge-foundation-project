@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui'
 import { CommandPaletteProvider } from './_command-palette-provider'
 import { getCurrentUserRole } from '@/lib/auth/permissions'
 
-export const metadata = { title: 'Admin — CareerBridge' }
+export const metadata = { title: 'Admin — Evidentize' }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
               <div className="flex items-center gap-1.5 text-xs font-semibold tracking-widest uppercase text-[#003359]/60">
                 <span className="w-2 h-2 rounded-full bg-teal" />
-                CareerBridge
+                Evidentize
               </div>
             </div>
           </header>
