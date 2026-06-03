@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
 
-export const alt = 'Career Bridge Portfolio';
+export const alt = 'Evidentize Portfolio';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -48,7 +48,7 @@ export default async function OgImage({
   const data = await getPortfolioBySlug(slug);
 
   // Render a generic branded fallback if portfolio not found
-  const name     = data?.candidate.fullName ?? 'Career Bridge Portfolio';
+  const name     = data?.candidate.fullName ?? 'Evidentize Portfolio';
   const headline = data?.profile.headline   ?? null;
   const bands    = (data?.simulations ?? []).map(s => s.highestBand).slice(0, 4);
 
@@ -155,7 +155,7 @@ export default async function OgImage({
               textTransform: 'uppercase',
             }}
           >
-            Career Bridge Verified Portfolio
+            Evidentize Verified Portfolio
           </div>
           <div
             style={{
@@ -166,7 +166,7 @@ export default async function OgImage({
               letterSpacing: '0.02em',
             }}
           >
-            careerbridgefoundation.com/portfolio/{slug}
+            evidentize.io/portfolio/{slug}
           </div>
         </div>
       </div>

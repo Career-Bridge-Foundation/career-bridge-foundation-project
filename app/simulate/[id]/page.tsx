@@ -351,8 +351,8 @@ export default function SimulationExecutionPage() {
             }}
           >
             <img
-              src="/logo.png"
-              alt="Career Bridge Foundation"
+              src="/evidentize-icon.png"
+              alt="Evidentize"
               style={{ width: "48px", height: "auto", objectFit: "contain" }}
             />
             <h2

@@ -20,7 +20,7 @@ export default function PortfolioNotFound() {
           marginBottom: '40px',
         }}
       >
-        Career Bridge
+        Evidentize
       </p>
 
       {/* Headline */}
@@ -62,7 +62,7 @@ export default function PortfolioNotFound() {
           letterSpacing:  '0.06em',
         }}
       >
-        Go to Career Bridge →
+        Go to Evidentize →
       </Link>
     </div>
   );

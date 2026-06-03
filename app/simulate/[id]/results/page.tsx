@@ -254,8 +254,8 @@ function EvaluatingScreen() {
       >
         {/* CB logo */}
         <img
-          src="/logo.png"
-          alt="Career Bridge Foundation"
+          src="/evidentize-icon.png"
+          alt="Evidentize"
           style={{ width: "48px", height: "auto", objectFit: "contain" }}
         />
 
@@ -381,7 +381,7 @@ function ShareSection({ result, portfolioSlug, simTitle }: { result: EvaluationR
 
   const pageUrl = typeof window !== "undefined" ? window.location.href : "";
   const verdictLabel = result.verdict === "Pass with Merit" ? "Merit" : result.verdict;
-  const shareText = `I just completed the ${simTitle} simulation on @CareerBridgeHQ and achieved ${verdictLabel}! Prove your capability at`;
+  const shareText = `I just completed the ${simTitle} simulation on @Evidentize and achieved ${verdictLabel}! Prove your capability at`;
 
   function showTooltip(msg: string) {
     setTooltip(msg);
@@ -709,7 +709,7 @@ function CredentialCard({
       try {
         await navigator.share({
           title: `${simulationTitle} Credential`,
-          text: `I earned a Career Bridge verified credential for ${simulationTitle}`,
+          text: `I earned an Evidentize verified credential for ${simulationTitle}`,
           url: credentialUrl ?? undefined,
         });
         return;

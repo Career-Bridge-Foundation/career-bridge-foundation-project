@@ -1,5 +1,5 @@
 // ============================================================
-// Career Bridge Foundation — Database Types
+// Evidentize — Database Types
 // Auto-matched to: supabase/migrations/20260420_001_create_all_tables.sql
 // ============================================================
 

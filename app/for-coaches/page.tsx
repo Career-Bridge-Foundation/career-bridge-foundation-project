@@ -141,7 +141,7 @@ export default function ForCoachesPage() {
     },
     {
       q: "What if I need more than 10 candidate seats?",
-      a: "Contact us at outreach@careerbridgefoundation.com for custom pricing on larger cohorts. We work with training providers running programmes of 20, 50, and 100+ candidates.",
+      a: "Contact us at hello@evidentize.io for custom pricing on larger cohorts. We work with training providers running programmes of 20, 50, and 100+ candidates.",
     },
   ];
 
@@ -263,13 +263,13 @@ export default function ForCoachesPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-              {/* Without Career Bridge */}
+              {/* Without Evidentize */}
               <div
                 className="bg-white rounded-xl shadow-md p-8 flex flex-col gap-6"
                 style={{ borderLeft: "4px solid #E74C3C" }}
               >
                 <h3 className="text-xl font-bold" style={{ color: "#1a1a2e" }}>
-                  Without Career Bridge
+                  Without Evidentize
                 </h3>
                 <ul className="flex flex-col space-y-4">
                   {[
@@ -287,13 +287,13 @@ export default function ForCoachesPage() {
                 </ul>
               </div>
 
-              {/* With Career Bridge */}
+              {/* With Evidentize */}
               <div
                 className="bg-white rounded-xl shadow-md p-8 flex flex-col gap-6"
                 style={{ borderLeft: `4px solid ${TEAL}` }}
               >
                 <h3 className="text-xl font-bold" style={{ color: "#1a1a2e" }}>
-                  With Career Bridge
+                  With Evidentize
                 </h3>
                 <ul className="flex flex-col space-y-4">
                   {[
@@ -431,7 +431,7 @@ export default function ForCoachesPage() {
 
               {[
                 {
-                  quote: "Career Bridge has been a turning point in my career. The simulated work gave me the opportunity to apply agile principles in real projects, sharpen my coaching and facilitation skills, and accelerate my development in a way traditional learning never could.",
+                  quote: "Evidentize has been a turning point in my career. The simulated work gave me the opportunity to apply agile principles in real projects, sharpen my coaching and facilitation skills, and accelerate my development in a way traditional learning never could.",
                   name: "Henry A.",
                   role: "SCRUM MASTER",
                 },
@@ -498,7 +498,7 @@ export default function ForCoachesPage() {
                     "Cohort dashboard with real-time progress",
                     "AI evaluations + coach co-review",
                     "Bulk credential issuance via Certifier",
-                    "Access to Career Bridge community",
+                    "Access to Evidentize community",
                     "Dedicated support",
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-3 text-sm text-gray-600">
@@ -531,7 +531,7 @@ export default function ForCoachesPage() {
                   <p className="text-sm text-center text-gray-400">
                     Need more than 10 seats?{" "}
                     <a
-                      href="mailto:outreach@careerbridgefoundation.com"
+                      href="mailto:hello@evidentize.io"
                       className="underline hover:opacity-80"
                       style={{ color: NAVY }}
                     >

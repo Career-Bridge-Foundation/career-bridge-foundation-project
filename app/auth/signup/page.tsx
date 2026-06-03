@@ -64,8 +64,8 @@ export default function SignupPage() {
           <div className="bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10">
             <div className="flex justify-center mb-4">
               <img
-                src="/logo-colour.png"
-                alt="Career Bridge Foundation"
+                src="/evidentize-logo-colour.png"
+                alt="Evidentize"
                 className="h-10 w-auto"
               />
             </div>

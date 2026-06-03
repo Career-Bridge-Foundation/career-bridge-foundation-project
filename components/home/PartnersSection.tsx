@@ -16,7 +16,7 @@ export function PartnersSection() {
         </h2>
 
         <p className="text-base font-light text-white/[0.68] leading-[1.8] max-w-lg">
-          Career Bridge Foundation works with leading academic institutions and professional
+          Evidentize works with leading academic institutions and professional
           training organisations to deliver portfolio simulations that help candidates
           demonstrate real-world capability and stand out in competitive job markets.
         </p>

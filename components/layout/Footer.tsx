@@ -2,27 +2,27 @@ const NAV_LINKS = [
   {
     id: 1,
     name: "Home",
-    url: "https://www.careerbridgefoundation.com/"
+    url: "https://evidentize.io"
   },
   {
     id: 2,
     name: "How It Works",
-    url: "https://www.careerbridgefoundation.com/how-it-works"
+    url: "https://evidentize.io/how-it-works"
   },
   {
     id: 3,
     name: "Simulations",
-    url: "https://career-bridge-foundation-project.vercel.app/simulations"
+    url: "/simulations"
   },
   {
     id: 4,
     name: "For Coaches",
-    url: "https://career-bridge-foundation-project.vercel.app/for-coaches"
+    url: "/for-coaches"
   },
   {
     id: 5,
     name: "Contact",
-    url: "https://www.careerbridgefoundation.com/contact"
+    url: "https://evidentize.io/contact"
   },
 ]
 // const POLICY_LINKS = [
@@ -38,32 +38,32 @@ const POLICY_LINKS = [
   {
     id: 1,
     name: "Privacy Policy",
-    url: "https://www.careerbridgefoundation.com/privacy-policy"
+    url: "https://evidentize.io/privacy-policy"
   },
   {
     id: 2,
     name: "Terms of Use",
-    url: "https://www.careerbridgefoundation.com/terms-of-use"
+    url: "https://evidentize.io/terms-of-use"
   },
   {
     id: 3,
     name: "Safeguarding Policy",
-    url: "https://www.careerbridgefoundation.com/safeguarding-policy"
+    url: "https://evidentize.io/safeguarding-policy"
   },
   {
     id: 4,
     name: "Data Protection",
-    url: "https://www.careerbridgefoundation.com/data-protection"
+    url: "https://evidentize.io/data-protection"
   },
   {
     id: 5,
     name: "Complaints Procedure",
-    url: "https://www.careerbridgefoundation.com/complaints-procedure"
+    url: "https://evidentize.io/complaints-procedure"
   },
   {
     id: 6,
     name: "Other Policies",
-    url: "https://www.careerbridgefoundation.com/policies"
+    url: "https://evidentize.io/policies"
   },
 ]
 
@@ -76,8 +76,8 @@ export function Footer() {
           {/* Col 1: Brand */}
           <div className="flex flex-col gap-4">
             <img
-              src="/logo-white.png"
-              alt="Career Bridge Foundation"
+              src="/evidentize-logo-white.png"
+              alt="Evidentize"
               className="h-12 w-auto object-contain"
             />
           </div>
@@ -118,25 +118,25 @@ export function Footer() {
 
             <p className="text-xs italic text-white/[0.55] mb-1.5">General Enquiries</p>
             <a
-              href="mailto:support@careerbridgefoundation.zohodesk.eu"
+              href="mailto:hello@evidentize.io"
               className="footer-link text-xs text-teal break-all"
             >
-              support@careerbridgefoundation.zohodesk.eu
+              hello@evidentize.io
             </a>
 
             <p className="text-xs italic text-white/[0.55] mt-5 mb-1.5">Partnership Enquiries</p>
             <a
-              href="mailto:outreach@careerbridgefoundation.com"
+              href="mailto:partnerships@evidentize.io"
               className="footer-link text-xs text-teal break-all"
             >
-              outreach@careerbridgefoundation.com
+              partnerships@evidentize.io
             </a>
 
             <p className="text-xs text-white/50 mt-7 mb-4">Follow Us</p>
             <div className="flex gap-3">
               {/* Instagram */}
               <a
-                href="https://www.instagram.com/careerbridgefoundation"
+                href="https://www.instagram.com/evidentize"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Instagram"
@@ -150,7 +150,7 @@ export function Footer() {
               </a>
               {/* LinkedIn */}
               <a
-                href="https://www.linkedin.com/company/careerbridgefoundation"
+                href="https://www.linkedin.com/company/evidentize"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="LinkedIn"
@@ -164,7 +164,7 @@ export function Footer() {
               </a>
               {/* Facebook */}
               <a
-                href="https://www.facebook.com/careerbridgefoundation"
+                href="https://www.facebook.com/evidentize"
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Facebook"
@@ -183,9 +183,8 @@ export function Footer() {
       {/* Bottom bar */}
       <div className="px-6 md:px-12 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-white/10">
         <p className="text-xs text-white/40 text-center sm:text-left">
-          &copy; 2026 Career Bridge Foundation CIC. All rights reserved.
+          &copy; 2026 Evidentize Inc. All rights reserved.
         </p>
-        <p className="text-xs text-white/40 text-center sm:text-right">Registered Company Number: 16939467</p>
       </div>
     </footer>
   );

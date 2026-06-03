@@ -23,18 +23,18 @@ export async function generateMetadata({
 
   const { candidate, profile } = data;
   return {
-    title: `${candidate.fullName} — Career Bridge Portfolio`,
+    title: `${candidate.fullName} — Evidentize Portfolio`,
     description:
       profile.headline ??
-      `${candidate.fullName}'s verified Career Bridge portfolio`,
+      `${candidate.fullName}'s verified Evidentize portfolio`,
     openGraph: {
-      title:       `${candidate.fullName} — Career Bridge Portfolio`,
-      description: profile.headline ?? `${candidate.fullName}'s verified Career Bridge portfolio`,
+      title:       `${candidate.fullName} — Evidentize Portfolio`,
+      description: profile.headline ?? `${candidate.fullName}'s verified Evidentize portfolio`,
       images:      [`/portfolio/${slug}/opengraph-image`],
     },
     twitter: {
       card:   'summary_large_image',
-      title:  `${candidate.fullName} — Career Bridge Portfolio`,
+      title:  `${candidate.fullName} — Evidentize Portfolio`,
       images: [`/portfolio/${slug}/opengraph-image`],
     },
   };
@@ -254,8 +254,8 @@ export default async function PortfolioPage({
         className="w-full text-center"
         style={{ paddingBottom: '40px' }}
       >
-              <Link
-                href="/"
+        <Link
+          href="/"
           style={{
             fontSize:       '11px',
             color:          '#bbb',
@@ -263,8 +263,8 @@ export default async function PortfolioPage({
             letterSpacing:  '0.06em',
           }}
         >
-          Powered by Career Bridge Foundation
-              </Link>
+          Powered by Evidentize
+        </Link>
       </footer>
 
     </div>

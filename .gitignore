@@ -53,3 +53,6 @@ supabase/.temp/
 
 # Claude Code local configuration
 .claude/
+
+# Local planning docs (never commit)
+/docs/spec-4.1-rebrand-plan.md

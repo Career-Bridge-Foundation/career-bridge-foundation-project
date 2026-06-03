@@ -15,7 +15,7 @@ export default function SimulationsPage() {
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-px bg-teal" />
             <span className="text-xs font-medium uppercase text-teal tracking-brand-xl">
-              Career Bridge Portfolio Simulations
+              Evidentize Portfolio Simulations
             </span>
           </div>
           <h1 className="font-bold text-white text-[clamp(2rem,4vw,3.25rem)] leading-hero mb-5">

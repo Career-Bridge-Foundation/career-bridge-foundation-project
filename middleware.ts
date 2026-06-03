@@ -55,19 +55,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Home page guard ──────────────────────────────────────────────────────
-  // Unauthenticated → /auth/login
   // Reviewers → /reviewer (they have no business on the candidate home page)
-  // All other authenticated users → allowed
+  // All other visitors (authenticated or not) → allowed
   if (pathname === '/') {
-    const url = request.nextUrl.clone()
-    if (!user) {
-      url.pathname = '/auth/login'
-      return NextResponse.redirect(url)
-    }
-    const role = await getRole()
-    if (role === 'reviewer') {
-      url.pathname = '/reviewer'
-      return NextResponse.redirect(url)
+    if (user) {
+      const role = await getRole()
+      if (role === 'reviewer') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/reviewer'
+        return NextResponse.redirect(url)
+      }
     }
     return supabaseResponse
   }
