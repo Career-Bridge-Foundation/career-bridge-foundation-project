@@ -40,6 +40,7 @@ function LoginForm() {
         .maybeSingle()
       const role = roleRow?.role ?? 'candidate'
       if (role === 'reviewer') { router.push('/reviewer'); return }
+      if (role === 'partner') { router.push('/partner'); return }
       if (role === 'admin' || role === 'super_admin' || role === 'content_developer') {
         router.push('/admin')
         return
