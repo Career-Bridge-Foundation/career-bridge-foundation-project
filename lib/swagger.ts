@@ -1,8 +1,8 @@
 export const swaggerSpec = {
   openapi: '3.0.3',
   info: {
-    title: 'CareerBridge Foundation API',
-    description: 'Admin and Reviewer API for the CareerBridge platform. All endpoints require authentication via Supabase session cookies.',
+    title: 'Evidentize API',
+    description: 'Admin and Reviewer API for the Evidentize platform. All endpoints require authentication via Supabase session cookies.',
     version: '1.0.0',
     contact: { email: 'jobsimulatorai@gmail.com' },
   },

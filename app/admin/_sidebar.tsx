@@ -71,11 +71,11 @@ export function Sidebar({ role, email }: Props) {
       <div className="px-6 pt-6 pb-5 border-b border-slate-200">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0">
-            <Image src="/logo.png" alt="Logo" width={45} height={45} />
+            <Image src="/evidentize-icon.png" alt="Evidentize" width={45} height={45} />
           </div>
           <div>
             <div className="text-slate-900 font-bold text-sm tracking-tight leading-none">
-              CareerBridge
+              Evidentize
             </div>
             <div className="text-xs font-semibold tracking-widest uppercase mt-0.5 text-{accent-copper}">
               {ROLE_LABEL[role] ?? 'Admin'}
