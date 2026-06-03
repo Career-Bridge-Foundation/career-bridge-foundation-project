@@ -16,8 +16,8 @@ const supabase = createClient(url, key);
 const SLUG = "tosin-sonde";
 
 const updates = {
-  headline: "Founder · Career Bridge Foundation · 20 years in product and project management",
-  bio: "I founded Career Bridge Foundation to help career changers and early-career professionals demonstrate real workplace skills with verifiable evidence. Our platform offers AI-evaluated simulations across product management, project management, cyber security, and more. Building what I wish existed when I was starting out.",
+  headline: "Founder · Evidentize · 20 years in product and project management",
+  bio: "I founded Evidentize to help career changers and early-career professionals demonstrate real workplace skills with verifiable evidence. Our platform offers AI-evaluated simulations across product management, project management, cyber security, and more. Building what I wish existed when I was starting out.",
   location: "Harwich, UK",
   linkedin_url: "https://www.linkedin.com/in/victorsonde",
   external_links: [

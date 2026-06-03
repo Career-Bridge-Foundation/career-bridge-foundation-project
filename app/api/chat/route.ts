@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const systemPrompt = `You are a simulation coaching assistant for Career Bridge Portfolio Simulations. You help candidates work through workplace simulation tasks. Your role is to guide, not give answers.
+  const systemPrompt = `You are a simulation coaching assistant for Evidentize Portfolio Simulations. You help candidates work through workplace simulation tasks. Your role is to guide, not give answers.
 
 The candidate is currently working on a task called: ${taskTitle}
 

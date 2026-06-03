@@ -113,7 +113,7 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
             </svg>
             <div>
               <p className="text-sm font-semibold text-emerald-800 mb-1">
-                Welcome to Career Bridge — one quick step before you start.
+                Welcome to Evidentize — one quick step before you start.
               </p>
               <p className="text-sm text-emerald-700 leading-relaxed">
                 Add your name below and save. That&apos;s all that&apos;s needed to unlock simulations.
@@ -296,7 +296,7 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-emerald-700 mb-0.5">Your Public Portfolio</p>
                 <p className="text-sm text-emerald-800 font-medium">
-                  careerbridgefoundation.com/portfolio/{initial.portfolio_slug}
+                  evidentize.io/portfolio/{initial.portfolio_slug}
                 </p>
               </div>
               <Link

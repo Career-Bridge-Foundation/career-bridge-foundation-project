@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   if (priceType === "coach") {
     return new Response(
-      JSON.stringify({ error: "Coach Pack requires a direct enquiry — please email outreach@careerbridgefoundation.com" }),
+      JSON.stringify({ error: "Coach Pack requires a direct enquiry — please email hello@evidentize.io" }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }

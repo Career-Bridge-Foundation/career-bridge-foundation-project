@@ -18,7 +18,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // SYSTEM_PROMPT is now fetched from the `rubrics` table per simulation_slug.
 // See lib/portfolio/getActiveRubric.ts
 // ─────────────────────────────────────────────────────────────────
-// const SYSTEM_PROMPT = `You are a professional assessment evaluator for Career Bridge Portfolio Simulations. ...`;
+// const SYSTEM_PROMPT = `You are a professional assessment evaluator for Evidentize Portfolio Simulations. ...`;
 
 /** Appended to every rubric so feedback matches the candidate's response language. */
 const LANGUAGE_MATCHING_INSTRUCTION = `

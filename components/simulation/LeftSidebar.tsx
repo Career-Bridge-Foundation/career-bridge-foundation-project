@@ -103,7 +103,7 @@ export function LeftSidebar({ currentStep, lastSavedText, sim, prompts }: LeftSi
 
         {/* Credential note */}
         <p className="text-xs italic text-[#bbb] leading-relaxed">
-          Complete all tasks to earn your verified Career Bridge credential for this simulation.
+          Complete all tasks to earn your verified Evidentize credential for this simulation.
         </p>
 
         {/* Save status */}
