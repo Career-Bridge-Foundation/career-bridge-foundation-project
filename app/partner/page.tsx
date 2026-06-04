@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { requirePartner } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
+import { MintForm } from './_mint-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,7 @@ export default async function PartnerPage() {
       <p style={{ color: '#475569', lineHeight: 1.6 }}>
         Welcome to your partner area. Candidate management and seat provisioning will appear here.
       </p>
+        <MintForm />
     </main>
   )
 }
