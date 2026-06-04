@@ -95,23 +95,16 @@ function PaywallScreen() {
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
-          Simulation Credit Required
+          No access to this simulation
         </h1>
         <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
-          You need at least one simulation credit to access and submit this simulation.
-          Purchase a plan to get started.
+          You don&rsquo;t have access to this simulation yet. Please contact the
+          organisation that gave you access to get set up.
         </p>
         <a
-          href="/pricing"
+          href="/simulations"
           className="text-sm font-semibold px-8 py-3.5 text-white"
           style={{ backgroundColor: "#003359" }}
-        >
-          View Plans →
-        </a>
-        <a
-          href="/simulations"
-          className="text-sm font-medium"
-          style={{ color: "#003359" }}
         >
           Back to Simulations
         </a>
