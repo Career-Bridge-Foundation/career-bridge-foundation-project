@@ -20,7 +20,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabase/server'
 import { getKeyPrefix, verifyApiKeyHash } from '@/lib/partners/apiKey'
-import { signPartnerToken, hashPartnerToken } from '@/lib/partners/token'
+import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
 import { disciplines } from '@/lib/disciplines-data'
 
 export const runtime = 'nodejs'
@@ -28,10 +28,6 @@ export const runtime = 'nodejs'
 const AVAILABLE_DISCIPLINES = disciplines
   .filter((d) => d.status === 'available')
   .map((d) => d.name)
-
-const DISCIPLINE_NAME_TO_SLUG = new Map(
-  disciplines.map((d) => [d.name, d.slug] as const)
-)
 
 const BodySchema = z.object({
   candidate_email: z.string().email(),
@@ -108,56 +104,31 @@ export async function POST(request: Request) {
     }
     const body = parsed.data
 
-    // Map validated discipline names to canonical slugs (matches simulations
-    // table + candidate_entitlements). Zod already guaranteed each name is an
-    // available discipline, so every name resolves; guard anyway.
-    const disciplineSlugs: string[] = []
-    for (const name of body.disciplines) {
-      const slug = DISCIPLINE_NAME_TO_SLUG.get(name)
-      if (!slug) {
-        console.error('[partners/tokens] no slug for discipline', name)
-        return NextResponse.json(
-          { error: 'internal error' },
-          { status: 500 }
-        )
-      }
-      disciplineSlugs.push(slug)
-    }
-
-    // 3. SIGN
-    const { token, expires_at } = await signPartnerToken({
-      partnerId,
-      candidateEmail: body.candidate_email,
-      candidateName: body.candidate_name ?? null,
-      disciplines: disciplineSlugs,
-      expiresInSeconds: body.expires_in_days * 86400,
-    })
-
-    // 4. PERSIST — fail closed on error (do not return an unrevokable token).
-    const { error: insertError } = await supabaseServer
-      .from('partner_tokens')
-      .insert({
-        partner_id: partnerId,
-        token_hash: hashPartnerToken(token),
-        candidate_email: body.candidate_email.toLowerCase().trim(),
-        candidate_name: body.candidate_name?.trim() ?? null,
-        disciplines: disciplineSlugs,
-        expires_at: expires_at.toISOString(),
+    // 3+4. Mint via shared helper (maps names→slugs, signs, persists fail-closed).
+    let result
+    try {
+      result = await mintRedemptionToken({
+        partnerId,
+        candidateEmail: body.candidate_email,
+        candidateName: body.candidate_name ?? null,
+        disciplineNames: body.disciplines,
+        expiresInDays: body.expires_in_days,
+        appUrl,
       })
-
-    if (insertError) {
-      console.error('[partners/tokens] failed to persist token row', insertError)
-      return NextResponse.json(
-        { error: 'could not persist token' },
-        { status: 500 }
-      )
+    } catch (err) {
+      if (err instanceof MintError) {
+        console.error('[partners/tokens] mint failed', err.code, err.message)
+        const msg = err.code === 'persist_failed' ? 'could not persist token' : 'internal error'
+        return NextResponse.json({ error: msg }, { status: 500 })
+      }
+      throw err
     }
 
     // 5. RESPONSE
     return NextResponse.json(
       {
-        redemption_url: `${appUrl}/redeem?token=${token}`,
-        expires_at: expires_at.toISOString(),
+        redemption_url: result.redemption_url,
+        expires_at: result.expires_at,
       },
       { status: 201 }
     )
