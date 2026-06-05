@@ -291,7 +291,7 @@ export interface PurchaseInsert {
 
 // ── RBAC ─────────────────────────────────────────────────────
 
-export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer'
+export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer' | 'partner'
 
 export interface AdminPermissions {
   canManageSimulations: boolean

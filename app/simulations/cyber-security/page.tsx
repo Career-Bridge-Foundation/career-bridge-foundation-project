@@ -29,7 +29,7 @@ export default function CyberSecurityPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setHasAccess(false); return; }
-      const { hasAccess } = await checkSimulationAccess(user.id);
+      const { hasAccess } = await checkSimulationAccess(user.id, "cyber-security");
       setHasAccess(hasAccess);
     }
     fetchAccess();

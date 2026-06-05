@@ -1,0 +1,176 @@
+'use client'
+import React, { useState } from 'react'
+import { disciplines } from '@/lib/disciplines-data'
+
+const AVAILABLE = disciplines.filter((d) => d.status === 'available')
+
+type Result = {
+  redemption_url: string
+  expires_at: string
+}
+
+export function MintForm() {
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<Result | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  function toggleDiscipline(name: string) {
+    setSelected((prev) =>
+      prev.includes(name) ? prev.filter((d) => d !== name) : [...prev, name]
+    )
+  }
+
+  async function handleSubmit() {
+    setError(null)
+    if (!email.trim()) {
+      setError('Candidate email is required.')
+      return
+    }
+    if (selected.length === 0) {
+      setError('Select at least one discipline.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/partner/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidate_email: email.trim(),
+          candidate_name: name.trim() || undefined,
+          disciplines: selected,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data?.error ? `Could not generate link: ${data.error}` : 'Could not generate link.')
+        setSubmitting(false)
+        return
+      }
+      setResult({ redemption_url: data.redemption_url, expires_at: data.expires_at })
+      setSubmitting(false)
+    } catch {
+      setError('Network error — please try again.')
+      setSubmitting(false)
+    }
+  }
+
+  async function handleCopy() {
+    if (!result) return
+    try {
+      await navigator.clipboard.writeText(result.redemption_url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Could not copy — select and copy the link manually.')
+    }
+  }
+
+  function reset() {
+    setEmail('')
+    setName('')
+    setSelected([])
+    setResult(null)
+    setError(null)
+    setCopied(false)
+  }
+
+  const expiryLabel = result
+    ? new Date(result.expires_at).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : ''
+
+  if (result) {
+    return (
+      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-bold text-slate-900 mb-1">Redemption link ready</h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Send this link to the candidate. It expires {expiryLabel}.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={result.redemption_url}
+            className="flex-1 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+            onFocus={(e) => e.currentTarget.select()}
+          />
+          <button
+            onClick={handleCopy}
+            className="rounded-md bg-[#006FAD] px-4 py-2 text-sm font-semibold text-white hover:bg-[#005a8c]"
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <button
+          onClick={reset}
+          className="mt-4 text-sm font-semibold text-[#006FAD] hover:underline"
+        >
+          Provision another candidate
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+      <h2 className="text-lg font-bold text-slate-900 mb-4">Provision a candidate</h2>
+
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Candidate email
+      </label>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="candidate@example.com"
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4"
+      />
+
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Candidate name <span className="text-slate-400 font-normal">(optional)</span>
+      </label>
+      <input
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Jane Doe"
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4"
+      />
+
+      <label className="block text-sm font-medium text-slate-700 mb-2">
+        Disciplines
+      </label>
+      <div className="space-y-2 mb-4">
+        {AVAILABLE.map((d) => (
+          <label key={d.slug} className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={selected.includes(d.name)}
+              onChange={() => toggleDiscipline(d.name)}
+            />
+            {d.name}
+          </label>
+        ))}
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 mb-4">{error}</p>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={submitting}
+        className="rounded-md bg-[#003359] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#00253f] disabled:opacity-50"
+      >
+        {submitting ? 'Generating…' : 'Generate redemption link'}
+      </button>
+    </div>
+  )
+}

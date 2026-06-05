@@ -18,6 +18,7 @@ export interface Simulation {
 export interface Discipline {
   id: number;
   name: string;
+  slug: string;
   description: string;
   status: "available" | "coming-soon";
   count?: string;

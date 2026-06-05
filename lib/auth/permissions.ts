@@ -1,6 +1,6 @@
 import { createClient, supabaseServer } from '@/lib/supabase/server'
 
-export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer'
+export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer' | 'partner'
 
 export type AdminPermissions = {
   canManageSimulations: boolean
@@ -14,6 +14,7 @@ export type RoleContext = {
   email: string
   role: UserRole
   permissions: AdminPermissions
+  partnerId: string | null
 }
 
 const SUPER_ADMIN_PERMISSIONS: AdminPermissions = {
@@ -58,12 +59,13 @@ export async function getCurrentUserRole(): Promise<RoleContext | null> {
       email: user.email ?? '',
       role,
       permissions: role === 'super_admin' ? SUPER_ADMIN_PERMISSIONS : (appMeta.permissions ?? defaultPerms),
+      partnerId: (appMeta as { partner_id?: string }).partner_id ?? null,
     }
   }
 
   const { data } = await supabaseServer
     .from('user_roles')
-    .select('role, permissions')
+    .select('role, permissions, partner_id')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -79,6 +81,7 @@ export async function getCurrentUserRole(): Promise<RoleContext | null> {
     permissions: role === 'super_admin'
       ? SUPER_ADMIN_PERMISSIONS
       : ((data?.permissions as AdminPermissions) ?? defaultPerms),
+    partnerId: (data?.partner_id as string | null) ?? null,
   }
 }
 
@@ -104,6 +107,15 @@ export async function requireSuperAdmin(): Promise<RoleContext> {
 export async function requireReviewer(): Promise<RoleContext> {
   const ctx = await getCurrentUserRole()
   if (!ctx || ctx.role !== 'reviewer') {
+    throw new Error('Forbidden')
+  }
+  return ctx
+}
+
+/** Requires partner role with a linked partner org. */
+export async function requirePartner(): Promise<RoleContext> {
+  const ctx = await getCurrentUserRole()
+  if (!ctx || ctx.role !== 'partner' || !ctx.partnerId) {
     throw new Error('Forbidden')
   }
   return ctx

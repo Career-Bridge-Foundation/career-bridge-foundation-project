@@ -95,23 +95,16 @@ function PaywallScreen() {
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
         <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
-          Simulation Credit Required
+          No access to this simulation
         </h1>
         <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
-          You need at least one simulation credit to access and submit this simulation.
-          Purchase a plan to get started.
+          You don&rsquo;t have access to this simulation yet. Please contact the
+          organisation that gave you access to get set up.
         </p>
         <a
-          href="/pricing"
+          href="/simulations"
           className="text-sm font-semibold px-8 py-3.5 text-white"
           style={{ backgroundColor: "#003359" }}
-        >
-          View Plans →
-        </a>
-        <a
-          href="/simulations"
-          className="text-sm font-medium"
-          style={{ color: "#003359" }}
         >
           Back to Simulations
         </a>
@@ -149,6 +142,7 @@ export default function SimulationExecutionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
+  const [viaEntitlement, setViaEntitlement] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evalMsgIndex, setEvalMsgIndex] = useState(0);
   const [evalVisible, setEvalVisible] = useState(true);
@@ -183,12 +177,18 @@ export default function SimulationExecutionPage() {
         return;
       }
 
-      const { hasAccess } = await checkSimulationAccess(user.id);
+      // Wait for simulation content before the discipline-aware access check —
+      // content.discipline loads async. Auth/profile above already ran, so an
+      // unauthenticated user has already been redirected by this point.
+      if (content.loading) return;
+
+      const { hasAccess, viaEntitlement: ve } = await checkSimulationAccess(user.id, content.discipline ?? undefined);
+      setViaEntitlement(ve);
       setAccessStatus(hasAccess ? "granted" : "denied");
     }
 
     checkAccess().catch(() => setAccessStatus("unauthenticated"));
-  }, []);
+  }, [content.loading, content.discipline]);
 
   // ── Redirect unauthenticated users (side effect, not during render) ──
   useEffect(() => {
@@ -238,10 +238,13 @@ export default function SimulationExecutionPage() {
     // Save all responses and flip session status to 'submitted' before calling the API
     await sim.markSubmitted();
 
-    // Consume one simulation credit (server-side, uses service role key)
-    const consumeRes = await fetch("/api/purchases/consume", { method: "POST" });
-    if (!consumeRes.ok && consumeRes.status !== 403) {
-      console.warn("[simulate] Credit consume returned", consumeRes.status);
+    // Consume one simulation credit — but NOT for entitlement-based access,
+    // which grants unmetered discipline access (no credit cost).
+    if (!viaEntitlement) {
+      const consumeRes = await fetch("/api/purchases/consume", { method: "POST" });
+      if (!consumeRes.ok && consumeRes.status !== 403) {
+        console.warn("[simulate] Credit consume returned", consumeRes.status);
+      }
     }
 
     const responses = prompts.map((p, i) => {
