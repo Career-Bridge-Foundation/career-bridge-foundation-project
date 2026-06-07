@@ -14,15 +14,16 @@ export const runtime = 'nodejs'
  * and is triggered by redemption (a candidate_entitlements row with
  * granted_by_partner set). Revoked entitlements are excluded. See Spec 05.5.
  *
- * `seatsConsumed` = count(distinct candidate_id), all-time.
- * `candidates` = per-candidate backing detail for invoice reconciliation.
+ * Response:
+ *   seatsConsumed    count(distinct candidate_id), all-time
+ *   candidates       per-candidate backing detail (id, disciplines, first redeem)
+ *   seatsCommitted   partners.volume_commitment_seats, or null if none set
+ *   seatsRemaining   committed - consumed, or null if no commitment
+ *   seatsThisPeriod  (only with period params) candidates first redeemed in window
+ *   period           (only with period params) the window used
  *
  * Optional query params for periodic (e.g. monthly) invoicing:
- *   ?period_start=ISO&period_end=ISO
- * When both are provided, `seatsThisPeriod` counts candidates whose FIRST
- * redemption (earliest granted_at) falls within [period_start, period_end).
- * A candidate is billed to the period they first consumed a seat, consistent
- * with per-candidate, permanent counting.
+ *   ?period_start=ISO&period_end=ISO  — first-redemption in [start, end)
  */
 export async function GET(request: Request) {
   try {
@@ -72,6 +73,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'could not load usage' }, { status: 500 })
     }
 
+    // Fetch the partner's seat commitment (may be unset).
+    const { data: partnerRow, error: partnerErr } = await supabaseServer
+      .from('partners')
+      .select('volume_commitment_seats')
+      .eq('id', partnerId)
+      .maybeSingle()
+
+    if (partnerErr) {
+      console.error('[partner/usage] partner lookup failed', partnerErr.message)
+      return NextResponse.json({ error: 'could not load usage' }, { status: 500 })
+    }
+
     const rows = data ?? []
 
     // Collapse to distinct candidates. Each candidate = one seat, regardless
@@ -105,14 +118,25 @@ export async function GET(request: Request) {
     }
 
     const candidates = Array.from(byCandidate.values())
+    const seatsConsumed = candidates.length
+
+    // Commitment context (null when the partner has no commitment set).
+    const seatsCommitted =
+      (partnerRow?.volume_commitment_seats as number | null) ?? null
+    const seatsRemaining =
+      seatsCommitted === null ? null : seatsCommitted - seatsConsumed
 
     const response: {
       seatsConsumed: number
+      seatsCommitted: number | null
+      seatsRemaining: number | null
       candidates: typeof candidates
       seatsThisPeriod?: number
       period?: { start: string; end: string }
     } = {
-      seatsConsumed: candidates.length,
+      seatsConsumed,
+      seatsCommitted,
+      seatsRemaining,
       candidates,
     }
 
