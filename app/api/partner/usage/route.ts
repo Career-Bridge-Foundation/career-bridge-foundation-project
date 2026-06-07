@@ -12,13 +12,19 @@ export const runtime = 'nodejs'
  * A seat = one UNIQUE candidate (not per discipline-redemption). A candidate
  * who redeemed two disciplines counts as ONE seat. Consumption is permanent
  * and is triggered by redemption (a candidate_entitlements row with
- * granted_by_partner set). See Spec 05.5.
+ * granted_by_partner set). Revoked entitlements are excluded. See Spec 05.5.
  *
- * The headline figure is `seatsConsumed` = count(distinct candidate_id).
- * Backing detail lists each distinct candidate with the disciplines they
- * redeemed and their first-redemption date, for invoice reconciliation.
+ * `seatsConsumed` = count(distinct candidate_id), all-time.
+ * `candidates` = per-candidate backing detail for invoice reconciliation.
+ *
+ * Optional query params for periodic (e.g. monthly) invoicing:
+ *   ?period_start=ISO&period_end=ISO
+ * When both are provided, `seatsThisPeriod` counts candidates whose FIRST
+ * redemption (earliest granted_at) falls within [period_start, period_end).
+ * A candidate is billed to the period they first consumed a seat, consistent
+ * with per-candidate, permanent counting.
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // AUTH — session-based: must be a partner with a linked org.
     let ctx
@@ -29,9 +35,32 @@ export async function GET() {
     }
     const partnerId = ctx.partnerId as string
 
-    // Fetch this partner's granted entitlements. Service-role read: we are
-    // aggregating the partner's own data and want it independent of the
-    // candidate-facing RLS on candidate_entitlements.
+    // Optional billing-period window.
+    const { searchParams } = new URL(request.url)
+    const periodStartRaw = searchParams.get('period_start')
+    const periodEndRaw = searchParams.get('period_end')
+
+    let periodStart: Date | null = null
+    let periodEnd: Date | null = null
+    if (periodStartRaw || periodEndRaw) {
+      if (!periodStartRaw || !periodEndRaw) {
+        return NextResponse.json(
+          { error: 'period_start and period_end must both be provided' },
+          { status: 400 }
+        )
+      }
+      periodStart = new Date(periodStartRaw)
+      periodEnd = new Date(periodEndRaw)
+      if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
+        return NextResponse.json(
+          { error: 'period_start and period_end must be valid dates' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Fetch this partner's non-revoked granted entitlements. Service-role read:
+    // aggregating the partner's own data, independent of candidate-facing RLS.
     const { data, error } = await supabaseServer
       .from('candidate_entitlements')
       .select('candidate_id, discipline, granted_at')
@@ -46,8 +75,8 @@ export async function GET() {
     const rows = data ?? []
 
     // Collapse to distinct candidates. Each candidate = one seat, regardless
-    // of how many disciplines they redeemed. Track their disciplines and the
-    // earliest grant (first-redemption date) for the backing detail.
+    // of how many disciplines they redeemed. Track disciplines and the
+    // earliest grant (first-redemption date) for backing detail + period logic.
     const byCandidate = new Map<
       string,
       { candidateId: string; disciplines: string[]; firstRedeemedAt: string }
@@ -77,13 +106,30 @@ export async function GET() {
 
     const candidates = Array.from(byCandidate.values())
 
-    return NextResponse.json(
-      {
-        seatsConsumed: candidates.length,
-        candidates,
-      },
-      { status: 200 }
-    )
+    const response: {
+      seatsConsumed: number
+      candidates: typeof candidates
+      seatsThisPeriod?: number
+      period?: { start: string; end: string }
+    } = {
+      seatsConsumed: candidates.length,
+      candidates,
+    }
+
+    // Per-period count: candidates whose FIRST redemption falls in the window.
+    if (periodStart && periodEnd) {
+      const seatsThisPeriod = candidates.filter((c) => {
+        const first = new Date(c.firstRedeemedAt).getTime()
+        return first >= periodStart!.getTime() && first < periodEnd!.getTime()
+      }).length
+      response.seatsThisPeriod = seatsThisPeriod
+      response.period = {
+        start: periodStart.toISOString(),
+        end: periodEnd.toISOString(),
+      }
+    }
+
+    return NextResponse.json(response, { status: 200 })
   } catch (err) {
     console.error('[partner/usage] unexpected error', err)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
