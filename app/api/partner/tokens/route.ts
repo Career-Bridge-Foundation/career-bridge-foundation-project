@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { requirePartner } from '@/lib/auth/permissions'
 import { disciplines } from '@/lib/disciplines-data'
@@ -73,14 +73,14 @@ export async function POST(request: Request) {
 
     // Fire-and-forget: invite email is a delivery convenience, not the source of truth.
     // The minted token is valid regardless; never fail the mint on email error.
-    void sendInvitationEmail({
+    after(() => sendInvitationEmail({
       to: body.candidate_email,
       inviteUrl: result.redemption_url,
       partnerId,
       expiresInDays: body.expires_in_days ?? 7,
     }).catch((err) => {
       console.error('[partner/tokens] invitation email failed', { partnerId, to: body.candidate_email, err })
-    })
+    }))
 
     return NextResponse.json(
       {

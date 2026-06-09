@@ -16,7 +16,7 @@
  *    whose row doesn't exist could never be revoked).
  */
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabase/server'
 import { getKeyPrefix, verifyApiKeyHash } from '@/lib/partners/apiKey'
@@ -76,13 +76,13 @@ export async function POST(request: Request) {
     const partnerId: string = row.partner_id
 
     // Fire-and-forget: record last use. Never block or fail the response on it.
-    void supabaseServer
-      .from('partner_api_keys')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('id', row.id)
-      .then(({ error }) => {
-        if (error) console.warn('[partners/tokens] last_used_at update failed')
-      })
+    after(async () => {
+      const { error } = await supabaseServer
+        .from('partner_api_keys')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', row.id)
+      if (error) console.warn('[partners/tokens] last_used_at update failed')
+    })
 
     // 2. VALIDATE BODY
     let json: unknown
