@@ -74,7 +74,6 @@ export async function POST(request: Request) {
     // Fire-and-forget: invite email is a delivery convenience, not the source of truth.
     // The minted token is valid regardless; never fail the mint on email error.
     after(() => {
-      console.log('[AFTER-FIX-v2] callback entered', { to: body.candidate_email, partnerId })
       return sendInvitationEmail({
         to: body.candidate_email,
         inviteUrl: result.redemption_url,
