@@ -8,13 +8,12 @@ type SendEmailParams = {
 type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
 export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = (process.env.RESEND_API_KEY ?? '').trim().replace(/^RESEND_API_KEY=/i, '').split(/\s/)[0];
   if (!apiKey) return { ok: false, error: 'RESEND_API_KEY is not set' };
 
   const { to, from, subject, html } = params;
 
   try {
-    console.log('[SEND] about to POST resend', { from, to });
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -23,7 +22,6 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
       },
       body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
     });
-    console.log('[SEND] resend responded', { status: res.status });
 
     const body = await res.json().catch(() => null);
 
