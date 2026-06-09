@@ -90,9 +90,9 @@ export function MintForm() {
   if (result) {
     return (
       <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Redemption link ready</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-1">Invite created</h2>
         <p className="text-sm text-slate-500 mb-4">
-          Send this link to the candidate. It expires {expiryLabel}.
+          We&apos;ve emailed the invite to {email}. You can also copy the link below to share it another way. Expires {expiryLabel}.
         </p>
         <div className="flex items-center gap-2">
           <input
