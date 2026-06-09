@@ -1,7 +1,45 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { subdomainFromHost, resolvePartnerBranding } from '@/lib/partners/branding'
+
+const PARTNER_HEADERS = [
+  'x-partner-id',
+  'x-partner-name',
+  'x-partner-logo',
+  'x-partner-primary',
+  'x-partner-secondary',
+] as const
 
 export async function middleware(request: NextRequest) {
+  // ── Spec 05.4 Phase 1: host→partner branding (presentation-only) ──────────
+  // Strip any client-supplied x-partner-* first (anti-spoof), then set fresh
+  // values only when we positively resolve a partner from the subdomain.
+  // This block must never redirect, throw, or affect access — branding ≠ auth.
+  for (const h of PARTNER_HEADERS) request.headers.delete(h)
+
+  const { pathname: _p } = request.nextUrl
+  const skipBranding =
+    _p.startsWith('/api') ||
+    _p.startsWith('/admin') ||
+    _p.startsWith('/reviewer') ||
+    _p.startsWith('/_next')
+
+  if (!skipBranding) {
+    const subdomain = subdomainFromHost(request.headers.get('host'))
+    if (subdomain) {
+      const partner = await resolvePartnerBranding(subdomain) // null-safe, never throws
+      if (partner) {
+        request.headers.set('x-partner-id', partner.id)
+        request.headers.set('x-partner-name', partner.name)
+        if (partner.logo_url)        request.headers.set('x-partner-logo', partner.logo_url)
+        if (partner.primary_color)   request.headers.set('x-partner-primary', partner.primary_color)
+        if (partner.secondary_color) request.headers.set('x-partner-secondary', partner.secondary_color)
+      }
+    }
+    // apex / unknown subdomain / lookup failure → no headers set → neutral.
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
