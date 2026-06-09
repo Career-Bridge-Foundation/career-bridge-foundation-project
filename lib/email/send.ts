@@ -14,6 +14,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
   const { to, from, subject, html } = params;
 
   try {
+    console.log('[SEND] about to POST resend', { from, to });
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -22,6 +23,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
       },
       body: JSON.stringify({ from, to: Array.isArray(to) ? to : [to], subject, html }),
     });
+    console.log('[SEND] resend responded', { status: res.status });
 
     const body = await res.json().catch(() => null);
 
@@ -34,6 +36,7 @@ export async function sendEmail(params: SendEmailParams): Promise<SendResult> {
 
     return { ok: true, id: body.id };
   } catch (err) {
+    console.error('[SEND] fetch threw', err);
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
