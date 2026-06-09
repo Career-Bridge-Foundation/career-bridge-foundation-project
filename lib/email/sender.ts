@@ -15,17 +15,19 @@ type ResolvedSender = {
   from: string; // "Career Bridge <noreply@email.careerbridgefoundation.com>"
   domain: string;
   isFallback: boolean;
+  partnerName: string; // the partner's real brand name — independent of email channel
 };
 
 function buildFrom(name: string, domain: string): string {
   return `${name} <${DEFAULT_LOCAL_PART}@${domain}>`;
 }
 
-function neutral(): ResolvedSender {
+function neutral(partnerName: string = NEUTRAL_FROM_NAME): ResolvedSender {
   return {
     from: buildFrom(NEUTRAL_FROM_NAME, NEUTRAL_DOMAIN),
     domain: NEUTRAL_DOMAIN,
     isFallback: true,
+    partnerName,
   };
 }
 
@@ -38,13 +40,20 @@ export async function resolvePartnerSender(partnerId: string | null): Promise<Re
     .eq('id', partnerId)
     .single();
 
-  if (error || !data || !data.email_sender_domain) return neutral();
+  if (error || !data) return neutral();
 
+  // The partner's real brand name — used regardless of email-domain config.
   const senderName =
     data.email_sender_name?.trim() || data.name?.trim() || NEUTRAL_FROM_NAME;
+
+  // Row exists but no sending domain configured: neutral email channel for
+  // deliverability, but carry the real partner name as the brand.
+  if (!data.email_sender_domain) return neutral(senderName);
+
   return {
     from: buildFrom(senderName, data.email_sender_domain),
     domain: data.email_sender_domain,
     isFallback: false,
+    partnerName: senderName,
   };
 }

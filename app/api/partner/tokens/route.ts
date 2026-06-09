@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requirePartner } from '@/lib/auth/permissions'
 import { disciplines } from '@/lib/disciplines-data'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
+import { sendInvitationEmail } from '@/lib/email/invitations'
 
 export const runtime = 'nodejs'
 
@@ -69,6 +70,17 @@ export async function POST(request: Request) {
       }
       throw err
     }
+
+    // Fire-and-forget: invite email is a delivery convenience, not the source of truth.
+    // The minted token is valid regardless; never fail the mint on email error.
+    void sendInvitationEmail({
+      to: body.candidate_email,
+      inviteUrl: result.redemption_url,
+      partnerId,
+      expiresInDays: body.expires_in_days ?? 7,
+    }).catch((err) => {
+      console.error('[partner/tokens] invitation email failed', { partnerId, to: body.candidate_email, err })
+    })
 
     return NextResponse.json(
       {
