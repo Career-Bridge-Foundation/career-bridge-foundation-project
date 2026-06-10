@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { useBranding } from "@/components/branding/BrandingProvider";
 import type { User } from "@supabase/supabase-js";
 
 interface HeaderProps {
@@ -41,6 +42,7 @@ export function Header({
 }: HeaderProps) {
   const scrolled = useScrolled();
   const isSolid = variant === "solid" || scrolled;
+  const branding = useBranding();
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -105,8 +107,12 @@ export function Header({
         {/* Logo */}
         <Link href="/">
           <img
-            src={isSolid ? "/evidentize-logo-colour.png" : "/evidentize-logo-white.png"}
-            alt="Evidentize"
+            src={
+              isSolid
+                ? branding?.logo_url_on_light ?? "/evidentize-logo-colour.png"
+                : branding?.logo_url_on_dark ?? "/evidentize-logo-white.png"
+            }
+            alt={branding?.name ?? "Evidentize"}
             className="h-10 w-auto"
           />
         </Link>
