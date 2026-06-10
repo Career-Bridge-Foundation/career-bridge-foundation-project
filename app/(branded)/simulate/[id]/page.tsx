@@ -9,6 +9,7 @@ import { useSimulation } from "@/hooks/useSimulation";
 import { useEvaluation } from "@/hooks/useEvaluation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { useBranding } from "@/components/branding/BrandingProvider";
 import { LeftSidebar } from "@/components/simulation/LeftSidebar";
 import { RightSidebar } from "@/components/simulation/RightSidebar";
 import { TaskPrompt } from "@/components/simulation/TaskPrompt";
@@ -136,6 +137,7 @@ export default function SimulationExecutionPage() {
 
   const sim = useSimulation(simulationId, content.discipline ?? "Product Management");
   const { submitForEvaluation, isSubmitting } = useEvaluation();
+  const branding = useBranding();
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitWarnings, setSubmitWarnings] = useState<SubmitWarning[]>([]);
@@ -354,8 +356,8 @@ export default function SimulationExecutionPage() {
             }}
           >
             <img
-              src="/evidentize-icon.png"
-              alt="Evidentize"
+              src={branding?.logo_url_icon ?? "/evidentize-icon.png"}
+              alt={branding?.name ?? "Evidentize"}
               style={{ width: "48px", height: "auto", objectFit: "contain" }}
             />
             <h2

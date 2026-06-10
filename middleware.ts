@@ -5,6 +5,7 @@ import { subdomainFromHost, resolvePartnerBranding } from '@/lib/partners/brandi
 const PARTNER_HEADERS = [
   'x-partner-id',
   'x-partner-name',
+  'x-partner-logo-icon',
   'x-partner-logo-light',
   'x-partner-logo-dark',
   'x-partner-primary',
@@ -32,6 +33,7 @@ export async function middleware(request: NextRequest) {
       if (partner) {
         request.headers.set('x-partner-id', partner.id)
         request.headers.set('x-partner-name', partner.name)
+        if (partner.logo_url_icon)     request.headers.set('x-partner-logo-icon', partner.logo_url_icon)
         if (partner.logo_url_on_light) request.headers.set('x-partner-logo-light', partner.logo_url_on_light)
         if (partner.logo_url_on_dark)  request.headers.set('x-partner-logo-dark', partner.logo_url_on_dark)
         if (partner.primary_color)     request.headers.set('x-partner-primary', partner.primary_color)

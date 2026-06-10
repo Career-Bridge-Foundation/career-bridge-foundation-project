@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { useBranding } from "@/components/branding/BrandingProvider";
 import {
   loadEvaluationResult,
   loadEvaluationResultFromSupabase,
@@ -218,6 +219,7 @@ function TaskCard({
 // ── Loading screen ────────────────────────────────────────────────
 
 function EvaluatingScreen() {
+  const branding = useBranding();
   const messages = [
     "Reviewing your responses…",
     "Assessing against the rubric…",
@@ -252,10 +254,10 @@ function EvaluatingScreen() {
         className="flex-1 flex flex-col items-center justify-center gap-7 px-6"
         style={{ paddingTop: "120px", paddingBottom: "80px" }}
       >
-        {/* CB logo */}
+        {/* Partner (or neutral Evidentize) icon */}
         <img
-          src="/evidentize-icon.png"
-          alt="Evidentize"
+          src={branding?.logo_url_icon ?? "/evidentize-icon.png"}
+          alt={branding?.name ?? "Evidentize"}
           style={{ width: "48px", height: "auto", objectFit: "contain" }}
         />
 

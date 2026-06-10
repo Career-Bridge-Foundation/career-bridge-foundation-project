@@ -35,6 +35,7 @@ export default async function BrandedLayout({
     ? {
         id: partnerId,
         name: h.get('x-partner-name') ?? '',
+        logo_url_icon: h.get('x-partner-logo-icon'),
         logo_url_on_light: h.get('x-partner-logo-light'),
         logo_url_on_dark: h.get('x-partner-logo-dark'),
         primary_color: h.get('x-partner-primary'),
