@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { CheckCircle } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ResetPasswordPage() {
+  const branding = useBranding()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,8 +41,8 @@ export default function ResetPasswordPage() {
           <div className="bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10">
             <div className="flex justify-center mb-4">
               <img
-                src="/evidentize-logo-colour.png"
-                alt="Evidentize"
+                src={branding?.logo_url_on_light ?? "/evidentize-logo-colour.png"}
+                alt={branding?.name ?? "Evidentize"}
                 className="h-10 w-auto"
               />
             </div>
