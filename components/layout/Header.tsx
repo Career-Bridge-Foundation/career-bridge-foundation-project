@@ -16,10 +16,16 @@ interface HeaderProps {
   homeMode?: boolean;
 }
 
-const NAV_LINKS = [
+const NAV_LINKS: {
+  label: string;
+  href: string;
+  homeHref: string;
+  /** When true, only shown to logged-in users (auth-only gate, no role check). */
+  requiresAuth?: boolean;
+}[] = [
   { label: "Simulations", href: "/simulations", homeHref: "#simulations" },
-  { label: "For Coaches", href: "/for-coaches", homeHref: "/for-coaches" },
-  { label: "Pricing", href: "/pricing", homeHref: "/pricing" },
+  { label: "Portfolio", href: "/portfolio", homeHref: "/portfolio", requiresAuth: true },
+  { label: "How It Works", href: "/#how-it-works", homeHref: "#how-it-works" },
   {
     label: "About",
     href: "https://evidentize.io",
@@ -119,7 +125,7 @@ export function Header({
 
         {/* Centre nav links */}
         <nav className="hidden md:flex items-center gap-4 lg:gap-6 absolute left-1/2 -translate-x-1/2">
-          {NAV_LINKS.map(({ label, href, homeHref }) => {
+          {NAV_LINKS.filter((link) => !link.requiresAuth || !!user).map(({ label, href, homeHref }) => {
             const to = homeMode ? homeHref : href;
             const isExternal = to.startsWith("http");
             return isExternal ? (
@@ -316,7 +322,7 @@ export function Header({
           )}
         >
           <nav className="px-4 py-4 flex flex-col gap-1">
-            {NAV_LINKS.map(({ label, href, homeHref }) => {
+            {NAV_LINKS.filter((link) => !link.requiresAuth || !!user).map(({ label, href, homeHref }) => {
               const to = homeMode ? homeHref : href;
               const isExternal = to.startsWith("http");
               return isExternal ? (
