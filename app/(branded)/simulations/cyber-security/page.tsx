@@ -44,7 +44,7 @@ export default function CyberSecurityPage() {
     async function load(){
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('simulations')
+        .from('simulations_catalog')
         .select('*')
         .eq('discipline', 'cyber-security')
         .eq('status', 'published')

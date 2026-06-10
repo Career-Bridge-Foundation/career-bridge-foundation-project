@@ -44,7 +44,7 @@ export default function ProductManagementPage() {
     async function load(){
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('simulations')
+        .from('simulations_catalog')
         .select('*')
         .eq('discipline', 'product-management')
         .eq('status', 'published')
