@@ -39,7 +39,7 @@ function ProfileIncompleteScreen() {
           height="48"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#003359"
+          style={{ stroke: "var(--color-navy)" }}
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -47,7 +47,7 @@ function ProfileIncompleteScreen() {
           <circle cx="12" cy="8" r="4" />
           <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
         </svg>
-        <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--color-navy)" }}>
           Complete your profile first
         </h1>
         <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
@@ -56,14 +56,14 @@ function ProfileIncompleteScreen() {
         <a
           href="/account/profile?onboarding=1"
           className="text-sm font-semibold px-8 py-3.5 text-white"
-          style={{ backgroundColor: "#003359" }}
+          style={{ backgroundColor: "var(--color-navy)" }}
         >
           Complete Your Profile →
         </a>
         <a
           href="/simulations"
           className="text-sm font-medium"
-          style={{ color: "#003359" }}
+          style={{ color: "var(--color-navy)" }}
         >
           Back to Simulations
         </a>
@@ -86,7 +86,7 @@ function PaywallScreen() {
           height="48"
           viewBox="0 0 24 24"
           fill="none"
-          stroke="#003359"
+          style={{ stroke: "var(--color-navy)" }}
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -94,7 +94,7 @@ function PaywallScreen() {
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--color-navy)" }}>
           No access to this simulation
         </h1>
         <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
@@ -104,7 +104,7 @@ function PaywallScreen() {
         <a
           href="/simulations"
           className="text-sm font-semibold px-8 py-3.5 text-white"
-          style={{ backgroundColor: "#003359" }}
+          style={{ backgroundColor: "var(--color-navy)" }}
         >
           Back to Simulations
         </a>
@@ -320,13 +320,13 @@ export default function SimulationExecutionPage() {
           className="flex-1 flex flex-col items-center justify-center gap-6 px-6 text-center"
           style={{ paddingTop: "120px", paddingBottom: "80px" }}
         >
-          <h1 className="text-2xl font-bold" style={{ color: "#003359" }}>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--color-navy)" }}>
             Simulation not found.
           </h1>
           <a
             href="/simulations"
             className="text-sm font-medium"
-            style={{ color: "#003359" }}
+            style={{ color: "var(--color-navy)" }}
           >
             Back to Simulations
           </a>
@@ -360,7 +360,7 @@ export default function SimulationExecutionPage() {
             />
             <h2
               className="text-center"
-              style={{ color: "#003359", fontWeight: 600, fontSize: "18px", lineHeight: 1.4 }}
+              style={{ color: "var(--color-navy)", fontWeight: 600, fontSize: "18px", lineHeight: 1.4 }}
             >
               Evaluating your responses…
             </h2>
@@ -379,7 +379,7 @@ export default function SimulationExecutionPage() {
                   position: "absolute",
                   top: 0,
                   bottom: 0,
-                  backgroundColor: "#4DC5D2",
+                  backgroundColor: "var(--color-teal)",
                   borderRadius: "9999px",
                   animation: "cb-eval-progress 1.8s ease-in-out infinite",
                 }}

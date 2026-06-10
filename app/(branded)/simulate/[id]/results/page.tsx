@@ -19,8 +19,8 @@ import { DebriefModal } from "@/components/debrief/DebriefModal";
 
 // ── Constants ─────────────────────────────────────────────────────
 
-const NAVY = "#003359";
-const TEAL = "#4DC5D2";
+const NAVY = "var(--color-navy)";
+const TEAL = "var(--color-teal)";
 const BORDER = "#D5DCE8";
 
 // ── Verdict bands ─────────────────────────────────────────────────
@@ -45,7 +45,7 @@ function verdictBandIndex(verdict: EvaluationResult["verdict"]): number {
 
 function LevelBadge({ level }: { level: EvaluationCriterion["level"] }) {
   const map = {
-    Strong: { bg: TEAL, text: "#fff" },
+    Strong: { bg: "#4DC5D2", text: "#fff" },
     Competent: { bg: "#006FAD", text: "#fff" },
     Weak: { bg: "#EF4444", text: "#fff" },
   };
@@ -105,7 +105,7 @@ function TaskScoreRing({ score, max }: { score: number; max: number }) {
         textAnchor="middle"
         fontSize="10"
         fontWeight="700"
-        fill={NAVY}
+        fill="#003359"
         fontFamily="Inter, sans-serif"
       >
         {score}/{max}
@@ -160,11 +160,11 @@ function TaskCard({
           height="14"
           viewBox="0 0 24 24"
           fill="none"
-          stroke={NAVY}
           strokeWidth="2"
           strokeLinecap="round"
           style={{
             flexShrink: 0,
+            stroke: NAVY,
             transform: open ? "rotate(180deg)" : "rotate(0deg)",
             transition: "transform 0.2s",
             opacity: 0.5,
@@ -637,8 +637,8 @@ function ClaimingAnimation() {
       `}</style>
       <svg
         width="30" height="30" viewBox="0 0 24 24" fill="none"
-        stroke={TEAL} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-        style={{ animation: "cb-badge-pulse 1.8s ease-in-out infinite" }}
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+        style={{ stroke: TEAL, animation: "cb-badge-pulse 1.8s ease-in-out infinite" }}
       >
         <circle cx="12" cy="8" r="6" />
         <path d="M8.56,17.39L7,22l5-3,5,3-1.56-4.61" />
@@ -1104,11 +1104,11 @@ export default function ResultsPage() {
                   height="28"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={result.credentialIssued ? TEAL : "#bbb"}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   className="shrink-0 mt-0.5"
+                  style={{ stroke: result.credentialIssued ? "#4DC5D2" : "#bbb" }}
                 >
                   <circle cx="12" cy="8" r="6" />
                   <path d="M8.56,17.39L7,22l5-3,5,3-1.56-4.61" />
