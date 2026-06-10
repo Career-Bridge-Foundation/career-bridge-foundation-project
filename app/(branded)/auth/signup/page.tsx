@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
 
 export default function SignupPage() {
+  const branding = useBranding()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,8 +66,8 @@ export default function SignupPage() {
           <div className="bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10">
             <div className="flex justify-center mb-4">
               <img
-                src="/evidentize-logo-colour.png"
-                alt="Evidentize"
+                src={branding?.logo_url_on_light ?? "/evidentize-logo-colour.png"}
+                alt={branding?.name ?? "Evidentize"}
                 className="h-10 w-auto"
               />
             </div>
