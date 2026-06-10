@@ -1,3 +1,7 @@
+"use client";
+
+import { useBranding } from "@/components/branding/BrandingProvider";
+
 const NAV_LINKS = [
   {
     id: 1,
@@ -68,6 +72,7 @@ const POLICY_LINKS = [
 ]
 
 export function Footer() {
+  const branding = useBranding();
   return (
     <footer className="bg-navy">
       <div className="max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 overflow-x-hidden">
@@ -76,8 +81,8 @@ export function Footer() {
           {/* Col 1: Brand */}
           <div className="flex flex-col gap-4">
             <img
-              src="/evidentize-logo-white.png"
-              alt="Evidentize"
+              src={branding?.logo_url_on_dark ?? "/evidentize-logo-white.png"}
+              alt={branding?.name ?? "Evidentize"}
               className="h-12 w-auto object-contain"
             />
           </div>

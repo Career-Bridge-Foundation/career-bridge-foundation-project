@@ -15,7 +15,8 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'evidentize.io'
 export type PartnerBranding = {
   id: string
   name: string
-  logo_url: string | null
+  logo_url_on_light: string | null
+  logo_url_on_dark: string | null
   primary_color: string | null
   secondary_color: string | null
 }
@@ -63,7 +64,7 @@ export async function resolvePartnerBranding(
   try {
     const res = await fetch(
       `${url}/rest/v1/partner_public_branding?subdomain=eq.${encodeURIComponent(subdomain)}` +
-        `&select=id,name,logo_url,primary_color,secondary_color&limit=1`,
+        `&select=id,name,logo_url_on_light,logo_url_on_dark,primary_color,secondary_color&limit=1`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
         // Don't let a slow DB stall every page; fail to neutral.

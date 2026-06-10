@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
 
 type State =
@@ -30,6 +31,7 @@ function disciplineLabel(slug: string): string {
 function RedeemInner() {
   const params = useSearchParams()
   const token = params.get('token')
+  const branding = useBranding()
   const [state, setState] = useState<State>({ kind: 'loading' })
 
   useEffect(() => {
@@ -99,7 +101,11 @@ function RedeemInner() {
         <div className="w-full max-w-[460px]">
           <div className="bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10 text-center">
             <div className="flex justify-center mb-4">
-              <img src="/logo-colour.png" alt="Career Bridge Foundation" className="h-10 w-auto" />
+              <img
+                src={branding?.logo_url_on_light ?? "/evidentize-logo-colour.png"}
+                alt={branding?.name ?? "Evidentize"}
+                className="h-10 w-auto"
+              />
             </div>
 
             {state.kind === 'loading' && (
