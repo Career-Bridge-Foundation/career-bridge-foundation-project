@@ -73,10 +73,12 @@ export function CandidatesTable({
             return (
               <tr key={c.candidateId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 align-top">
-                  <div className="font-medium text-slate-900">{c.fullName ?? 'Unnamed candidate'}</div>
+                  <Link href={`/partner/candidates/${c.candidateId}`} className="font-medium text-navy hover:underline">
+                    {c.fullName ?? 'Unnamed candidate'}
+                  </Link>
                   <div className="text-xs text-slate-500">{c.email ?? '—'}</div>
                   <Link href={`/${c.slug}`} className="text-xs font-medium text-teal hover:underline">
-                    View portfolio
+                    Public portfolio ↗
                   </Link>
                 </td>
                 <td className="px-4 py-3 align-top">
