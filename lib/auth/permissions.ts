@@ -1,6 +1,6 @@
 import { createClient, supabaseServer } from '@/lib/supabase/server'
 
-export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer' | 'partner'
+export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer' | 'partner' | 'mentor'
 
 export type AdminPermissions = {
   canManageSimulations: boolean
@@ -38,6 +38,28 @@ const CONTENT_DEVELOPER_PERMISSIONS: AdminPermissions = {
   canExportData: false,
 }
 
+/** No admin permissions. The restrictive default for any role whose access
+ *  does not come from these flags (candidate, reviewer, partner, mentor). */
+const NO_PERMISSIONS: AdminPermissions = {
+  canManageSimulations: false,
+  canManageUsers: false,
+  canViewAnalytics: false,
+  canExportData: false,
+}
+
+/** Default permission set for a role when no explicit permissions are stored.
+ *  Unlisted roles get NO admin permissions — their access comes from dedicated
+ *  paths, not these booleans. (Previously every unlisted role silently inherited
+ *  DEFAULT_ADMIN_PERMISSIONS via fallthrough — a privilege leak.) */
+function defaultPermissionsFor(role: UserRole): AdminPermissions {
+  switch (role) {
+    case 'super_admin':       return SUPER_ADMIN_PERMISSIONS
+    case 'admin':             return DEFAULT_ADMIN_PERMISSIONS
+    case 'content_developer': return CONTENT_DEVELOPER_PERMISSIONS
+    default:                  return NO_PERMISSIONS
+  }
+}
+
 export async function getCurrentUserRole(): Promise<RoleContext | null> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -50,15 +72,11 @@ export async function getCurrentUserRole(): Promise<RoleContext | null> {
 
   if (appMeta.user_role) {
     const role = appMeta.user_role
-    const defaultPerms =
-      role === 'super_admin'       ? SUPER_ADMIN_PERMISSIONS :
-      role === 'content_developer' ? CONTENT_DEVELOPER_PERMISSIONS :
-                                     DEFAULT_ADMIN_PERMISSIONS
     return {
       userId: user.id,
       email: user.email ?? '',
       role,
-      permissions: role === 'super_admin' ? SUPER_ADMIN_PERMISSIONS : (appMeta.permissions ?? defaultPerms),
+      permissions: role === 'super_admin' ? SUPER_ADMIN_PERMISSIONS : (appMeta.permissions ?? defaultPermissionsFor(role)),
       partnerId: (appMeta as { partner_id?: string }).partner_id ?? null,
     }
   }
@@ -70,17 +88,13 @@ export async function getCurrentUserRole(): Promise<RoleContext | null> {
     .maybeSingle()
 
   const role = ((data?.role as UserRole) ?? 'candidate')
-  const defaultPerms =
-    role === 'super_admin'       ? SUPER_ADMIN_PERMISSIONS :
-    role === 'content_developer' ? CONTENT_DEVELOPER_PERMISSIONS :
-                                   DEFAULT_ADMIN_PERMISSIONS
   return {
     userId: user.id,
     email: user.email ?? '',
     role,
     permissions: role === 'super_admin'
       ? SUPER_ADMIN_PERMISSIONS
-      : ((data?.permissions as AdminPermissions) ?? defaultPerms),
+      : ((data?.permissions as AdminPermissions) ?? defaultPermissionsFor(role)),
     partnerId: (data?.partner_id as string | null) ?? null,
   }
 }
