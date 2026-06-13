@@ -1,29 +1,24 @@
 import { NextResponse } from 'next/server'
 import { requirePartner } from '@/lib/auth/permissions'
-import { supabaseServer } from '@/lib/supabase/server'
+import { getPartnerUsage } from '@/lib/partners/usage'
 
 export const runtime = 'nodejs'
 
 /**
  * GET /api/partner/usage
  *
- * Returns seat-consumption metrics for the authenticated partner.
- *
- * A seat = one UNIQUE candidate (not per discipline-redemption). A candidate
- * who redeemed two disciplines counts as ONE seat. Consumption is permanent
- * and is triggered by redemption (a candidate_entitlements row with
- * granted_by_partner set). Revoked entitlements are excluded. See Spec 05.5.
+ * Seat-consumption metrics for the authenticated partner (Spec 05.5). Thin
+ * delegate: auth + period-param parsing here, seat counting in getPartnerUsage().
  *
  * Response:
  *   seatsConsumed    count(distinct candidate_id), all-time
- *   candidates       per-candidate backing detail (id, disciplines, first redeem)
  *   seatsCommitted   partners.volume_commitment_seats, or null if none set
  *   seatsRemaining   committed - consumed, or null if no commitment
+ *   candidates       per-candidate backing detail (id, disciplines, first redeem)
  *   seatsThisPeriod  (only with period params) candidates first redeemed in window
  *   period           (only with period params) the window used
  *
- * Optional query params for periodic (e.g. monthly) invoicing:
- *   ?period_start=ISO&period_end=ISO  — first-redemption in [start, end)
+ * Optional: ?period_start=ISO&period_end=ISO — first-redemption in [start, end)
  */
 export async function GET(request: Request) {
   try {
@@ -41,8 +36,7 @@ export async function GET(request: Request) {
     const periodStartRaw = searchParams.get('period_start')
     const periodEndRaw = searchParams.get('period_end')
 
-    let periodStart: Date | null = null
-    let periodEnd: Date | null = null
+    let period: { start: Date; end: Date } | null = null
     if (periodStartRaw || periodEndRaw) {
       if (!periodStartRaw || !periodEndRaw) {
         return NextResponse.json(
@@ -50,110 +44,24 @@ export async function GET(request: Request) {
           { status: 400 }
         )
       }
-      periodStart = new Date(periodStartRaw)
-      periodEnd = new Date(periodEndRaw)
-      if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
+      const start = new Date(periodStartRaw)
+      const end = new Date(periodEndRaw)
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         return NextResponse.json(
           { error: 'period_start and period_end must be valid dates' },
           { status: 400 }
         )
       }
+      period = { start, end }
     }
 
-    // Fetch this partner's non-revoked granted entitlements. Service-role read:
-    // aggregating the partner's own data, independent of candidate-facing RLS.
-    const { data, error } = await supabaseServer
-      .from('candidate_entitlements')
-      .select('candidate_id, discipline, granted_at')
-      .eq('granted_by_partner', partnerId)
-      .is('revoked_at', null)
-
-    if (error) {
-      console.error('[partner/usage] query failed', error.message)
+    try {
+      const usage = await getPartnerUsage(partnerId, period)
+      return NextResponse.json(usage, { status: 200 })
+    } catch (e) {
+      console.error('[partner/usage] query failed', e)
       return NextResponse.json({ error: 'could not load usage' }, { status: 500 })
     }
-
-    // Fetch the partner's seat commitment (may be unset).
-    const { data: partnerRow, error: partnerErr } = await supabaseServer
-      .from('partners')
-      .select('volume_commitment_seats')
-      .eq('id', partnerId)
-      .maybeSingle()
-
-    if (partnerErr) {
-      console.error('[partner/usage] partner lookup failed', partnerErr.message)
-      return NextResponse.json({ error: 'could not load usage' }, { status: 500 })
-    }
-
-    const rows = data ?? []
-
-    // Collapse to distinct candidates. Each candidate = one seat, regardless
-    // of how many disciplines they redeemed. Track disciplines and the
-    // earliest grant (first-redemption date) for backing detail + period logic.
-    const byCandidate = new Map<
-      string,
-      { candidateId: string; disciplines: string[]; firstRedeemedAt: string }
-    >()
-
-    for (const row of rows) {
-      const id = row.candidate_id as string
-      const discipline = row.discipline as string
-      const grantedAt = row.granted_at as string
-
-      const existing = byCandidate.get(id)
-      if (!existing) {
-        byCandidate.set(id, {
-          candidateId: id,
-          disciplines: [discipline],
-          firstRedeemedAt: grantedAt,
-        })
-      } else {
-        if (!existing.disciplines.includes(discipline)) {
-          existing.disciplines.push(discipline)
-        }
-        if (grantedAt < existing.firstRedeemedAt) {
-          existing.firstRedeemedAt = grantedAt
-        }
-      }
-    }
-
-    const candidates = Array.from(byCandidate.values())
-    const seatsConsumed = candidates.length
-
-    // Commitment context (null when the partner has no commitment set).
-    const seatsCommitted =
-      (partnerRow?.volume_commitment_seats as number | null) ?? null
-    const seatsRemaining =
-      seatsCommitted === null ? null : seatsCommitted - seatsConsumed
-
-    const response: {
-      seatsConsumed: number
-      seatsCommitted: number | null
-      seatsRemaining: number | null
-      candidates: typeof candidates
-      seatsThisPeriod?: number
-      period?: { start: string; end: string }
-    } = {
-      seatsConsumed,
-      seatsCommitted,
-      seatsRemaining,
-      candidates,
-    }
-
-    // Per-period count: candidates whose FIRST redemption falls in the window.
-    if (periodStart && periodEnd) {
-      const seatsThisPeriod = candidates.filter((c) => {
-        const first = new Date(c.firstRedeemedAt).getTime()
-        return first >= periodStart!.getTime() && first < periodEnd!.getTime()
-      }).length
-      response.seatsThisPeriod = seatsThisPeriod
-      response.period = {
-        start: periodStart.toISOString(),
-        end: periodEnd.toISOString(),
-      }
-    }
-
-    return NextResponse.json(response, { status: 200 })
   } catch (err) {
     console.error('[partner/usage] unexpected error', err)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
