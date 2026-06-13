@@ -1,22 +1,13 @@
 import { headers } from 'next/headers'
 import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import type { PartnerBranding } from '@/lib/partners/branding'
 import { BrandingProvider } from '@/components/branding/BrandingProvider'
 import { requirePartner } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
+import { ConsoleNav } from './_console-nav'
 
 export const dynamic = 'force-dynamic'
-
-// Only Candidates is live this slice; the rest are visible-but-stubbed.
-const NAV: { label: string; href?: string; live: boolean }[] = [
-  { label: 'Candidates', href: '/partner', live: true },
-  { label: 'Analytics', live: false },
-  { label: 'Team', live: false },
-  { label: 'Branding', live: false },
-  { label: 'Usage', live: false },
-]
 
 export default async function PartnerConsoleLayout({ children }: { children: React.ReactNode }) {
   // Gate the whole console (each section also guards, but fail fast here).
@@ -60,30 +51,7 @@ export default async function PartnerConsoleLayout({ children }: { children: Rea
           <aside className="w-64 shrink-0">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Partner Console</p>
             <h2 className="mb-6 text-lg font-bold leading-snug text-navy break-words">{partner?.name ?? 'Partner'}</h2>
-            <nav className="space-y-1">
-              {NAV.map((item) =>
-                item.live ? (
-                  <Link
-                    key={item.label}
-                    href={item.href!}
-                    className="block rounded-md bg-navy px-3 py-2 text-sm font-medium text-white"
-                  >
-                    {item.label}
-                  </Link>
-                ) : (
-                  <span
-                    key={item.label}
-                    aria-disabled="true"
-                    className="flex cursor-not-allowed select-none items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-slate-400"
-                  >
-                    {item.label}
-                    <span className="rounded-full border border-slate-200 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-                      Soon
-                    </span>
-                  </span>
-                )
-              )}
-            </nav>
+            <ConsoleNav />
           </aside>
           <main className="min-w-0 flex-1">{children}</main>
         </div>
