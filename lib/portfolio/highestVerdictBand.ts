@@ -1,10 +1,4 @@
-const BAND_ORDER: Record<string, number> = {
-  'Distinction':  4,
-  'Merit':        3,
-  'Pass':         2,
-  'Borderline':   1,
-  'Did Not Pass': 0,
-};
+import { verdictRank } from '@/lib/verdict-bands';
 
 /**
  * Returns the highest verdict band string from an array.
@@ -14,7 +8,7 @@ const BAND_ORDER: Record<string, number> = {
 export function highestVerdictBand(bands: string[]): string | null {
   if (bands.length === 0) return null;
   return bands.reduce((best, current) =>
-    (BAND_ORDER[current] ?? -1) > (BAND_ORDER[best] ?? -1) ? current : best
+    verdictRank(current) > verdictRank(best) ? current : best
   );
 }
 
@@ -28,8 +22,8 @@ export function achievingResult<T extends { verdict_band: string; evaluated_at: 
 ): T | null {
   if (results.length === 0) return null;
   return results.reduce((best, current) => {
-    const bestOrder = BAND_ORDER[best.verdict_band] ?? -1;
-    const currentOrder = BAND_ORDER[current.verdict_band] ?? -1;
+    const bestOrder = verdictRank(best.verdict_band);
+    const currentOrder = verdictRank(current.verdict_band);
     if (currentOrder > bestOrder) return current;
     if (currentOrder === bestOrder) {
       return current.evaluated_at > best.evaluated_at ? current : best;

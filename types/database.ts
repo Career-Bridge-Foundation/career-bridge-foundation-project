@@ -2,6 +2,7 @@
 // Evidentize — Database Types
 // Auto-matched to: supabase/migrations/20260420_001_create_all_tables.sql
 // ============================================================
+import type { VerdictBand } from '@/lib/verdict-bands'
 
 // ── profiles ─────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export interface SimulationResponseUpdate {
 
 // ── evaluation_results ───────────────────────────────────────
 
-export type VerdictBand = 'Distinction' | 'Merit' | 'Pass' | 'Borderline' | 'Did Not Pass'
+export type { VerdictBand }
 
 export interface EvaluationTaskScore {
   taskId: number

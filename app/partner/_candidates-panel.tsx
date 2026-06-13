@@ -3,15 +3,10 @@ import { useMemo, useState } from 'react'
 import { disciplines } from '@/lib/disciplines-data'
 import type { PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
 import { CandidatesTable, candidateMeta, type CandidateStatus, type SortKey, type SortState } from './_candidates-table'
+import { VERDICT_BANDS, verdictRank } from '@/lib/verdict-bands'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
 const STATUSES: CandidateStatus[] = ['Not started', 'In progress', 'Evaluated']
-const VERDICTS = ['Distinction', 'Merit', 'Pass', 'Borderline', 'Did Not Pass'] as const
-
-// Local sort-rank for verdict bands. NOTE: duplicates highestVerdictBand's BAND_ORDER
-// and the table's VERDICT_STYLE keys — verdict bands (order + styles) should become one
-// shared module (follow-up chore). Kept local to avoid touching the merged foundation.
-const VERDICT_RANK: Record<string, number> = { Distinction: 5, Merit: 4, Pass: 3, Borderline: 2, 'Did Not Pass': 1 }
 const STATUS_RANK: Record<CandidateStatus, number> = { 'Not started': 0, 'In progress': 1, Evaluated: 2 }
 
 const PAGE_SIZE = 20
@@ -50,7 +45,7 @@ export function CandidatesPanel({ candidates }: { candidates: PartnerCandidateWi
       let cmp = 0
       if (sort.key === 'name') cmp = (a.fullName ?? '').localeCompare(b.fullName ?? '')
       else if (sort.key === 'progress') cmp = ma.evaluated - mb.evaluated || ma.started - mb.started
-      else if (sort.key === 'verdict') cmp = (ma.best ? VERDICT_RANK[ma.best] ?? 0 : 0) - (mb.best ? VERDICT_RANK[mb.best] ?? 0 : 0)
+      else if (sort.key === 'verdict') cmp = verdictRank(ma.best ?? '') - verdictRank(mb.best ?? '')
       else if (sort.key === 'status') cmp = STATUS_RANK[ma.status] - STATUS_RANK[mb.status]
       return cmp * dir
     })
@@ -86,7 +81,7 @@ export function CandidatesPanel({ candidates }: { candidates: PartnerCandidateWi
         </select>
         <select className={selectCls} value={verdict} onChange={(e) => changeFilter(() => setVerdict(e.target.value))}>
           <option value="all">All verdicts</option>
-          {VERDICTS.map((v) => <option key={v} value={v}>{v}</option>)}
+          {VERDICT_BANDS.map((v) => <option key={v} value={v}>{v}</option>)}
           <option value="none">No verdict yet</option>
         </select>
       </div>

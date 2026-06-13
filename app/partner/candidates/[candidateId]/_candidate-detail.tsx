@@ -1,17 +1,10 @@
 import Link from 'next/link'
 import { disciplines } from '@/lib/disciplines-data'
 import type { PartnerCandidateDetail } from '@/lib/partners/candidateDetail'
+import { partnerVerdictStyle } from '@/lib/verdict-bands'
 import { TaskCriteria } from './_task-criteria'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
-
-const VERDICT_STYLE: Record<string, string> = {
-  Distinction: 'bg-teal/10 text-teal border-teal/30',
-  Merit: 'bg-blue-50 text-blue-700 border-blue-200',
-  Pass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Borderline: 'bg-amber-50 text-amber-700 border-amber-200',
-  'Did Not Pass': 'bg-red-50 text-red-700 border-red-200',
-}
 
 type TaskScore = { taskId: number; title: string; score: number; maxScore: number; summary: string }
 type CriterionScore = { taskId: number; name: string; level: string; score: number; feedback: string }
@@ -79,7 +72,7 @@ export function CandidateDetail({ detail }: { detail: PartnerCandidateDetail }) 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-semibold text-slate-900">{sim.simulationSlug}</h2>
                   {sim.evaluation?.verdictBand && (
-                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${VERDICT_STYLE[sim.evaluation.verdictBand] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${partnerVerdictStyle(sim.evaluation.verdictBand)}`}>
                       {sim.evaluation.verdictBand}
                       {sim.evaluation.overallScore != null && maxTotal > 0 ? ` · ${sim.evaluation.overallScore} / ${maxTotal}` : ''}
                     </span>
