@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { disciplines } from '@/lib/disciplines-data'
 import { highestVerdictBand } from '@/lib/portfolio/highestVerdictBand'
 import type { PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
+import { partnerVerdictStyle } from '@/lib/verdict-bands'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
 
@@ -17,14 +18,6 @@ export function candidateMeta(c: PartnerCandidateWithProgress): CandidateMeta {
   const best = highestVerdictBand(c.simulations.map((s) => s.verdictBand).filter((b): b is string => !!b))
   const status: CandidateStatus = started === 0 ? 'Not started' : evaluated === 0 ? 'In progress' : 'Evaluated'
   return { started, evaluated, best, status }
-}
-
-const VERDICT_STYLE: Record<string, string> = {
-  Distinction: 'bg-teal/10 text-teal border-teal/30',
-  Merit: 'bg-blue-50 text-blue-700 border-blue-200',
-  Pass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  Borderline: 'bg-amber-50 text-amber-700 border-amber-200',
-  'Did Not Pass': 'bg-red-50 text-red-700 border-red-200',
 }
 
 const STATUS_STYLE: Record<CandidateStatus, string> = {
@@ -95,7 +88,7 @@ export function CandidatesTable({
                 </td>
                 <td className="px-4 py-3 align-top">
                   {best ? (
-                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${VERDICT_STYLE[best] ?? 'border-slate-200 bg-slate-50 text-slate-600'}`}>
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${partnerVerdictStyle(best)}`}>
                       {best}
                     </span>
                   ) : (
