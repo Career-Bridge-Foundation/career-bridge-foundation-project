@@ -135,6 +135,15 @@ export async function requirePartner(): Promise<RoleContext> {
   return ctx
 }
 
+/** Requires mentor role with a linked partner org. */
+export async function requireMentor(): Promise<RoleContext> {
+  const ctx = await getCurrentUserRole()
+  if (!ctx || ctx.role !== 'mentor' || !ctx.partnerId) {
+    throw new Error('Forbidden')
+  }
+  return ctx
+}
+
 /** Requires any staff role that has access to the admin panel. */
 export async function requireStaff(): Promise<RoleContext> {
   const ctx = await getCurrentUserRole()
