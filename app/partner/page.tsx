@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation'
 import { requirePartner } from '@/lib/auth/permissions'
-import { supabaseServer } from '@/lib/supabase/server'
+import { getPartnerCandidateProgress, type PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
 import { MintForm } from './_mint-form'
+import { CandidatesPanel } from './_candidates-panel'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PartnerPage() {
+export default async function PartnerCandidatesPage() {
   let ctx
   try {
     ctx = await requirePartner()
@@ -13,25 +14,43 @@ export default async function PartnerPage() {
     redirect('/auth/login?next=/partner')
   }
 
-  // Resolve the partner org for a welcome line.
-  const { data: partner } = await supabaseServer
-    .from('partners')
-    .select('name')
-    .eq('id', ctx.partnerId)
-    .maybeSingle()
+  let candidates: PartnerCandidateWithProgress[] = []
+  let loadError = false
+  try {
+    // requirePartner guarantees a non-null partnerId.
+    candidates = await getPartnerCandidateProgress(ctx.partnerId!)
+  } catch {
+    loadError = true
+  }
 
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <p style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 13, color: '#4DC5D2', marginBottom: 8 }}>
-        Partner Portal
-      </p>
-      <h1 style={{ fontSize: 32, fontWeight: 700, color: '#003359', marginBottom: 12 }}>
-        {partner?.name ?? 'Partner'}
-      </h1>
-      <p style={{ color: '#475569', lineHeight: 1.6 }}>
-        Welcome to your partner area. Candidate management and seat provisioning will appear here.
-      </p>
-        <MintForm />
-    </main>
+    <div className="space-y-8">
+      <header>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Candidates</p>
+        <h1 className="text-2xl font-bold text-navy">Your candidates</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          {candidates.length > 0
+            ? `${candidates.length} candidate${candidates.length === 1 ? '' : 's'} provisioned`
+            : 'Provision candidates to give them access to simulations.'}
+        </p>
+      </header>
+
+      {loadError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          We couldn’t load your candidates right now. Please refresh — if this keeps happening, contact support.
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
+          <h2 className="text-base font-semibold text-slate-900">No candidates yet</h2>
+          <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+            Provision your first candidate below — they’ll receive an invite to start their simulations.
+          </p>
+        </div>
+      ) : (
+        <CandidatesPanel candidates={candidates} />
+      )}
+
+      <MintForm />
+    </div>
   )
 }
