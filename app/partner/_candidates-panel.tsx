@@ -11,7 +11,7 @@ const STATUS_RANK: Record<CandidateStatus, number> = { 'Not started': 0, 'In pro
 
 const PAGE_SIZE = 20
 
-export function CandidatesPanel({ candidates }: { candidates: PartnerCandidateWithProgress[] }) {
+export function CandidatesPanel({ candidates, linkDetail = true }: { candidates: PartnerCandidateWithProgress[]; linkDetail?: boolean }) {
   const [search, setSearch] = useState('')
   const [discipline, setDiscipline] = useState('all')
   const [status, setStatus] = useState('all')
@@ -98,7 +98,7 @@ export function CandidatesPanel({ candidates }: { candidates: PartnerCandidateWi
           <button onClick={resetFilters} className="mt-3 text-sm font-semibold text-teal hover:underline">Clear filters</button>
         </div>
       ) : (
-        <CandidatesTable candidates={paged} sort={sort} onSort={toggleSort} />
+        <CandidatesTable candidates={paged} sort={sort} onSort={toggleSort} linkDetail={linkDetail} />
       )}
 
       {pageCount > 1 && (

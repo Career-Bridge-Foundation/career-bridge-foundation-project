@@ -43,10 +43,12 @@ export function CandidatesTable({
   candidates,
   sort,
   onSort,
+  linkDetail = true,
 }: {
   candidates: PartnerCandidateWithProgress[]
   sort?: SortState
   onSort?: (k: SortKey) => void
+  linkDetail?: boolean // false (mentor) → name is plain text, no link to the raw-submission detail
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -66,11 +68,15 @@ export function CandidatesTable({
             return (
               <tr key={c.candidateId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 align-top">
-                  <Link href={`/partner/candidates/${c.candidateId}`} className="font-medium text-navy hover:underline">
-                    {c.fullName ?? 'Unnamed candidate'}
-                  </Link>
+                  {linkDetail ? (
+                    <Link href={`/partner/candidates/${c.candidateId}`} className="font-medium text-navy hover:underline">
+                      {c.fullName ?? 'Unnamed candidate'}
+                    </Link>
+                  ) : (
+                    <div className="font-medium text-slate-900">{c.fullName ?? 'Unnamed candidate'}</div>
+                  )}
                   <div className="text-xs text-slate-500">{c.email ?? '—'}</div>
-                  <Link href={`/${c.slug}`} className="text-xs font-medium text-teal hover:underline">
+                  <Link href={`/portfolio/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-teal hover:underline">
                     Public portfolio ↗
                   </Link>
                 </td>
