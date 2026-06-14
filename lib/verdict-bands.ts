@@ -33,3 +33,19 @@ const PARTNER_VERDICT_STYLE_FALLBACK = 'border-slate-200 bg-slate-50 text-slate-
 export function partnerVerdictStyle(band: string): string {
   return PARTNER_VERDICT_STYLE[band as VerdictBand] ?? PARTNER_VERDICT_STYLE_FALLBACK
 }
+
+// Solid fill colors per band for distribution bars/charts. SEMANTIC (not brand —
+// they must NOT re-theme per partner). Consistent with the partner chip palette.
+// Typed Record<VerdictBand> so every band must have a color (can't drift).
+const VERDICT_BAR_COLOR: Record<VerdictBand, string> = {
+  Distinction: '#0d9488', // teal
+  Merit: '#3b82f6', // blue
+  Pass: '#10b981', // emerald
+  Borderline: '#f59e0b', // amber
+  'Did Not Pass': '#ef4444', // red
+}
+
+/** Solid hex fill for a verdict band's distribution bar; slate fallback for unknown. */
+export function verdictBarColor(band: string): string {
+  return VERDICT_BAR_COLOR[band as VerdictBand] ?? '#94a3b8'
+}
