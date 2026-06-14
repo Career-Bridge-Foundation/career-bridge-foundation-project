@@ -7,7 +7,7 @@ const NAV: { label: string; href?: string; live: boolean }[] = [
   { label: 'Usage', href: '/partner/usage', live: true },
   { label: 'Analytics', href: '/partner/analytics', live: true },
   { label: 'Team', live: false },
-  { label: 'Branding', live: false },
+  { label: 'Branding', href: '/partner/branding', live: true },
 ]
 
 export function ConsoleNav() {
