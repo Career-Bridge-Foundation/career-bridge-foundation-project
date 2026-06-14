@@ -41,6 +41,7 @@ async function roleBasedRedirect(
   const role = roleRow?.role ?? 'candidate'
   if (role === 'reviewer') return `${origin}/reviewer`
   if (role === 'partner') return `${origin}/partner`
+  if (role === 'mentor') return `${origin}/mentor`
   if (role === 'admin' || role === 'super_admin' || role === 'content_developer') {
     return `${origin}/admin`
   }
