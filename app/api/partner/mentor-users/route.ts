@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePartner } from '@/lib/auth/permissions'
+import { elevateUser } from '@/lib/auth/elevateUser'
 import { supabaseServer } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -62,21 +63,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Elevate. partner_id FORCED from ctx; re-fetch the written row to prove scoping.
-  const { data: written, error: upsertErr } = await supabaseServer
-    .from('user_roles')
-    .upsert(
-      {
-        user_id: target.id,
-        email: target.email,
-        role: 'mentor',
-        permissions: {},
-        partner_id: ctx.partnerId, // FORCED from ctx, never the body
-        granted_by: ctx.userId,
-      },
-      { onConflict: 'user_id' }
-    )
-    .select('role, partner_id')
-    .maybeSingle()
+  const { data: written, error: upsertErr } = await elevateUser({
+    targetUserId: target.id,
+    email: target.email,
+    role: 'mentor',
+    partnerId: ctx.partnerId, // FORCED from ctx, never the body
+    grantedBy: ctx.userId,
+  })
   if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 })
 
   return NextResponse.json({

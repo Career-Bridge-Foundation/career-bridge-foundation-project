@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/permissions'
+import { elevateUser } from '@/lib/auth/elevateUser'
 import { supabaseServer } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -57,19 +58,16 @@ export async function POST(request: NextRequest) {
 
     // Elevate to partner role linked to the org. Flat role, no granular
     // permissions for MVP (the permissions column stays an empty object).
-    const { error: upsertErr } = await supabaseServer
-      .from('user_roles')
-      .upsert(
-        {
-          user_id: targetUser.id,
-          email: targetUser.email,
-          role: 'partner',
-          permissions: {},
-          partner_id,
-          granted_by: ctx.userId,
-        },
-        { onConflict: 'user_id' }
-      )
+    // partner_id comes from the (verified) body — super-admin is not
+    // partner-scoped, so there is no hijack guard here. The .select() return
+    // is unused; we only care whether the upsert errored.
+    const { error: upsertErr } = await elevateUser({
+      targetUserId: targetUser.id,
+      email: targetUser.email,
+      role: 'partner',
+      partnerId: partner_id,
+      grantedBy: ctx.userId,
+    })
     if (upsertErr) {
       return NextResponse.json({ error: upsertErr.message }, { status: 500 })
     }
