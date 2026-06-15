@@ -6,7 +6,7 @@ const NAV: { label: string; href?: string; live: boolean }[] = [
   { label: 'Candidates', href: '/partner', live: true },
   { label: 'Usage', href: '/partner/usage', live: true },
   { label: 'Analytics', href: '/partner/analytics', live: true },
-  { label: 'Team', live: false },
+  { label: 'Team', href: '/partner/team', live: true },
   { label: 'Branding', href: '/partner/branding', live: true },
 ]
 

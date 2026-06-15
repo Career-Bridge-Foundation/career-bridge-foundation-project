@@ -78,3 +78,10 @@ export const disciplines: Discipline[] = [
     status: "coming-soon",
   },
 ];
+
+/** Discipline NAMES currently available (status === 'available'). The shared
+ *  grant/mint vocabulary, stored by name. See issue #64 — there is no
+ *  partner-offered set yet, so grants/mints validate against this global list. */
+export const availableDisciplineNames: string[] = disciplines
+  .filter((d) => d.status === "available")
+  .map((d) => d.name);
