@@ -1,0 +1,254 @@
+{
+  "simulations": [
+    {
+      "slug": "threat-intelligence-at-vitara-health",
+      "title": "Threat Intelligence at Vitara Health",
+      "company": "Vitara Health",
+      "industry": "HealthTech",
+      "type": "Threat Intelligence Analysis",
+      "difficulty": "Foundation",
+      "time": "90 mins",
+      "description": "You're a junior Threat Intelligence Analyst at Vitara Health. A nearby NHS trust was hit by ransomware last week. The CISO wants to know whether Vitara is at risk from the same attacker, and what to do about it",
+      "discipline": "cyber-security",
+      "video_url": "",
+      "status": "published",
+      "display_order": 9,
+      "sim_role": "Junior Threat Intelligence Analyst",
+      "brief_short": "You're a Junior Threat Intelligence Analyst at Vitara Health. A neighbouring NHS trust has just been hit by ransomware. Your boss needs a real assessment, not panic. What's the threat, are we exposed, and what should we do? The board is briefed on Monday.",
+      "brief_full": "You joined Vitara Health's Cyber Threat Intelligence team six weeks ago. Marcus Okafor, your team lead, walks into your section of the open-plan office on a Tuesday morning. \"Did you see Pennine Vale got hit last night? Ransomware. We use their data flows. The CISO wants a real assessment by Friday — is this BlackCypher group a threat to us, and what do we do about it? Don't just hand me a vendor report; tell me what it means for Vitara. The board is briefed Monday. Be honest where you're unsure. Over-claiming damages your credibility more than admitting uncertainty does. Have a draft by Thursday EOD; we'll go through it together Friday morning.\"",
+      "video_transcript": "Hi, welcome to the Vitara Health Threat Intelligence simulation. I'm Marcus Okafor, Head of Cyber Threat Intelligence at Vitara. You've been on the team for six weeks — past your orientation, learning our environment, starting to take on real work. This week, real work just landed on your desk. Last night, Pennine Vale NHS Trust — one of our customers — was hit by ransomware. NHS national CSIRT is on-site investigating. Initial reports point to a group called BlackCypher. They've been busy in healthcare in the last six months. I need you to tell me whether this is a threat to us, what we should do about it, and how confident you are in your conclusions. The CISO is briefing the board on Monday. I want a real assessment from you by Friday — not a vendor report copy-paste. Over the next five tasks you'll profile the threat, check our environment, write a risk assessment, draft a board brief, and finish with your recommendation. Be honest. Be calibrated. Show me how you think.",
+      "prompts": [
+        {
+          "type": "typed",
+          "title": "Profile the threat actor",
+          "question": "You need to understand who BlackCypher is before you can assess whether they're a threat to us. Spend time building a profile of this group from open-source intelligence. What are their known TTPs? Who have they targeted? What's their motivation and likely origin? Where does the evidence come from and how confident are you in it? Don't just collate vendor reports — synthesise what they tell you and be explicit about confidence levels. We act on calibrated intelligence, not panic.",
+          "guidance": [
+            "Use specific threat intelligence frameworks (e.g., MITRE ATT&CK)",
+            "Distinguish between verified facts and hypotheses",
+            "Consider geopolitical or financial motives",
+            "Assess the reliability of open-source reports"
+          ],
+          "minWords": 302,
+          "timeRemainingMinutes": 5
+        },
+        {
+          "type": "typed",
+          "title": "Cross-reference indicators against Vitara's environment",
+          "question": "Now bring it home. Marcus has shared a list of indicators from the BlackCypher activity at Pennine Vale — IP addresses, file hashes, a typosquat domain, some YARA-style patterns. Cross-reference these against what you know about our environment: Windows endpoints, Microsoft 365, Azure, our NHS API integrations. Which indicators matter for us, which don't, and which need verification? Be specific — generic \"we should check everything\" doesn't help anyone. Tell me what to actually do.",
+          "guidance": [
+            "Map IOCs directly to the specific tech stack",
+            "Prioritise indicators with the highest potential impact",
+            "Outline a clear triage and verification process",
+            "Avoid generic advice; provide actionable steps"
+          ],
+          "minWords": 300,
+          "timeRemainingMinutes": 5
+        },
+        {
+          "type": "typed",
+          "title": "Risk assessment for Vitara",
+          "question": "Given what you've learned in Tasks 1 and 2, give me a calibrated risk assessment for Vitara specifically. Don't just say \"high risk\" or \"medium risk\" — show your reasoning. What's the likelihood we get hit, what's the impact if we do, and what evidence is each rating tied to? Then give me a posture recommendation that matches the assessment. I don't want panic, I don't want complacency. I want a defensible position I can take to the CISO.",
+          "guidance": [
+            "Use standard risk assessment methodology",
+            "Connect threat intelligence directly to business impact",
+            "Justify the likelihood and impact ratings clearly",
+            "Provide pragmatic, actionable posture recommendations"
+          ],
+          "minWords": 300,
+          "timeRemainingMinutes": 5
+        },
+        {
+          "type": "typed",
+          "title": "Brief the board",
+          "question": "The CISO is briefing the board on Monday. She wants three slides from you: the threat, our exposure, our response. The audience is the CEO, the CFO, and the General Counsel. They're not technical, but they're not stupid either. Frame the situation through their three lenses — patient safety and NHS contract for the CEO, commercial impact and cost for the CFO, ICO and NHS DSPT compliance exposure for the General Counsel. Be honest about uncertainty. State what you know, what you don't, and what you're doing to reduce the gap.",
+          "guidance": [
+            "Tailor the message to each executive's specific concerns",
+            "Avoid technical jargon; use business risk terms",
+            "Clearly distinguish between known facts and ongoing investigations",
+            "Present a unified, coordinated response plan"
+          ],
+          "minWords": 300,
+          "timeRemainingMinutes": 5
+        },
+        {
+          "type": "typed",
+          "title": "Synthesis — your final recommendation",
+          "question": "Final step. Pull it all together. Given Tasks 1 through 4, what's your recommendation to Marcus and the CISO? Don't just summarise — argue from the synthesis. Where does the evidence lead you, what's your defensible position, and what specifically would change your mind? A good analyst doesn't just acknowledge uncertainty; they say what evidence would flip their conclusion. That's the test of whether your thinking is honest.",
+          "guidance": [
+            "Ensure the recommendation logically flows from the evidence",
+            "Be explicit about the required resources and timeline",
+            "Clearly state the conditions that would invalidate the conclusion",
+            "Maintain an objective and authoritative tone"
+          ],
+          "minWords": 303,
+          "timeRemainingMinutes": 5
+        }
+      ],
+      "rubric": {
+        "systemPrompt": "You are an expert evaluator assessing a candidate's submission for a Threat Intelligence simulation at Vitara Health, a fictional NHS-adjacent health data platform. The candidate is playing a Junior Threat Intelligence Analyst, six weeks into the role, with foundational cyber security certification (CompTIA Security+ or ISC2 CC level) but limited real-world experience.\r\n\r\nEvaluate each of the five tasks against the criteria below. For each criterion, score the candidate's response as Weak (1), Competent (2), or Strong (3). Provide a brief justification for each score citing specific evidence from their response. Do not be generous. Foundation-level does not mean lenient — it means we expect entry-level competence, not senior judgement, but we expect that competence to be genuine.\r\n\r\nCalibration anchor: A Foundation candidate who pastes a vendor report wholesale, who claims certainty they cannot justify, or who fails to engage with the specifics of Vitara's environment is not Competent — they are Weak. Competent means they have done real analytical work appropriate to their level. Strong means their work would stand up in a real CTI team meeting.\r\n\r\nAfter scoring all criteria, provide a verdict band based on total score (max 45):\r\n- Distinction: 39-45 (87%+)\r\n- Pass with Merit: 32-38 (71-86%)\r\n- Pass: 25-31 (56-70%)\r\n- Borderline: 18-24 (40-55%)\r\n- Did Not Pass: 0-17 (<40%)\r\n\r\n---\r\n\r\nPROMPT 1 — Profile the threat actor (max 9 points)\r\n\r\nC1. Source quality and triangulation (1-3)\r\nWeak (1): Relies on a single source, uncited claims, or non-authoritative sources (Reddit, generic blogs, Wikipedia only).\r\nCompetent (2): Cites vendor threat reports (Mandiant, CrowdStrike, Microsoft, etc.) or government CERT advisories. Citations are present but may not be cross-referenced.\r\nStrong (3): Triangulates across multiple authoritative sources (vendor + CERT + academic, or two distinct vendors with corroborating CERT). Explicitly notes where sources disagree.\r\n\r\nC2. TTP framing using MITRE ATT&CK (1-3)\r\nWeak (1): No structured framework. TTPs described as a narrative or list without categorisation.\r\nCompetent (2): References MITRE ATT&CK and uses its terminology (Initial Access, Lateral Movement, Exfiltration) to structure the profile.\r\nStrong (3): Applies MITRE ATT&CK as the organising structure with specific technique IDs (e.g., T1566 Phishing) where possible. Connects techniques into a coherent attack chain.\r\n\r\nC3. Calibration of confidence (1-3)\r\nWeak (1): States all claims with equal confidence. Treats unverified intelligence as fact. Asserts attribution without basis.\r\nCompetent (2): Acknowledges some uncertainty. May use phrases like \"reportedly\" or \"according to vendor X\" but inconsistently.\r\nStrong (3): Uses explicit confidence markers throughout (high/medium/low confidence). Distinguishes between observed facts, industry inference, and analytical speculation. Marks low-confidence claims clearly.\r\n\r\n---\r\n\r\nPROMPT 2 — Cross-reference indicators against Vitara's environment (max 9 points)\r\n\r\nC1. In-scope vs out-of-scope discrimination (1-3)\r\nWeak (1): Treats all indicators as equally relevant. Generic \"we should check everything\" response.\r\nCompetent (2): Discriminates between some indicators as in-scope vs not. Reasoning is implicit or partial.\r\nStrong (3): Per-indicator reasoning. Each indicator categorised with specific reasoning tied to Vitara's stated environment.\r\n\r\nC2. Identification of the typosquat domain as a specific risk (1-3)\r\nWeak (1): Missed entirely or treated as just one of many indicators.\r\nCompetent (2): Noticed and flagged as suspicious. Recommended generic action.\r\nStrong (3): Noticed, identified specifically as a likely social engineering precursor targeting Vitara, AND recommended specific operational follow-up.\r\n\r\nC3. Operational follow-up (1-3)\r\nWeak (1): Pure theoretical analysis. No actionable recommendations.\r\nCompetent (2): Mentions general categories of action without specifics.\r\nStrong (3): Recommends specific operational follow-up tied to indicators: SIEM/EDR queries, detection coverage, escalation routing, prioritisation order.\r\n\r\n---\r\n\r\nPROMPT 3 — Risk assessment for Vitara (max 9 points)\r\n\r\nC1. Use of Likelihood × Impact framing (1-3)\r\nWeak (1): Narrative-only assessment. No structural framing.\r\nCompetent (2): Mentions or implies likelihood/impact framing. Structures but may not reason about them distinctly.\r\nStrong (3): Explicit Likelihood × Impact structure with separate reasoning for each dimension.\r\n\r\nC2. Evidence-based reasoning (1-3)\r\nWeak (1): Assertions without evidence. Risk ratings asserted but not justified.\r\nCompetent (2): Some claims tied to evidence from prior tasks. Reasoning is plausible but partial.\r\nStrong (3): Each rating explicitly tied to specific evidence from Tasks 1-2. No claim ungrounded.\r\n\r\nC3. Calibrated recommendation (1-3)\r\nWeak (1): Either panic or dismissal without grounded reasoning.\r\nCompetent (2): Middle-ground recommendation. Justified at a high level.\r\nStrong (3): Specific defensible posture matching the assessed risk level. Trade-offs implicit or explicit.\r\n\r\n---\r\n\r\nPROMPT 4 — Brief the board (max 9 points)\r\n\r\nC1. Audience awareness (1-3)\r\nWeak (1): Technical dump. Acronyms unexplained.\r\nCompetent (2): Simplified language. Generic \"executive summary\" tone.\r\nStrong (3): Distinct attention to CEO, CFO, and General Counsel concerns. Frames through three lenses.\r\n\r\nC2. Honest treatment of uncertainty (1-3)\r\nWeak (1): False confidence or vague hedging.\r\nCompetent (2): Acknowledges uncertainty generally.\r\nStrong (3): Specific uncertainty acknowledged plus specific plan for resolution.\r\n\r\nC3. Action clarity (1-3)\r\nWeak (1): Vague. No clear ask of the board.\r\nCompetent (2): General actions mentioned. Some asks but unclear.\r\nStrong (3): Crystal clear about what the team is doing, what is needed from the board, and when the next update will come.\r\n\r\n---\r\n\r\nPROMPT 5 — Synthesis: your final recommendation (max 9 points)\r\n\r\nC1. Coherent integration of prior tasks (1-3)\r\nWeak (1): Repeats content from prior tasks without integration.\r\nCompetent (2): Synthesises findings into a recommendation. Connections made.\r\nStrong (3): Synthesises AND argues from the synthesis. Recommendation emerges from integrated analysis.\r\n\r\nC2. Quality of the recommendation (1-3)\r\nWeak (1): Generic recommendation. Could apply to any threat.\r\nCompetent (2): Specific recommendation tied to BlackCypher and Vitara. Trade-offs not named.\r\nStrong (3): Specific recommendation. Trade-offs explicitly named. Counter-position acknowledged.\r\n\r\nC3. Intellectual honesty (1-3)\r\nWeak (1): Defensive. Treats alternative views as wrong.\r\nCompetent (2): Acknowledges uncertainty generally.\r\nStrong (3): Explicitly states what evidence would flip the recommendation.\r\n\r\n\n---\n\nOUTPUT REQUIREMENT\n\nReturn ONLY valid JSON. No markdown headings, no document structure, no prose preamble, no commentary outside the JSON object. Your entire response must be parseable as JSON via JSON.parse(). The JSON object must have these top-level fields: overallScore (number), maxScore (number), percentage (number), verdict (one of \"Distinction\" | \"Pass with Merit\" | \"Pass\" | \"Borderline\" | \"Did Not Pass\"), verdictDescription (string), credentialIssued (boolean), tasks (array). Each task in the array has: taskId (number), title (string), score (number), maxScore (9), criteria (array), summary (string). Each criterion has: name (string), score (1-3), level (\"Weak\" | \"Competent\" | \"Strong\"), feedback (string).",
+        "criteria": [
+          {
+            "criteria": [
+              {
+                "name": "Source quality and triangulation",
+                "weak": "Relies on a single source, uncited claims, or non-authoritative sources.",
+                "strong": "Triangulates across multiple authoritative sources. Explicitly notes where sources disagree.",
+                "competent": "Cites vendor threat reports or government CERT advisories. Citations present but may not be cross-referenced."
+              },
+              {
+                "name": "TTP framing using MITRE ATT&CK",
+                "weak": "No structured framework. TTPs described as a narrative or list without categorisation.",
+                "strong": "Applies MITRE ATT&CK as the organising structure with specific technique IDs where possible. Connects techniques into a coherent attack chain.",
+                "competent": "References MITRE ATT&CK and uses its terminology to structure the profile."
+              },
+              {
+                "name": "Calibration of confidence",
+                "weak": "States all claims with equal confidence. Treats unverified intelligence as fact.",
+                "strong": "Uses explicit confidence markers throughout. Distinguishes observed facts from inference and speculation. Marks low-confidence claims clearly.",
+                "competent": "Acknowledges some uncertainty. Uses hedging language but inconsistently."
+              }
+            ],
+            "prompt_id": 1,
+            "prompt_title": "Profile the threat actor"
+          },
+          {
+            "criteria": [
+              {
+                "name": "In-scope vs out-of-scope discrimination",
+                "weak": "Treats all indicators as equally relevant. Generic catch-all response.",
+                "strong": "Per-indicator reasoning. Each indicator categorised with specific reasoning tied to Vitara's stated environment.",
+                "competent": "Discriminates between some indicators as in-scope vs not. Reasoning is implicit or partial."
+              },
+              {
+                "name": "Identification of the typosquat domain as a specific risk",
+                "weak": "Missed entirely or treated as just one of many indicators.",
+                "strong": "Identified specifically as a likely social engineering precursor and recommended specific operational follow-up.",
+                "competent": "Noticed and flagged as suspicious. Recommended generic action."
+              },
+              {
+                "name": "Operational follow-up",
+                "weak": "Pure theoretical analysis. No actionable recommendations.",
+                "strong": "Recommends specific operational follow-up tied to indicators: SIEM/EDR queries, detection coverage, escalation routing, prioritisation order.",
+                "competent": "Mentions general categories of action without specifics."
+              }
+            ],
+            "prompt_id": 2,
+            "prompt_title": "Cross-reference indicators against Vitara's environment"
+          },
+          {
+            "criteria": [
+              {
+                "name": "Use of Likelihood × Impact framing",
+                "weak": "Narrative-only assessment. No structural framing.",
+                "strong": "Explicit Likelihood × Impact structure with separate reasoning for each dimension.",
+                "competent": "Mentions or implies likelihood/impact framing. Structures but may not reason about them distinctly."
+              },
+              {
+                "name": "Evidence-based reasoning",
+                "weak": "Assertions without evidence. Risk ratings asserted but not justified.",
+                "strong": "Each rating explicitly tied to specific evidence from Tasks 1-2. No claim ungrounded.",
+                "competent": "Some claims tied to evidence from prior tasks. Reasoning plausible but partial."
+              },
+              {
+                "name": "Calibrated recommendation",
+                "weak": "Either panic or dismissal without grounded reasoning.",
+                "strong": "Specific defensible posture matching the assessed risk level. Trade-offs implicit or explicit.",
+                "competent": "Middle-ground recommendation. Justified at a high level."
+              }
+            ],
+            "prompt_id": 3,
+            "prompt_title": "Risk assessment for Vitara"
+          },
+          {
+            "criteria": [
+              {
+                "name": "Audience awareness",
+                "weak": "Technical dump. Acronyms unexplained.",
+                "strong": "Distinct attention to CEO, CFO, and General Counsel concerns. Frames through three lenses.",
+                "competent": "Simplified language. Generic executive summary tone."
+              },
+              {
+                "name": "Honest treatment of uncertainty",
+                "weak": "False confidence or vague hedging.",
+                "strong": "Specific uncertainty acknowledged plus specific plan for resolution.",
+                "competent": "Acknowledges uncertainty generally."
+              },
+              {
+                "name": "Action clarity",
+                "weak": "Vague. No clear ask of the board.",
+                "strong": "Crystal clear about what the team is doing, what is needed from the board, and when the next update will come.",
+                "competent": "General actions mentioned. Some asks but unclear."
+              }
+            ],
+            "prompt_id": 4,
+            "prompt_title": "Brief the board"
+          },
+          {
+            "criteria": [
+              {
+                "name": "Coherent integration of prior tasks",
+                "weak": "Repeats content from prior tasks without integration.",
+                "strong": "Synthesises AND argues from the synthesis. Recommendation emerges from integrated analysis.",
+                "competent": "Synthesises findings into a recommendation. Connections made."
+              },
+              {
+                "name": "Quality of the recommendation",
+                "weak": "Generic recommendation. Could apply to any threat.",
+                "strong": "Specific recommendation. Trade-offs explicitly named. Counter-position acknowledged.",
+                "competent": "Specific recommendation tied to BlackCypher and Vitara. Trade-offs not named."
+              },
+              {
+                "name": "Intellectual honesty",
+                "weak": "Defensive. Treats alternative views as wrong.",
+                "strong": "Explicitly states what evidence would flip the recommendation.",
+                "competent": "Acknowledges uncertainty generally."
+              }
+            ],
+            "prompt_id": 5,
+            "prompt_title": "Synthesis — your final recommendation"
+          }
+        ],
+        "maxScore": 45,
+        "scoringScale": {
+          "1": "Weak",
+          "2": "Competent",
+          "3": "Strong"
+        },
+        "verdictBands": [
+          {
+            "max": 45,
+            "min": 39,
+            "label": "Distinction",
+            "credential": true
+          },
+          {
+            "max": 38,
+            "min": 32,
+            "label": "Pass with Merit",
+            "credential": true
+          },
+          {
+            "max": 31,
+            "min": 25,
+            "label": "Pass",
+            "credential": true
+          },
+          {
+            "max": 24,
+            "min": 18,
+            "label": "Borderline",
+            "credential": false
+          },
+          {
+            "max": 17,
+            "min": 0,
+            "label": "Did Not Pass",
+            "credential": false
+          }
+        ],
+        "model": "claude-sonnet-4-6",
+        "outputInstructions": null
+      }
+    }
+  ]
+}

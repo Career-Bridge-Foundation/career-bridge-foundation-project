@@ -1,0 +1,90 @@
+{
+  "_instructions": [
+    "FILLABLE TEMPLATE for POST /api/admin/simulations/import (JSON, admin/staff session).",
+    "This `_instructions` key is ignored by the import (Zod strips unknown keys). Delete it or leave it.",
+    "See AUTHORING-GUIDE.md for the full rules. Worked example: vitara-cti-reference.json (a known-good sim).",
+    "KEY RULES:",
+    "1. rubric.systemPrompt IS THE ENGINE — eval feeds ONLY system_prompt + model to the model. The 5 tasks, 3 criteria/task (Weak/Competent/Strong), scoring (1-3 -> max 45), and band thresholds MUST be embedded in this prose. criteria/scoringScale/verdictBands columns are reference only (NOT read by eval, but required/NOT-NULL so include them).",
+    "2. verdictBands labels: use EXACTLY Distinction | Pass with Merit | Pass | Borderline | Did Not Pass. 'Pass with Merit' is stored as 'Merit' (qualifies for credential). Do NOT invent labels.",
+    "3. Do NOT add a row-level time_remaining field (no prod column). Per-task timing = prompts[].timeRemainingMinutes.",
+    "4. slug is the upsert key (re-POST = update). Omit prompt ids (auto). status=published to appear in the catalog.",
+    "5. difficulty: exactly Foundation | Practitioner | Advanced."
+  ],
+  "simulations": [
+    {
+      "slug": "REPLACE-lowercase-hyphen-slug",
+      "title": "REPLACE Title (<=120)",
+      "company": "REPLACE Fictional Co (<=80)",
+      "industry": "REPLACE Industry (<=60)",
+      "difficulty": "Practitioner",
+      "time": "60 min",
+      "type": "REPLACE or delete this line",
+      "description": "REPLACE catalog-card blurb (<=280)",
+      "discipline": "cyber-security",
+      "video_url": "",
+      "status": "published",
+      "display_order": 1,
+      "sim_role": "REPLACE the role the candidate plays",
+      "brief_short": "REPLACE short brief",
+      "brief_full": "REPLACE the full gated brief (markdown)",
+      "video_transcript": null,
+      "prompts": [
+        {
+          "type": "typed",
+          "title": "Task 1: REPLACE",
+          "question": "REPLACE task prompt (<=2000)",
+          "guidance": ["REPLACE bullet (<=200)", "REPLACE bullet"],
+          "minWords": 150,
+          "timeRemainingMinutes": 15
+        },
+        {
+          "type": "typed",
+          "title": "Task 2: REPLACE",
+          "question": "REPLACE",
+          "guidance": ["REPLACE"],
+          "minWords": 150,
+          "timeRemainingMinutes": 15
+        },
+        {
+          "type": "typed",
+          "title": "Task 3: REPLACE",
+          "question": "REPLACE",
+          "guidance": ["REPLACE"],
+          "minWords": 150,
+          "timeRemainingMinutes": 15
+        },
+        {
+          "type": "typed",
+          "title": "Task 4: REPLACE",
+          "question": "REPLACE",
+          "guidance": ["REPLACE"],
+          "minWords": 150,
+          "timeRemainingMinutes": 15
+        },
+        {
+          "type": "either",
+          "title": "Task 5: REPLACE (rationale + optional file/URL)",
+          "question": "REPLACE",
+          "guidance": ["REPLACE"],
+          "minWords": 100,
+          "timeRemainingMinutes": 15
+        }
+      ],
+      "rubric": {
+        "systemPrompt": "REPLACE — the full evaluation prose (the engine). Embed: the 5 tasks, 3 criteria per task with Weak/Competent/Strong descriptors, scoring 1-3 per criterion (-> max 45), and the verdict bands. Reference vitara-cti-reference.json's systemPrompt (~7.5k chars) for the proven shape.",
+        "maxScore": 45,
+        "verdictBands": [
+          { "min": 39, "max": 45, "label": "Distinction", "credential": true },
+          { "min": 32, "max": 38, "label": "Pass with Merit", "credential": true },
+          { "min": 25, "max": 31, "label": "Pass", "credential": true },
+          { "min": 18, "max": 24, "label": "Borderline", "credential": false },
+          { "min": 0, "max": 17, "label": "Did Not Pass", "credential": false }
+        ],
+        "criteria": { "criteria": [ { "name": "REPLACE criterion name", "weak": "REPLACE", "competent": "REPLACE", "strong": "REPLACE" } ] },
+        "scoringScale": { "min": 1, "max": 3, "labels": ["Weak", "Competent", "Strong"] },
+        "model": "claude-sonnet-4-6",
+        "outputInstructions": null
+      }
+    }
+  ]
+}
