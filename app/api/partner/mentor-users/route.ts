@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePartner } from '@/lib/auth/permissions'
 import { elevateUser } from '@/lib/auth/elevateUser'
+import { isCrossOrgHijack } from '@/lib/auth/assertNoCrossOrgHijack'
 import { supabaseServer } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -52,9 +53,11 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
   if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
   if (
-    existing &&
-    ((existing.partner_id && existing.partner_id !== ctx.partnerId) ||
-      !['candidate', 'mentor'].includes(existing.role as string))
+    isCrossOrgHijack({
+      existing: existing as { role: string; partner_id: string | null } | null,
+      partnerId: ctx.partnerId!,
+      allowedRoles: ['candidate', 'mentor'],
+    })
   ) {
     return NextResponse.json(
       { error: 'This user already has a role in another organisation' },
