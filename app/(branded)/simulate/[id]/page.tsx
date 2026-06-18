@@ -24,7 +24,7 @@ import { checkSimulationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
 
 // ── Access gate states ────────────────────────────────────────
-type AccessStatus = "loading" | "granted" | "denied" | "unauthenticated" | "profile_incomplete";
+type AccessStatus = "loading" | "granted" | "profile_incomplete";
 
 // ── Profile incomplete screen ─────────────────────────────────
 function ProfileIncompleteScreen() {
@@ -120,10 +120,11 @@ export default function SimulationExecutionPage() {
   useEffect(() => {
     async function checkAccess() {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getUser();
 
-      if (!user) {
-        setAccessStatus("unauthenticated");
+      if (error || !data.user) {
+        const redirect = encodeURIComponent(window.location.pathname);
+        window.location.replace(`/auth/login?redirect=${redirect}`);
         return;
       }
 
@@ -131,7 +132,7 @@ export default function SimulationExecutionPage() {
       const { data: profile } = await supabase
         .from("profiles")
         .select("full_name")
-        .eq("id", user.id)
+        .eq("id", data.user.id)
         .maybeSingle();
       const name = profile?.full_name?.trim() ?? "";
       if (!name || name === "Career Bridge Candidate") {
@@ -144,23 +145,20 @@ export default function SimulationExecutionPage() {
       // unauthenticated user has already been redirected by this point.
       if (content.loading) return;
 
-      const { hasAccess, viaEntitlement: ve } = await checkSimulationAccess(user.id, content.discipline ?? undefined);
+      const { hasAccess, viaEntitlement: ve } = await checkSimulationAccess(data.user.id, content.discipline ?? undefined);
       setViaEntitlement(ve);
-      setAccessStatus(hasAccess ? "granted" : "denied");
+      if (!hasAccess) {
+        window.location.replace("/no-access");
+        return;
+      }
+      setAccessStatus("granted");
     }
 
-    checkAccess().catch(() => setAccessStatus("unauthenticated"));
+    checkAccess().catch(() => {
+      const redirect = encodeURIComponent(window.location.pathname);
+      window.location.replace(`/auth/login?redirect=${redirect}`);
+    });
   }, [content.loading, content.discipline]);
-
-  // ── Redirect unauthenticated / denied users (side effect, not during render) ──
-  useEffect(() => {
-    if (accessStatus === "unauthenticated") {
-      router.replace(`/auth/login?redirect=/simulate/${simulationId}`);
-    }
-    if (accessStatus === "denied") {
-      router.replace("/no-access");
-    }
-  }, [accessStatus, simulationId, router]);
 
   // ── Evaluation message cycling ────────────────────────────────
   useEffect(() => {
@@ -249,10 +247,6 @@ export default function SimulationExecutionPage() {
   const response = sim.responses[sim.currentStep] ?? {};
 
   // ── Access gate ───────────────────────────────────────────────
-  if (accessStatus === "unauthenticated") {
-    return null;
-  }
-
   if (accessStatus === "loading") {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -263,10 +257,6 @@ export default function SimulationExecutionPage() {
 
   if (accessStatus === "profile_incomplete") {
     return <ProfileIncompleteScreen />;
-  }
-
-  if (accessStatus === "denied") {
-    return null;
   }
 
   if (content.loading) {
