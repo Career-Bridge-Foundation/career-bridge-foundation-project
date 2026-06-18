@@ -8,12 +8,14 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
+import { sanitizeNextPath } from '@/lib/auth/sanitizeNextPath'
 
 function LoginForm() {
   const branding = useBranding()
   const router = useRouter()
   const searchParams = useSearchParams()
   const urlError = searchParams.get('error')
+  const nextParam = searchParams.get('next')
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,6 +35,12 @@ function LoginForm() {
       setLoading(false)
       return
     }
+    // Honor a validated invite ?next= (e.g. /accept-invite?token=…) before the
+    // role-based redirect. Push the sanitizeNextPath() RETURN value, never raw
+    // nextParam — login redirects client-side without callback's origin-prefixing,
+    // so this validator is the only open-redirect guard on this path.
+    const safeNext = sanitizeNextPath(nextParam)
+    if (safeNext !== '/') { router.push(safeNext); return }
     // Redirect based on role
     if (data.user) {
       const { data: roleRow } = await supabase

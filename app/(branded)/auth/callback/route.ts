@@ -1,12 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-function sanitizeNextPath(nextValue: string | null): string {
-  if (!nextValue) return '/'
-  if (!nextValue.startsWith('/')) return '/'
-  if (nextValue.startsWith('//')) return '/'
-  return nextValue
-}
+import { sanitizeNextPath } from '@/lib/auth/sanitizeNextPath'
 
 function isProfileIncomplete(fullName: string | null | undefined): boolean {
   if (!fullName) return true
