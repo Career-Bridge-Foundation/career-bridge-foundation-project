@@ -30,6 +30,7 @@ export async function GET() {
 
 const INVITE_TTL_DAYS = 7
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const INVITE_ROLES = ['partner', 'mentor'] as const
 
 /**
  * POST /api/partner/invites — a partner-admin invites a peer (another flat
@@ -59,10 +60,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null)
     if (!body) return NextResponse.json({ error: 'invalid request body' }, { status: 400 })
-    const { email } = body as { email?: string }
+    const { email, role } = body as { email?: string; role?: string }
     if (!email || !EMAIL_RE.test(email)) {
       return NextResponse.json({ error: 'a valid email is required' }, { status: 400 })
     }
+    // role is optional; if present it must be one of INVITE_ROLES. Absent → 'partner'.
+    if (role !== undefined && !INVITE_ROLES.includes(role as (typeof INVITE_ROLES)[number])) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
+    }
+    const invitedRole = role ?? 'partner'
     const invitedEmail = email.toLowerCase().trim()
 
     // Generate opaque token; persist its hash FAIL-CLOSED before emailing.
@@ -73,6 +79,7 @@ export async function POST(request: NextRequest) {
       partner_id: ctx.partnerId, // FORCED from ctx, never the body
       invited_email: invitedEmail,
       invited_by: ctx.userId,
+      role: invitedRole, // ONLY role is body-derived; partner_id stays forced from ctx
       token_hash: hashInviteToken(token),
       status: 'pending',
       expires_at: expiresAt.toISOString(),

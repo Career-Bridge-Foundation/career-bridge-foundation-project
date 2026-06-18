@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // 3. LOOKUP (service-role) by hash
     const { data: invite } = await supabaseServer
       .from('partner_invites')
-      .select('id, partner_id, invited_email, status, expires_at, invited_by')
+      .select('id, partner_id, invited_email, status, expires_at, invited_by, role')
       .eq('token_hash', hashInviteToken(token))
       .maybeSingle()
     if (!invite) {
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     const { error: elevErr } = await elevateUser({
       targetUserId: user.id,
       email: user.email,
-      role: 'partner',
+      role: invite.role,
       partnerId: invite.partner_id,
       grantedBy: invite.invited_by ?? user.id,
     })
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       console.error('[invites/accept] failed to mark accepted', markErr.message)
     }
 
-    return NextResponse.json({ success: true, partner_id: invite.partner_id })
+    return NextResponse.json({ success: true, partner_id: invite.partner_id, role: invite.role })
   } catch (err) {
     console.error('[invites/accept] unexpected error', err)
     return NextResponse.json({ error: 'internal error' }, { status: 500 })
