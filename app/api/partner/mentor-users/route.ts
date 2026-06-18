@@ -3,6 +3,7 @@ import { requirePartner } from '@/lib/auth/permissions'
 import { elevateUser } from '@/lib/auth/elevateUser'
 import { isCrossOrgHijack } from '@/lib/auth/assertNoCrossOrgHijack'
 import { supabaseServer } from '@/lib/supabase/server'
+import { sendMentorAddedEmail } from '@/lib/email/mentor-notifications'
 
 export const runtime = 'nodejs'
 
@@ -74,6 +75,22 @@ export async function POST(request: NextRequest) {
     grantedBy: ctx.userId,
   })
   if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 })
+
+  // Best-effort mentor-added notification — a send failure must NEVER fail the
+  // 200, the elevation already succeeded. Mirrors the invites POST pattern
+  // (awaited try/catch, not after()). appUrl read the same way as invites/route.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (appUrl && target.email) {
+    try {
+      await sendMentorAddedEmail({
+        to: target.email,
+        partnerId: ctx.partnerId,
+        consoleUrl: `${appUrl}/mentor`,
+      })
+    } catch (e) {
+      console.error('[mentor-added email]', e)
+    }
+  }
 
   return NextResponse.json({
     success: true,
