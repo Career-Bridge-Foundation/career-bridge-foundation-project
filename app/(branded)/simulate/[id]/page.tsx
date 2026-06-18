@@ -73,46 +73,6 @@ function ProfileIncompleteScreen() {
   );
 }
 
-// ── Paywall screen ────────────────────────────────────────────
-function PaywallScreen() {
-  return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Header variant="solid" />
-      <div
-        className="flex-1 flex flex-col items-center justify-center gap-6 px-6 text-center"
-        style={{ paddingTop: "120px", paddingBottom: "80px" }}
-      >
-        <svg
-          width="48"
-          height="48"
-          viewBox="0 0 24 24"
-          fill="none"
-          style={{ stroke: "var(--color-navy)" }}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-        <h1 className="text-2xl font-bold" style={{ color: "var(--color-navy)" }}>
-          No access to this simulation
-        </h1>
-        <p className="text-sm max-w-sm" style={{ color: "#666", lineHeight: 1.75 }}>
-          You don&rsquo;t have access to this simulation yet. Please contact the
-          organisation that gave you access to get set up.
-        </p>
-        <a
-          href="/simulations"
-          className="text-sm font-semibold px-8 py-3.5 text-white"
-          style={{ backgroundColor: "var(--color-navy)" }}
-        >
-          Back to Simulations
-        </a>
-      </div>
-    </div>
-  );
-}
 
 function buildResponseText(resp: StepResponse | undefined): string {
   if (!resp) return "";
@@ -192,10 +152,13 @@ export default function SimulationExecutionPage() {
     checkAccess().catch(() => setAccessStatus("unauthenticated"));
   }, [content.loading, content.discipline]);
 
-  // ── Redirect unauthenticated users (side effect, not during render) ──
+  // ── Redirect unauthenticated / denied users (side effect, not during render) ──
   useEffect(() => {
     if (accessStatus === "unauthenticated") {
       router.replace(`/auth/login?redirect=/simulate/${simulationId}`);
+    }
+    if (accessStatus === "denied") {
+      router.replace("/no-access");
     }
   }, [accessStatus, simulationId, router]);
 
@@ -303,7 +266,7 @@ export default function SimulationExecutionPage() {
   }
 
   if (accessStatus === "denied") {
-    return <PaywallScreen />;
+    return null;
   }
 
   if (content.loading) {
