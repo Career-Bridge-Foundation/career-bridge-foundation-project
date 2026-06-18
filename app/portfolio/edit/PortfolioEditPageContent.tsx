@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { VerdictChip } from '../[slug]/VerdictChip';
 
 const NAVY = '#003359';
@@ -50,9 +51,24 @@ const EVIDENCE_TYPE_ICON: Record<EvidenceType, string> = {
   link:     '🔗',
 };
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+type SaveState = 'idle' | 'saving' | 'error';
 
 type ExternalLink = { label: string; url: string };
+
+type PortfolioTemplate = 'professional' | 'focused';
+
+const TEMPLATE_OPTIONS: { value: PortfolioTemplate; label: string; description: string }[] = [
+  {
+    value:       'professional',
+    label:       'Professional',
+    description: 'Full profile with bio and links first, followed by your verified simulations.',
+  },
+  {
+    value:       'focused',
+    label:       'Focused',
+    description: 'Credentials lead. Your verified simulations are shown first, with bio and links below.',
+  },
+];
 
 export type EditableSimulation = {
   simulationSlug:   string;
@@ -76,6 +92,8 @@ type Props = {
     linkedin_url:   string;
     external_links: ExternalLink[];
     simulations:    EditableSimulation[];
+    template:       PortfolioTemplate;
+    slug:           string;
   };
 };
 
@@ -116,6 +134,9 @@ function isValidUrl(url: string): boolean {
 }
 
 export function PortfolioEditPageContent({ initial }: Props) {
+  const router = useRouter();
+
+  const [template,    setTemplate]    = useState<PortfolioTemplate>(initial.template);
   const [headline,    setHeadline]    = useState(initial.headline);
   const [bio,         setBio]         = useState(initial.bio);
   const [location,    setLocation]    = useState(initial.location);
@@ -133,6 +154,9 @@ export function PortfolioEditPageContent({ initial }: Props) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [linkErrors,   setLinkErrors]   = useState<Record<number, { label?: string; url?: string }>>({});
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<PortfolioTemplate | null>(null);
+  const [modalSaving,     setModalSaving]     = useState(false);
+  const [modalError,      setModalError]      = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -206,6 +230,7 @@ export function PortfolioEditPageContent({ initial }: Props) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          template,
           headline:       headline.trim()    || null,
           bio:            bio.trim()         || null,
           location:       location.trim()    || null,
@@ -228,23 +253,65 @@ export function PortfolioEditPageContent({ initial }: Props) {
         return;
       }
 
-      setSaveState('saved');
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
+      router.push(`/portfolio/${initial.slug}`);
     } catch (err) {
       setSaveState('error');
       setErrorMessage(err instanceof Error ? err.message : 'Network error');
     }
   }
 
-  const buttonLabel =
-    saveState === 'saving' ? 'Saving…' :
-    saveState === 'saved'  ? '✓ Saved' :
-    'Save';
+  async function handleApplyTemplate(selected: PortfolioTemplate) {
+    const { ok, cleaned } = validateLinks();
+    if (!ok) {
+      setModalError('Fix link errors in the form before applying a layout.');
+      return;
+    }
+
+    setModalSaving(true);
+    setModalError(null);
+
+    try {
+      const res = await fetch('/api/portfolio/edit', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template:       selected,
+          headline:       headline.trim()    || null,
+          bio:            bio.trim()         || null,
+          location:       location.trim()    || null,
+          linkedin_url:   linkedinUrl.trim() || null,
+          external_links: cleaned,
+          simulation_visibility: simulations.map((s) => ({
+            simulation_id:     s.simulationSlug,
+            show_on_portfolio: s.showOnPortfolio,
+            show_scores:       s.showScores,
+            show_feedback:     s.showFeedback,
+          })),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !(data as { success?: boolean }).success) {
+        setModalSaving(false);
+        setModalError((data as { error?: string }).error ?? `Save failed (${res.status})`);
+        return;
+      }
+
+      setTemplate(selected);
+      router.push(`/portfolio/${initial.slug}`);
+    } catch (err) {
+      setModalSaving(false);
+      setModalError(err instanceof Error ? err.message : 'Network error');
+    }
+  }
+
+  const buttonLabel = saveState === 'saving' ? 'Saving…' : 'Save';
 
   const addDisabled = links.length >= MAX_LINKS;
 
   return (
+    <>
     <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       <style>{`
         .pf-input:focus, .pf-textarea:focus { border-color: ${NAVY} !important; }
@@ -253,6 +320,79 @@ export function PortfolioEditPageContent({ initial }: Props) {
         .pf-add-link { transition: opacity 0.15s ease; }
         .pf-add-link:hover:not(:disabled) { opacity: 0.75; }
       `}</style>
+
+      {/* ── Portfolio Layout ─────────────────────────────────── */}
+      <div>
+        <div style={labelStyle}>Portfolio Layout</div>
+        <p
+          style={{
+            fontSize:     '12px',
+            color:        '#888',
+            marginBottom: '16px',
+            lineHeight:   1.5,
+          }}
+        >
+          Choose how your portfolio presents to recruiters.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {TEMPLATE_OPTIONS.map((opt) => {
+            const selected = template === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPreviewTemplate(opt.value)}
+                style={{
+                  flex:        '1 1 200px',
+                  textAlign:   'left',
+                  border:      `2px solid ${selected ? NAVY : '#D5DCE8'}`,
+                  background:  selected ? '#EEF3F8' : '#fff',
+                  padding:     '16px',
+                  cursor:      'pointer',
+                  fontFamily:  'inherit',
+                  position:    'relative',
+                  transition:  'border-color 0.15s ease, background 0.15s ease',
+                }}
+                aria-pressed={selected}
+              >
+                {selected && (
+                  <span
+                    style={{
+                      position:   'absolute',
+                      top:        '10px',
+                      right:      '12px',
+                      color:      NAVY,
+                      fontWeight: 700,
+                      fontSize:   '14px',
+                    }}
+                  >
+                    ✓
+                  </span>
+                )}
+                <div
+                  style={{
+                    fontSize:     '14px',
+                    fontWeight:   700,
+                    color:        NAVY,
+                    marginBottom: '6px',
+                  }}
+                >
+                  {opt.label}
+                </div>
+                <div
+                  style={{
+                    fontSize:   '12px',
+                    color:      '#666',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {opt.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── Headline ─────────────────────────────────────────── */}
       <div>
@@ -528,6 +668,260 @@ export function PortfolioEditPageContent({ initial }: Props) {
         )}
       </div>
     </form>
+    {previewTemplate !== null && (
+      <TemplatePreviewModal
+        template={previewTemplate}
+        saving={modalSaving}
+        error={modalError}
+        onApply={() => { void handleApplyTemplate(previewTemplate); }}
+        onClose={() => { setPreviewTemplate(null); setModalError(null); }}
+      />
+    )}
+    </>
+  );
+}
+
+function ProfessionalSchematic() {
+  function Blk({ w, h, bg = '#E0E6EE' }: { w: string; h: number; bg?: string }) {
+    return <div style={{ width: w, height: `${h}px`, background: bg, borderRadius: '2px', flexShrink: 0 }} />;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <Blk w="58%" h={18} bg="#C5D0DC" />
+      <Blk w="78%" h={11} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#E0E6EE' }} />
+        <Blk w="28%" h={9} />
+      </div>
+      <div style={{ height: '4px' }} />
+      <Blk w="100%" h={9} bg="#EDF0F4" />
+      <Blk w="92%"  h={9} bg="#EDF0F4" />
+      <Blk w="68%"  h={9} bg="#EDF0F4" />
+      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+        <div style={{ height: '20px', width: '58px', background: '#0A66C2', borderRadius: '2px', opacity: 0.75 }} />
+        <div style={{ height: '20px', width: '44px', background: '#E0E6EE', borderRadius: '2px' }} />
+      </div>
+      <div style={{ height: '1px', background: '#E5E9F0', margin: '8px 0' }} />
+      <div style={{ display: 'flex', gap: '20px' }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <Blk w="22px" h={16} bg="#C5D0DC" />
+            <Blk w="52px" h={8} />
+          </div>
+        ))}
+      </div>
+      <div style={{ height: '4px' }} />
+      {[0, 1].map((i) => (
+        <div
+          key={i}
+          style={{
+            height: '42px', border: '1px solid #D5DCE8', background: '#fff',
+            padding: '0 10px', display: 'flex', alignItems: 'center', gap: '8px',
+          }}
+        >
+          <div style={{ flex: 1, height: '9px', background: '#E0E6EE', borderRadius: '2px' }} />
+          <div style={{ height: '18px', width: '44px', background: '#B8D9E4', borderRadius: '2px' }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FocusedSchematic() {
+  function Blk({ w, h, bg = '#E0E6EE' }: { w: string; h: number; bg?: string }) {
+    return <div style={{ width: w, height: `${h}px`, background: bg, borderRadius: '2px', flexShrink: 0 }} />;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <Blk w="58%" h={18} bg="#C5D0DC" />
+      <Blk w="78%" h={11} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#E0E6EE' }} />
+        <Blk w="28%" h={9} />
+      </div>
+      <div style={{ background: '#003359', padding: '10px 14px', display: 'flex', gap: '20px', marginTop: '4px', marginBottom: '4px' }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ width: '18px', height: '14px', background: 'rgba(255,255,255,0.85)', borderRadius: '2px' }} />
+            <div style={{ width: '48px', height: '7px', background: 'rgba(77,197,210,0.8)', borderRadius: '2px' }} />
+          </div>
+        ))}
+      </div>
+      {[0, 1].map((i) => (
+        <div
+          key={i}
+          style={{
+            height: '42px', border: '1px solid #D5DCE8', background: '#fff',
+            padding: '0 10px', display: 'flex', alignItems: 'center', gap: '8px',
+          }}
+        >
+          <div style={{ flex: 1, height: '9px', background: '#E0E6EE', borderRadius: '2px' }} />
+          <div style={{ height: '18px', width: '44px', background: '#B8D9E4', borderRadius: '2px' }} />
+        </div>
+      ))}
+      <div style={{ height: '1px', background: '#E5E9F0', margin: '8px 0' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ width: '16px', height: '1px', background: '#4DC5D2' }} />
+        <div style={{ width: '36px', height: '8px', background: '#4DC5D2', borderRadius: '2px', opacity: 0.6 }} />
+      </div>
+      <Blk w="100%" h={9} bg="#EDF0F4" />
+      <Blk w="68%"  h={9} bg="#EDF0F4" />
+      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+        <div style={{ height: '20px', width: '58px', background: '#0A66C2', borderRadius: '2px', opacity: 0.75 }} />
+        <div style={{ height: '20px', width: '44px', background: '#E0E6EE', borderRadius: '2px' }} />
+      </div>
+    </div>
+  );
+}
+
+function TemplatePreviewModal({
+  template,
+  saving,
+  error,
+  onApply,
+  onClose,
+}: {
+  template: PortfolioTemplate;
+  saving:   boolean;
+  error:    string | null;
+  onApply:  () => void;
+  onClose:  () => void;
+}) {
+  const label = template === 'focused' ? 'Focused' : 'Professional';
+
+  return (
+    <div
+      style={{
+        position:       'fixed',
+        inset:          0,
+        background:     'rgba(0,0,0,0.55)',
+        zIndex:         1000,
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'center',
+        padding:        '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background:     '#fff',
+          width:          'min(480px, 100%)',
+          maxHeight:      '85vh',
+          display:        'flex',
+          flexDirection:  'column',
+          overflow:       'hidden',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'space-between',
+            padding:        '18px 20px 14px',
+            borderBottom:   '1px solid #E5E9F0',
+            flexShrink:     0,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize:      '11px',
+                color:         '#888',
+                fontWeight:    600,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                marginBottom:  '4px',
+              }}
+            >
+              Layout Preview
+            </div>
+            <div style={{ fontSize: '16px', fontWeight: 700, color: NAVY }}>
+              {label}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close preview"
+            style={{
+              background: 'transparent',
+              border:     'none',
+              fontSize:   '22px',
+              color:      '#999',
+              cursor:     'pointer',
+              padding:    '4px 8px',
+              lineHeight: 1,
+              fontFamily: 'inherit',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Schematic */}
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', padding: '20px' }}>
+          {template === 'focused' ? <FocusedSchematic /> : <ProfessionalSchematic />}
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding:     '14px 20px',
+            borderTop:   '1px solid #E5E9F0',
+            flexShrink:  0,
+            display:     'flex',
+            gap:         '10px',
+            alignItems:  'center',
+            flexWrap:    'wrap',
+          }}
+        >
+          <button
+            type="button"
+            onClick={onApply}
+            disabled={saving}
+            style={{
+              background:    NAVY,
+              color:         '#fff',
+              border:        'none',
+              padding:       '10px 22px',
+              fontSize:      '13px',
+              fontWeight:    600,
+              letterSpacing: '0.06em',
+              cursor:        saving ? 'not-allowed' : 'pointer',
+              opacity:       saving ? 0.7 : 1,
+              fontFamily:    'inherit',
+            }}
+          >
+            {saving ? 'Applying…' : 'Apply this layout'}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            style={{
+              background:  'transparent',
+              color:       '#555',
+              border:      '1px solid #D5DCE8',
+              padding:     '10px 18px',
+              fontSize:    '13px',
+              fontWeight:  500,
+              cursor:      saving ? 'not-allowed' : 'pointer',
+              fontFamily:  'inherit',
+            }}
+          >
+            Cancel
+          </button>
+          {error && (
+            <p style={{ fontSize: '12px', color: '#c0392b', margin: 0, width: '100%' }}>
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

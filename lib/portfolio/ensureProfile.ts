@@ -18,7 +18,7 @@ export async function ensurePortfolioProfile(
 
   const { error } = await supabase
     .from('portfolio_profiles')
-    .insert({ user_id: userId, slug });
+    .insert({ user_id: userId, slug, template: 'professional' });
 
   if (error) {
     throw new Error(`portfolio_profiles insert failed: ${error.message}`);

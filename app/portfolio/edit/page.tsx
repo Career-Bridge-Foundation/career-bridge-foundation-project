@@ -159,7 +159,7 @@ export default async function PortfolioEditPage() {
 
   const { data: profile } = await supabase
     .from('portfolio_profiles')
-    .select('id, slug, headline, bio, location, linkedin_url, external_links')
+    .select('id, slug, headline, bio, location, linkedin_url, external_links, template')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -282,6 +282,8 @@ export default async function PortfolioEditPage() {
 
         <PortfolioEditPageContent
           initial={{
+            slug:           profile.slug,
+            template:       (profile.template as 'professional' | 'focused') ?? 'professional',
             headline:       profile.headline ?? '',
             bio:            profile.bio ?? '',
             location:       profile.location ?? '',
