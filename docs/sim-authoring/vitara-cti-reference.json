@@ -80,7 +80,7 @@
             "Clearly state the conditions that would invalidate the conclusion",
             "Maintain an objective and authoritative tone"
           ],
-          "minWords": 303,
+          "minWords": 300,
           "timeRemainingMinutes": 5
         }
       ],
