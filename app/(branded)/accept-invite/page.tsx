@@ -13,7 +13,7 @@ type State =
   | { kind: 'no_token' }
   | { kind: 'needs_auth'; token: string }
   | { kind: 'accepting' }
-  | { kind: 'success' }
+  | { kind: 'success'; role: string }
   | { kind: 'already' }
   | { kind: 'expired' }
   | { kind: 'wrong_account' }
@@ -56,7 +56,7 @@ function AcceptInviteInner() {
         if (cancelled) return
 
         if (res.ok) {
-          setState({ kind: 'success' })
+          setState({ kind: 'success', role: typeof data?.role === 'string' ? data.role : 'partner' })
         } else if (res.status === 409) {
           // Two distinct 409s: already-accepted vs cross-org hijack.
           if (typeof data?.error === 'string' && data.error.includes('already accepted')) {
@@ -116,7 +116,7 @@ function AcceptInviteInner() {
               <>
                 <h1 className="text-2xl font-bold text-navy mb-2">You&rsquo;ve been invited</h1>
                 <p className="text-sm text-gray-500 leading-relaxed mb-8">
-                  You&rsquo;ve been invited to join an organisation as an admin. Create your
+                  You&rsquo;ve been invited to join an organisation. Create your
                   account to accept, or sign in if you already have one.
                 </p>
                 <Link
@@ -141,14 +141,15 @@ function AcceptInviteInner() {
                 </div>
                 <h1 className="text-2xl font-bold text-navy mb-2">You&rsquo;re all set</h1>
                 <p className="text-sm text-gray-500 leading-relaxed mb-6">
-                  Your admin access is active. You can now manage your organisation&rsquo;s
-                  candidates, mentors, and team.
+                  {state.role === 'mentor'
+                    ? 'Your mentor access is active — you can now see the candidates and disciplines assigned to you.'
+                    : 'Your admin access is active. You can now manage your organisation’s candidates, mentors, and team.'}
                 </p>
                 <Link
-                  href="/partner"
+                  href={state.role === 'mentor' ? '/mentor' : '/partner'}
                   className="block w-full rounded-lg bg-navy text-white text-sm font-semibold py-3 hover:opacity-90"
                 >
-                  Go to your console
+                  {state.role === 'mentor' ? 'Go to your mentor console' : 'Go to your console'}
                 </Link>
               </>
             )}
