@@ -583,7 +583,7 @@ export default function SimulationExecutionPage() {
 
       </div>
 
-      <ChatWidget prompt={prompt} />
+      <ChatWidget prompt={prompt} logoUrl={branding?.logo_url_icon ?? "/evidentize-icon.png"} />
 
       <SubmitConfirmationModal
         open={showConfirm}
