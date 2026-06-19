@@ -6,9 +6,10 @@ import { useChat } from "@/hooks/useChat";
 
 interface ChatWidgetProps {
   prompt: Prompt;
+  logoUrl?: string;
 }
 
-export function ChatWidget({ prompt }: ChatWidgetProps) {
+export function ChatWidget({ prompt, logoUrl = "/evidentize-icon.png" }: ChatWidgetProps) {
   const { messages, input, setInput, isStreaming, isOpen, setIsOpen, send, chatEndRef } =
     useChat({ prompt });
 
@@ -25,7 +26,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
         <div className="flex items-center justify-between px-4 py-3 shrink-0 bg-navy">
           <div className="flex items-center gap-2.5">
             <img
-              src="/logo.png"
+              src={logoUrl}
               alt="CB"
               className="w-[22px] h-[22px] object-contain rounded-[4px]"
             />
@@ -55,7 +56,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             >
               {msg.role === "assistant" && (
                 <img
-                  src="/logo.png"
+                  src={logoUrl}
                   alt="CB"
                   className="w-5 h-5 object-contain rounded-[3px] shrink-0 mt-0.5"
                 />
@@ -139,7 +140,7 @@ export function ChatWidget({ prompt }: ChatWidgetProps) {
             </svg>
           ) : (
             <img
-              src="/logo.png"
+              src={logoUrl}
               alt="Open assistant"
               className="w-[30px] h-[30px] object-contain"
             />

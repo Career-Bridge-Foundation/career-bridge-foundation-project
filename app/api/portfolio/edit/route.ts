@@ -7,6 +7,8 @@ const LOCATION_MAX     = 80;
 const LINK_LABEL_MAX   = 30;
 const MAX_LINKS        = 6;
 const SIM_ID_MAX       = 200;
+const ALLOWED_TEMPLATES = ['professional', 'focused'] as const;
+type PortfolioTemplate = typeof ALLOWED_TEMPLATES[number];
 
 type ExternalLink = { label: string; url: string };
 
@@ -171,6 +173,14 @@ export async function POST(request: NextRequest) {
   const visibility = validateSimulationVisibility(body.simulation_visibility);
   if (!visibility.ok) return json({ error: visibility.error }, 400);
 
+  let template: PortfolioTemplate | undefined;
+  if (body.template !== undefined && body.template !== null) {
+    if (!ALLOWED_TEMPLATES.includes(body.template as PortfolioTemplate)) {
+      return json({ error: `template must be one of: ${ALLOWED_TEMPLATES.join(', ')}` }, 400);
+    }
+    template = body.template as PortfolioTemplate;
+  }
+
   // UPDATE only the allowed fields. user_id, slug, and is_public are
   // intentionally excluded — they are not editable here.
   const { error } = await supabase
@@ -181,6 +191,7 @@ export async function POST(request: NextRequest) {
       location:       location.value,
       linkedin_url:   linkedin.value,
       external_links: externalLinks.value,
+      ...(template !== undefined && { template }),
     })
     .eq('user_id', user.id);
 

@@ -74,7 +74,7 @@ export function ResponseForm({
             <EitherToggle mode={mode} onModeChange={(m) => onUpdate({ mode: m })} />
           )}
           <span className="text-xs font-semibold uppercase text-[#888] tracking-brand-md block mb-1.5">
-            Your Response
+            {prompt.id === 5 ? "Your submission rationale" : "Your Response"}
           </span>
           <p className="text-xs text-[#bbb] mb-3">
             Minimum {prompt.minWords} words. Write as you would in a real workplace context.

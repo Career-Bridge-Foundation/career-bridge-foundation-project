@@ -71,6 +71,8 @@ export type SimulationOnPortfolio = {
   debrief: DebriefReflection | null;
 };
 
+export type PortfolioTemplate = 'professional' | 'focused';
+
 export type PortfolioData = {
   profile: {
     slug: string;
@@ -79,6 +81,7 @@ export type PortfolioData = {
     location: string | null;
     linkedin_url: string | null;
     external_links: ExternalLink[];
+    template: PortfolioTemplate;
   };
   candidate: {
     fullName: string;
@@ -112,7 +115,7 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
   // ── Round 1: resolve slug → profile + user_id ─────────────────────
   const { data: profileRow, error: profileErr } = await supabase
     .from('portfolio_profiles')
-    .select('user_id, slug, headline, bio, location, linkedin_url, external_links, is_public')
+    .select('user_id, slug, headline, bio, location, linkedin_url, external_links, is_public, template')
     .eq('slug', slug)
     .eq('is_public', true)
     .maybeSingle();
@@ -285,6 +288,7 @@ export const getPortfolioBySlug = cache(async (slug: string): Promise<PortfolioD
       location:       profileRow.location       ?? null,
       linkedin_url:   profileRow.linkedin_url   ?? null,
       external_links: (profileRow.external_links as ExternalLink[]) ?? [],
+      template:       (profileRow.template as PortfolioTemplate) ?? 'professional',
     },
     candidate: {
       fullName: (profilesRow as { full_name?: string } | null)?.full_name ?? 'Candidate',

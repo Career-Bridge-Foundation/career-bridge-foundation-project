@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useTTS } from "@/hooks/useTTS";
 import type { Prompt } from "@/types";
 
 interface TaskPromptProps {
@@ -33,6 +35,13 @@ export function TaskPrompt({
   transcript,
   videoUrl,
 }: TaskPromptProps) {
+  const { state: ttsState, isSupported, stop, toggle } = useTTS();
+
+  // Stop speech when the candidate moves to a different task
+  useEffect(() => {
+    stop();
+  }, [currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       {/* Scenario context card — Step 1 only */}
@@ -114,6 +123,49 @@ export function TaskPrompt({
         </span>
         <h2 className="text-xl font-bold text-navy leading-[1.3] mb-4">{prompt.title}</h2>
         <p className="text-base text-[#444] leading-[1.85]">{prompt.question}</p>
+
+        {isSupported && (
+          <button
+            onClick={() => toggle(`${prompt.title}. ${prompt.question}`)}
+            className="mt-5 flex items-center gap-2 text-sm font-medium text-teal hover:text-navy transition-colors"
+            aria-label={
+              ttsState === "playing" ? "Pause audio" :
+              ttsState === "paused"  ? "Resume audio" :
+                                       "Listen to task prompt"
+            }
+          >
+            {ttsState === "playing" && (
+              <>
+                {/* Pause icon */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+                Pause
+              </>
+            )}
+            {ttsState === "paused" && (
+              <>
+                {/* Resume — solid play triangle */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5,3 19,12 5,21" />
+                </svg>
+                Resume
+              </>
+            )}
+            {ttsState === "idle" && (
+              <>
+                {/* Speaker / listen icon */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor" stroke="none" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+                Listen
+              </>
+            )}
+          </button>
+        )}
       </div>
     </>
   );
