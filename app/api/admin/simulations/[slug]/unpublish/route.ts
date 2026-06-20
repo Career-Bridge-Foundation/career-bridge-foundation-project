@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireStaff } from '@/lib/auth/permissions'
+import { requireAdmin } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/log-activity'
 
@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const ctx = await requireStaff()
+    const ctx = await requireAdmin()
     const { slug } = await params
 
     const { data: sim, error: fetchErr } = await supabaseServer
@@ -18,13 +18,13 @@ export async function POST(
       .single()
 
     if (fetchErr || !sim) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (sim.status !== 'draft') {
-      return NextResponse.json({ error: 'Only drafts can be submitted for review' }, { status: 400 })
+    if (sim.status !== 'published') {
+      return NextResponse.json({ error: 'Only published simulations can be unpublished' }, { status: 400 })
     }
 
     const { error } = await supabaseServer
       .from('simulations')
-      .update({ status: 'pending_review' })
+      .update({ status: 'draft' })
       .eq('slug', slug)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -33,7 +33,7 @@ export async function POST(
       simulationId: sim.id,
       userEmail: ctx.email,
       action: 'status_changed',
-      diff: { status: { from: 'draft', to: 'pending_review' } },
+      diff: { status: { from: 'published', to: 'draft' } },
     })
 
     return NextResponse.json({ success: true })

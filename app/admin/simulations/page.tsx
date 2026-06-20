@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
 import { useReducedMotion } from 'framer-motion'
@@ -34,6 +34,7 @@ import {
   Upload,
   AlertCircle,
   ChevronDown,
+  X,
 } from 'lucide-react'
 import {
   Button,
@@ -141,23 +142,11 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
   const [dragging, setDragging] = useState(false)
   const fileRef = React.useRef<HTMLInputElement>(null)
 
-  function reset() {
-    setFile(null)
-    setDiff(null)
-    setParseError(null)
-    setImporting(false)
-    setDragging(false)
-  }
-
-  function handleClose() {
-    reset()
-    onClose()
-  }
+  function reset() { setFile(null); setDiff(null); setParseError(null); setImporting(false); setDragging(false) }
+  function handleClose() { reset(); onClose() }
 
   async function processFile(f: File) {
-    setFile(f)
-    setDiff(null)
-    setParseError(null)
+    setFile(f); setDiff(null); setParseError(null)
     try {
       const text = await f.text()
       const { raw, error } = fileToImportBody(f, text)
@@ -172,25 +161,16 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
       const data = await res.json()
       if (!res.ok) setParseError(data.formErrors?.[0] ?? data.error ?? 'Validation failed')
       else setDiff(data as ImportDiff)
-    } catch {
-      setParseError('Could not read file')
-    }
+    } catch { setParseError('Could not read file') }
   }
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (f) processFile(f)
-  }
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) { const f = e.target.files?.[0]; if (f) processFile(f) }
 
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDragging(false)
+    e.preventDefault(); setDragging(false)
     const f = e.dataTransfer.files?.[0]
     if (!f) return
-    if (!f.name.endsWith('.json') && !f.name.endsWith('.csv')) {
-      setParseError('Only .json and .csv files are supported')
-      return
-    }
+    if (!f.name.endsWith('.json') && !f.name.endsWith('.csv')) { setParseError('Only .json and .csv files are supported'); return }
     processFile(f)
   }
 
@@ -206,44 +186,26 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(raw),
       })
-      if (res.ok) {
-        toast.success(`Import complete — ${diff.created} created, ${diff.updated} updated`)
-        handleClose()
-        onDone()
-      } else {
-        const json = await res.json()
-        toast.error(json.error ?? 'Import failed')
-      }
-    } catch {
-      toast.error('Import failed')
-    } finally {
-      setImporting(false)
-    }
+      if (res.ok) { toast.success(`Import complete — ${diff.created} created, ${diff.updated} updated`); handleClose(); onDone() }
+      else { const json = await res.json(); toast.error(json.error ?? 'Import failed') }
+    } catch { toast.error('Import failed') }
+    finally { setImporting(false) }
   }
 
   return (
     <Dialog open={open} onClose={handleClose}>
       <div className="space-y-5">
         <div>
-          {/* Dialog uses card colors: bg-card / text-foreground */}
           <h2 className="text-base font-semibold text-slate-900">Import simulations</h2>
-          <p className="text-sm text-slate-600 mt-1">
-            Upload a JSON or CSV file. Existing slugs will be updated.
-          </p>
+          <p className="text-sm text-slate-500 mt-1">Upload a JSON or CSV file. Existing slugs will be updated.</p>
         </div>
-
-        {/* Drop zone */}
         <div
-          role="button"
-          tabIndex={0}
-          aria-label="Upload file"
+          role="button" tabIndex={0} aria-label="Upload file"
           className={cn(
-            'rounded-lg border-2 border-dashed p-8 text-center transition-colors cursor-pointer select-none',
-            parseError
-              ? 'border-destructive bg-destructive/5'
-              : dragging
-              ? 'border-teal bg-teal/5'
-              : 'border-slate-300 hover:border-teal/40 bg-slate-50'
+            'rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer select-none',
+            parseError ? 'border-destructive bg-destructive/5'
+              : dragging ? 'border-[#4DC5D2] bg-[#4DC5D2]/5'
+              : 'border-[#e4eaf3] hover:border-[#4DC5D2]/40 bg-[#f8fafd]'
           )}
           onClick={() => fileRef.current?.click()}
           onKeyDown={e => e.key === 'Enter' && fileRef.current?.click()}
@@ -251,18 +213,18 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
         >
-          <Upload size={20} className={cn('mx-auto mb-3', dragging ? 'text-teal' : 'text-slate-400')} />
+          <Upload size={20} className={cn('mx-auto mb-3', dragging ? 'text-[#4DC5D2]' : 'text-slate-300')} />
           {file ? (
-            <p className="text-sm font-medium text-slate-900">{file.name}</p>
+            <p className="text-sm font-semibold text-[#003359]">{file.name}</p>
           ) : (
             <>
-              <p className="text-sm text-slate-700 font-medium">
+              <p className="text-sm font-medium text-[rgba(0,51,89,0.65)]">
                 {dragging ? 'Drop to upload' : 'Click or drag a file here'}
               </p>
               <div className="flex items-center justify-center gap-1.5 mt-2">
-                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-slate-200 text-slate-600 tracking-wide">JSON</span>
-                <span className="text-slate-400 text-xs">·</span>
-                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-slate-200 text-slate-600 tracking-wide">CSV</span>
+                <span className="rounded-md px-2 py-0.5 text-[11px] font-semibold bg-[#eef2f7] text-[rgba(0,51,89,0.55)]">JSON</span>
+                <span className="text-[rgba(0,51,89,0.25)] text-xs">·</span>
+                <span className="rounded-md px-2 py-0.5 text-[11px] font-semibold bg-[#eef2f7] text-[rgba(0,51,89,0.55)]">CSV</span>
               </div>
             </>
           )}
@@ -270,27 +232,27 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
         </div>
 
         {parseError && (
-          <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/8 rounded-lg px-3 py-2.5 border border-destructive/25">
+          <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/8 rounded-xl px-3 py-2.5 border border-destructive/20">
             <AlertCircle size={14} className="mt-0.5 shrink-0" />
             <span>{parseError}</span>
           </div>
         )}
 
         {diff && (
-          <div className="rounded-lg border border-slate-300 bg-slate-100 p-4 space-y-2">
-            <p className="text-xs text-slate-600 uppercase tracking-widest font-medium mb-3">Preview</p>
+          <div className="rounded-xl border border-[#e4eaf3] bg-[#f8fafd] p-4 space-y-2">
+            <p className="text-[10px] text-[rgba(0,51,89,0.45)] uppercase tracking-widest font-bold mb-3">Preview</p>
             <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-md bg-emerald-50 border border-emerald-200 py-3">
-                <p className="text-xl font-bold text-emerald-700">{diff.created}</p>
-                <p className="text-xs text-emerald-600 mt-0.5">New</p>
+              <div className="rounded-xl bg-emerald-50 border border-emerald-200 py-3">
+                <p className="text-2xl font-bold text-emerald-700">{diff.created}</p>
+                <p className="text-xs text-emerald-600 mt-0.5 font-medium">New</p>
               </div>
-              <div className="rounded-md bg-sky-50 border border-sky-200 py-3">
-                <p className="text-xl font-bold text-sky-700">{diff.updated}</p>
-                <p className="text-xs text-sky-600 mt-0.5">Updated</p>
+              <div className="rounded-xl bg-blue-50 border border-blue-200 py-3">
+                <p className="text-2xl font-bold text-blue-700">{diff.updated}</p>
+                <p className="text-xs text-blue-600 mt-0.5 font-medium">Updated</p>
               </div>
-              <div className="rounded-md bg-slate-100 border border-slate-300 py-3">
-                <p className="text-xl font-bold text-slate-900">{diff.total}</p>
-                <p className="text-xs text-slate-600 mt-0.5">Total</p>
+              <div className="rounded-xl bg-[#f0f4f8] border border-[#e4eaf3] py-3">
+                <p className="text-2xl font-bold text-[#003359]">{diff.total}</p>
+                <p className="text-xs text-[rgba(0,51,89,0.5)] mt-0.5 font-medium">Total</p>
               </div>
             </div>
           </div>
@@ -298,12 +260,7 @@ function ImportDialog({ open, onClose, onDone }: { open: boolean; onClose: () =>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" size="sm" onClick={handleClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={!diff || !!parseError || importing}
-            onClick={handleImport}
-          >
+          <Button variant="primary" size="sm" disabled={!diff || !!parseError || importing} onClick={handleImport}>
             {importing ? 'Importing…' : `Import ${diff ? diff.total : ''} simulations`}
           </Button>
         </div>
@@ -329,18 +286,25 @@ type SimListItem = {
   updated_at: string
 }
 
-// Light-theme difficulty badges aligned with config's warm palette
-const DIFF_BADGE: Record<string, string> = {
-  Foundation: 'bg-emerald-50  text-emerald-700  border-emerald-200',
-  Practitioner: 'bg-amber-50    text-amber-700    border-amber-200',
-  Advanced: 'bg-rose-50     text-rose-700     border-rose-200',
+// ── Style constants ───────────────────────────────────────────────────────────
+const DIFF_BADGE: Record<string, { bg: string; color: string; border: string }> = {
+  Foundation:   { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  Practitioner: { bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  Advanced:     { bg: '#fff1f2', color: '#e11d48', border: '#fecdd3' },
 }
 
-const STATUS_BADGE: Record<SimStatus, string> = {
-  draft:          'bg-slate-100   text-slate-600   border-slate-300',
-  pending_review: 'bg-blue-50     text-blue-700    border-blue-200',
-  published:      'bg-emerald-50  text-emerald-700  border-emerald-200',
-  archived:       'bg-amber-50    text-amber-700    border-amber-200',
+const STATUS_DOT: Record<string, string> = {
+  draft:          '#94a3b8',
+  pending_review: '#3b82f6',
+  published:      '#16a34a',
+  archived:       '#f59e0b',
+}
+
+const STATUS_TEXT: Record<string, string> = {
+  draft:          '#64748b',
+  pending_review: '#1d4ed8',
+  published:      '#16a34a',
+  archived:       '#d97706',
 }
 
 const STATUS_LABEL: Record<SimStatus, string> = {
@@ -350,56 +314,18 @@ const STATUS_LABEL: Record<SimStatus, string> = {
   archived:       'Archived',
 }
 
-const DIFF_OPTIONS = [
-  { label: 'All', value: '' },
-  { label: 'Foundation', value: 'Foundation' },
-  { label: 'Practitioner', value: 'Practitioner' },
-  { label: 'Advanced', value: 'Advanced' },
-]
-
-const STATUS_OPTIONS = [
-  { label: 'All',            value: '' },
-  { label: 'Draft',          value: 'draft' },
-  { label: 'Pending Review', value: 'pending_review' },
-  { label: 'Published',      value: 'published' },
-  { label: 'Archived',       value: 'archived' },
-]
-
-// ── Skeleton rows ─────────────────────────────────────────────────────────────
-function SkeletonRows() {
-  return (
-    <>
-      {Array.from({ length: 5 }).map((_, i) => (
-        <TR key={i}>
-          <TD className="w-8 pl-3 pr-1"><Skeleton className="h-4 w-4 rounded" /></TD>
-          <TD>
-            <Skeleton className="h-4 w-40 rounded mb-1.5" />
-            <Skeleton className="h-3 w-24 rounded" />
-          </TD>
-          <TD><Skeleton className="h-5 w-16 rounded-full" /></TD>
-          <TD><Skeleton className="h-5 w-20 rounded-full" /></TD>
-          <TD><Skeleton className="h-5 w-24 rounded-full" /></TD>
-          <TD><Skeleton className="h-4 w-14 rounded" /></TD>
-          <TD><Skeleton className="h-4 w-20 rounded" /></TD>
-          <TD className="w-10"><Skeleton className="h-6 w-6 rounded" /></TD>
-        </TR>
-      ))}
-    </>
-  )
-}
-
-// ── Filter chip ───────────────────────────────────────────────────────────────
-function FilterChip({
+// ── Status tab (primary filter) ───────────────────────────────────────────────
+function StatusTab({
   label,
   count,
   active,
-  color,
+  dotColor,
   onClick,
 }: {
   label: string
   count?: number
   active: boolean
-  color?: string
+  dotColor?: string
   onClick: () => void
 }) {
   return (
@@ -407,26 +333,94 @@ function FilterChip({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
+        'relative flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap shrink-0',
         active
-          ? 'border-teal bg-teal/10 text-teal'
-          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+          ? 'text-[#003359] border-b-[#003359]'
+          : 'text-[rgba(0,51,89,0.42)] border-b-transparent hover:text-[#003359] hover:border-b-[rgba(0,51,89,0.15)]'
       )}
-      style={active && color ? { borderColor: color, backgroundColor: color + '18', color } : undefined}
     >
+      {dotColor && (
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ backgroundColor: active ? dotColor : 'rgba(0,51,89,0.2)' }}
+        />
+      )}
       {label}
       {count !== undefined && (
         <span
           className={cn(
-            'inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-semibold',
-            active ? 'bg-teal text-white' : 'bg-slate-100 text-slate-500'
+            'min-w-[20px] px-1.5 py-0.5 rounded-full text-[10px] font-bold text-center leading-none pt-[3px] pb-[3px]',
+            active
+              ? 'bg-[#003359] text-white'
+              : 'bg-[#eef2f7] text-[rgba(0,51,89,0.45)]'
           )}
-          style={active && color ? { backgroundColor: color, color: '#fff' } : undefined}
         >
           {count}
         </span>
       )}
     </button>
+  )
+}
+
+// ── Filter pill (secondary filters) ──────────────────────────────────────────
+function FilterPill({
+  label,
+  count,
+  active,
+  bg,
+  color,
+  border,
+  onClick,
+}: {
+  label: string
+  count?: number
+  active: boolean
+  bg?: string
+  color?: string
+  border?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all"
+      style={
+        active
+          ? { backgroundColor: bg ?? '#eef2f7', color: color ?? '#003359', borderColor: border ?? '#e4eaf3' }
+          : { backgroundColor: '#ffffff', color: 'rgba(0,51,89,0.55)', borderColor: '#e4eaf3' }
+      }
+    >
+      {active && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color ?? '#003359' }} />}
+      {label}
+      {count !== undefined && (
+        <span style={{ color: active ? color ?? '#003359' : 'rgba(0,51,89,0.35)', opacity: 0.8 }}>
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
+
+// ── Skeleton rows ─────────────────────────────────────────────────────────────
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <TR key={i} className="h-[60px]">
+          <TD className="w-10 pl-4"><Skeleton className="h-4 w-4 rounded" /></TD>
+          <TD className="py-4">
+            <Skeleton className="h-4 w-48 rounded mb-2" />
+            <Skeleton className="h-3 w-28 rounded" />
+          </TD>
+          <TD><Skeleton className="h-5 w-24 rounded-full" /></TD>
+          <TD><Skeleton className="h-5 w-20 rounded-lg" /></TD>
+          <TD><Skeleton className="h-5 w-24 rounded-lg" /></TD>
+          <TD><Skeleton className="h-4 w-20 rounded" /></TD>
+          <TD className="w-12"><Skeleton className="h-7 w-7 rounded-lg" /></TD>
+        </TR>
+      ))}
+    </>
   )
 }
 
@@ -445,89 +439,101 @@ function SortableRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: sim.slug })
 
+  const diff = DIFF_BADGE[sim.difficulty]
+
   return (
     <TR
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        'transition-colors duration-[600ms]',
-        isDragging && 'opacity-40',
-        // accent-teal at low opacity for the highlight flash
-        highlightedSlug === sim.slug && 'bg-accent/8'
+        'group h-[60px] transition-colors',
+        isDragging && 'opacity-40 bg-[#f8fafd]',
+        highlightedSlug === sim.slug ? 'bg-[#4DC5D2]/8' : 'hover:bg-[#f5f8fd]'
       )}
     >
-      {/* Drag handle */}
-      <TD className="w-8 pl-3 pr-1">
+      {/* Drag handle — hidden until row hover */}
+      <TD className="w-10 pl-4 pr-0">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/20 rounded p-0.5 transition-colors"
+          className="opacity-0 group-hover:opacity-40 hover:!opacity-100 text-[#003359] cursor-grab active:cursor-grabbing focus-visible:outline-none transition-opacity"
           aria-label="Drag to reorder"
         >
-          <GripVertical size={14} />
+          <GripVertical size={15} />
         </button>
       </TD>
 
-      {/* Title + company + discipline */}
-      <TD className="py-3.5 max-w-xs">
-        <Link href={`/admin/simulations/${sim.slug}`} className="group block">
-          <span className="font-medium text-[#003359] group-hover:text-teal line-clamp-1 transition-colors">
+      {/* Simulation: title + company + discipline */}
+      <TD className="py-4 max-w-xs">
+        <Link href={`/admin/simulations/${sim.slug}`} className="group/link block">
+          <span className="font-semibold text-sm text-[#003359] group-hover/link:text-[#006FAD] transition-colors line-clamp-1">
             {sim.title}
           </span>
-          <span className="text-xs text-slate-600 mt-0.5 block">{sim.company}</span>
-          {sim.discipline && (
-            <span className="inline-block mt-1 text-[11px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 font-medium leading-none">
-              {sim.discipline}
-            </span>
-          )}
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-[rgba(0,51,89,0.42)]">{sim.company}</span>
+            {sim.discipline && (
+              <>
+                <span className="text-[rgba(0,51,89,0.2)] text-xs">·</span>
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold leading-none"
+                  style={{ backgroundColor: '#f3f0ff', color: '#7c3aed', border: '1px solid #ddd6fe' }}
+                >
+                  {sim.discipline}
+                </span>
+              </>
+            )}
+          </div>
         </Link>
       </TD>
 
-      {/* Industry */}
+      {/* Status — dot + label */}
       <TD>
-        <Badge
-          variant="neutral"
-          className="bg-slate-100 text-slate-900 text-xs border border-slate-200"
-        >
-          {sim.industry}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: STATUS_DOT[sim.status] ?? '#94a3b8' }}
+          />
+          <span className="text-sm font-medium" style={{ color: STATUS_TEXT[sim.status] ?? '#64748b' }}>
+            {STATUS_LABEL[sim.status] ?? sim.status}
+          </span>
+        </div>
       </TD>
 
       {/* Difficulty */}
       <TD>
-        <Badge
-          variant="neutral"
-          className={cn('text-xs border', DIFF_BADGE[sim.difficulty] ?? 'bg-slate-100 text-slate-900')}
-        >
-          {sim.difficulty}
-        </Badge>
+        {diff ? (
+          <span
+            className="text-xs px-2.5 py-1 rounded-lg font-semibold border"
+            style={{ backgroundColor: diff.bg, color: diff.color, borderColor: diff.border }}
+          >
+            {sim.difficulty}
+          </span>
+        ) : (
+          <span className="text-xs px-2.5 py-1 rounded-lg font-semibold border bg-[#f0f4f8] text-[rgba(0,51,89,0.5)] border-[#e4eaf3]">
+            {sim.difficulty}
+          </span>
+        )}
       </TD>
 
-      {/* Status */}
+      {/* Industry */}
       <TD>
-        <Badge
-          variant="neutral"
-          className={cn('text-xs border', STATUS_BADGE[sim.status] ?? STATUS_BADGE.draft)}
-        >
-          {STATUS_LABEL[sim.status] ?? sim.status}
-        </Badge>
+        <span className="text-xs px-2.5 py-1 rounded-lg font-medium bg-[#f0f4f8] text-[rgba(0,51,89,0.6)]">
+          {sim.industry}
+        </span>
       </TD>
-
-      {/* Time */}
-      <TD className="text-slate-700 text-sm">{sim.time}</TD>
 
       {/* Updated */}
-      <TD className="text-slate-600 text-sm whitespace-nowrap">
+      <TD className="text-xs text-[rgba(0,51,89,0.42)] whitespace-nowrap">
         {formatDistanceToNow(new Date(sim.updated_at), { addSuffix: true })}
       </TD>
 
-      {/* Actions */}
-      <TD className="w-10">
+      {/* Actions — hidden until row hover */}
+      <TD className="w-12 pr-3">
         <DropdownMenu
           align="end"
           trigger={
             <button
-              className="p-1.5 rounded hover:bg-slate-100 text-slate-600 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/20 transition-colors"
+              className="p-1.5 rounded-lg text-[rgba(0,51,89,0.35)] opacity-0 group-hover:opacity-100 hover:text-[#003359] hover:bg-[#eef2f7] transition-all focus-visible:outline-none focus-visible:opacity-100"
               aria-label="Row actions"
             >
               <MoreHorizontal size={15} />
@@ -536,26 +542,26 @@ function SortableRow({
         >
           <Link
             href={`/admin/simulations/${sim.slug}`}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#003359] hover:bg-[#f5f8fd] rounded-md transition-colors"
           >
-            <Pencil size={13} /> Edit metadata
+            <Pencil size={13} className="text-[rgba(0,51,89,0.4)]" /> Edit metadata
           </Link>
           <Link
             href={`/admin/simulations/${sim.slug}/content`}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#003359] hover:bg-[#f5f8fd] rounded-md transition-colors"
           >
-            <FileText size={13} /> Edit content
+            <FileText size={13} className="text-[rgba(0,51,89,0.4)]" /> Edit content
           </Link>
           <button
             onClick={() => onDuplicate(sim)}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-[#003359] hover:bg-[#f5f8fd] rounded-md transition-colors"
           >
-            <Copy size={13} /> Duplicate
+            <Copy size={13} className="text-[rgba(0,51,89,0.4)]" /> Duplicate
           </button>
-          <div className="my-1 border-t border-slate-200" />
+          <div className="my-1 border-t border-[#eef2f7]" />
           <button
             onClick={() => onDelete(sim)}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/8 rounded-sm transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-destructive hover:bg-destructive/8 rounded-md transition-colors"
           >
             <Trash2 size={13} /> Delete
           </button>
@@ -566,14 +572,15 @@ function SortableRow({
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function SimulationsListPage() {
+function SimulationsListPageInner() {
   const router = useRouter()
   const reduced = useReducedMotion()
+  const searchParams = useSearchParams()
 
   const [items, setItems] = useState<SimListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') ?? '')
   const [diffFilter, setDiffFilter] = useState('')
   const [disciplineFilter, setDisciplineFilter] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<SimListItem | null>(null)
@@ -611,136 +618,92 @@ export default function SimulationsListPage() {
       a.download = `${label}-${new Date().toISOString().slice(0, 10)}.${ext}`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      toast.error('Export failed')
-    } finally {
-      setIsExporting(false)
-    }
+    } catch { toast.error('Export failed') }
+    finally { setIsExporting(false) }
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
-
     const oldIndex = items.findIndex(i => i.slug === active.id)
     const newIndex = items.findIndex(i => i.slug === over.id)
-    const reordered = arrayMove(items, oldIndex, newIndex).map((item, idx) => ({
-      ...item,
-      display_order: idx + 1,
-    }))
-
+    const reordered = arrayMove(items, oldIndex, newIndex).map((item, idx) => ({ ...item, display_order: idx + 1 }))
     const snapshot = items
     setItems(reordered)
-
-    if (!reduced) {
-      setHighlightedSlug(active.id as string)
-      setTimeout(() => setHighlightedSlug(null), 600)
-    }
-
+    if (!reduced) { setHighlightedSlug(active.id as string); setTimeout(() => setHighlightedSlug(null), 600) }
     fetch('/api/admin/simulations/reorder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reordered.map(i => ({ slug: i.slug, display_order: i.display_order }))),
-    }).then(r => {
-      if (!r.ok) {
-        toast.error('Failed to save order')
-        setItems(snapshot)
-      }
-    })
+    }).then(r => { if (!r.ok) { toast.error('Failed to save order'); setItems(snapshot) } })
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
-    const slug = deleteTarget.slug
-    const title = deleteTarget.title
+    const slug = deleteTarget.slug; const title = deleteTarget.title
     setDeleteTarget(null)
     const snapshot = items
     setItems(prev => prev.filter(s => s.slug !== slug))
-
     const res = await fetch(`/api/admin/simulations/${slug}`, { method: 'DELETE' })
-    if (!res.ok) {
-      toast.error('Delete failed')
-      setItems(snapshot)
-    } else {
-      toast.success(`"${title}" deleted`)
-    }
+    if (!res.ok) { toast.error('Delete failed'); setItems(snapshot) }
+    else toast.success(`"${title}" deleted`)
   }
 
   async function handleDuplicate(sim: SimListItem) {
     const fullRes = await fetch(`/api/admin/simulations/${sim.slug}`)
     if (!fullRes.ok) { toast.error('Could not load simulation'); return }
     const full = await fullRes.json()
-
     const baseSlug = `${sim.slug}-copy`.slice(0, 57)
     const res = await fetch('/api/admin/simulations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: `${sim.title} (Copy)`,
-        company: full.company ?? '',
-        industry: full.industry ?? '',
-        type: full.type ?? '',
-        difficulty: full.difficulty ?? 'Foundation',
-        time: full.time ?? '',
-        description: full.description ?? '',
-        slug: baseSlug,
-      }),
+      body: JSON.stringify({ title: `${sim.title} (Copy)`, company: full.company ?? '', industry: full.industry ?? '', type: full.type ?? '', difficulty: full.difficulty ?? 'Foundation', time: full.time ?? '', description: full.description ?? '', slug: baseSlug }),
     })
-    if (res.ok) {
-      toast.success('Duplicated')
-      loadSims()
-    } else {
-      const json = await res.json()
-      toast.error(json.fieldErrors?.slug?.[0] ?? 'Duplicate failed')
-    }
+    if (res.ok) { toast.success('Duplicated'); loadSims() }
+    else { const json = await res.json(); toast.error(json.fieldErrors?.slug?.[0] ?? 'Duplicate failed') }
   }
 
-  const disciplineOptions = Array.from(
-    new Set(items.map(s => s.discipline).filter(Boolean) as string[])
-  ).sort()
+  // ── Derived data ─────────────────────────────────────────────────────────────
+  const disciplineOptions = Array.from(new Set(items.map(s => s.discipline).filter(Boolean) as string[])).sort()
 
   const filtered = items.filter(s => {
     const q = search.toLowerCase()
-    const matchesSearch =
-      !q || s.title?.toLowerCase().includes(q) || s.company?.toLowerCase().includes(q)
-    const matchesStatus = !statusFilter || s.status === statusFilter
-    const matchesDiff = !diffFilter || s.difficulty === diffFilter
-    const matchesDiscipline = !disciplineFilter || s.discipline === disciplineFilter
-    return matchesSearch && matchesStatus && matchesDiff && matchesDiscipline
+    return (
+      (!q || s.title?.toLowerCase().includes(q) || s.company?.toLowerCase().includes(q)) &&
+      (!statusFilter || s.status === statusFilter) &&
+      (!diffFilter || s.difficulty === diffFilter) &&
+      (!disciplineFilter || s.discipline === disciplineFilter)
+    )
   })
 
-  // Counts per filter option (from all items, ignoring other filters for badges)
-  const statusCounts = items.reduce<Record<string, number>>((acc, s) => {
-    acc[s.status] = (acc[s.status] ?? 0) + 1
-    return acc
-  }, {})
-  const diffCounts = items.reduce<Record<string, number>>((acc, s) => {
-    acc[s.difficulty] = (acc[s.difficulty] ?? 0) + 1
-    return acc
-  }, {})
-  const disciplineCounts = items.reduce<Record<string, number>>((acc, s) => {
-    if (s.discipline) acc[s.discipline] = (acc[s.discipline] ?? 0) + 1
-    return acc
-  }, {})
+  const statusCounts = items.reduce<Record<string, number>>((acc, s) => { acc[s.status] = (acc[s.status] ?? 0) + 1; return acc }, {})
+  const diffCounts   = items.reduce<Record<string, number>>((acc, s) => { acc[s.difficulty] = (acc[s.difficulty] ?? 0) + 1; return acc }, {})
+  const disciplineCounts = items.reduce<Record<string, number>>((acc, s) => { if (s.discipline) acc[s.discipline] = (acc[s.discipline] ?? 0) + 1; return acc }, {})
 
-  const hasActiveFilter = !!(search || statusFilter || diffFilter || disciplineFilter)
+  const hasSecondaryFilter = !!(diffFilter || disciplineFilter)
+  const hasAnyFilter = !!(search || statusFilter || diffFilter || disciplineFilter)
   const clearFilters = () => { setSearch(''); setStatusFilter(''); setDiffFilter(''); setDisciplineFilter('') }
 
+  const hasDiffOptions = (['Foundation', 'Practitioner', 'Advanced'] as const).some(d => diffCounts[d])
+  const showSecondaryRow = hasDiffOptions || disciplineOptions.length > 0
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-5 max-w-6xl">
+
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-bold text-2xl tracking-tight" style={{ color: '#003359' }}>Simulations</h1>
-          <p className="text-sm mt-1" style={{ color: 'rgba(0,51,89,0.45)' }}>
+          <h1 className="font-bold text-2xl tracking-tight" style={{ color: '#003359', letterSpacing: '-0.01em' }}>
+            Simulations
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'rgba(0,51,89,0.42)' }}>
             {isLoading ? '—' : `${items.length} simulation${items.length !== 1 ? 's' : ''} in library`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 shrink-0">
           {canExport && (
             <DropdownMenu
               align="end"
@@ -758,19 +721,19 @@ export default function SimulationsListPage() {
             >
               {(
                 [
-                  { format: 'json',     label: 'JSON',             hint: 're-importable backup' },
-                  { format: 'csv',      label: 'CSV (full)',        hint: 'all fields' },
-                  { format: 'csv-meta', label: 'CSV (metadata)',    hint: 'no prompts / briefs' },
-                  { format: 'tsv',      label: 'TSV',              hint: 'paste into Excel' },
+                  { format: 'json',     label: 'JSON',          hint: 're-importable backup' },
+                  { format: 'csv',      label: 'CSV (full)',     hint: 'all fields' },
+                  { format: 'csv-meta', label: 'CSV (metadata)', hint: 'no prompts / briefs' },
+                  { format: 'tsv',      label: 'TSV',            hint: 'paste into Excel' },
                 ] as const
               ).map(({ format, label, hint }) => (
                 <button
                   key={format}
                   onClick={() => handleExport(format)}
-                  className="flex items-center justify-between gap-6 w-full px-3 py-2 z-[10] text-sm text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
+                  className="flex items-center justify-between gap-6 w-full px-3 py-2 text-sm text-[#003359] hover:bg-[#f5f8fd] rounded-md transition-colors"
                 >
-                  <span>{label}</span>
-                  <span className="text-xs text-slate-400">{hint}</span>
+                  <span className="font-medium">{label}</span>
+                  <span className="text-xs text-[rgba(0,51,89,0.38)]">{hint}</span>
                 </button>
               ))}
             </DropdownMenu>
@@ -788,153 +751,202 @@ export default function SimulationsListPage() {
             size="sm"
             leftIcon={<Plus size={14} />}
             onClick={() => router.push('/admin/simulations/new')}
+            style={{ backgroundColor: '#003359' }}
           >
             New simulation
           </Button>
         </div>
       </div>
 
-      {/* Table card */}
+      {/* ── Table card ────────────────────────────────────────────────────── */}
       <div
-        className="rounded-xl overflow-hidden"
-        style={{ backgroundColor: '#fff', border: '1px solid #d5dce8', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+        className="rounded-2xl overflow-hidden"
+        style={{ backgroundColor: '#fff', border: '1px solid #e4eaf3', boxShadow: '0 1px 8px rgba(0,51,89,0.06)' }}
       >
-        {/* Toolbar */}
-        <div className="px-5 py-3.5 border-b" style={{ borderColor: '#d5dce8', backgroundColor: '#f8fafc' }}>
-          <div className="flex flex-wrap items-center gap-2.5">
 
-            {/* Search */}
-            <div className="relative min-w-[200px] max-w-xs flex-shrink-0">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'rgba(0,51,89,0.35)' }} />
-              <input
-                type="text"
-                placeholder="Search title or company…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full text-sm bg-white rounded-full pl-8 pr-3 py-1.5 border border-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal/20 focus:border-teal transition-all"
-                style={{ color: '#003359' }}
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="h-5 w-px bg-slate-200 shrink-0" />
-
-            {/* Status chips */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <FilterChip
-                label="All"
-                count={items.length}
-                active={!statusFilter}
-                onClick={() => setStatusFilter('')}
-              />
-              {(['draft', 'pending_review', 'published', 'archived'] as const).map(s => (
-                statusCounts[s] ? (
-                  <FilterChip
-                    key={s}
-                    label={STATUS_LABEL[s]}
-                    count={statusCounts[s]}
-                    active={statusFilter === s}
-                    color={s === 'published' ? '#16a34a' : s === 'pending_review' ? '#1d4ed8' : s === 'archived' ? '#d97706' : undefined}
-                    onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
-                  />
-                ) : null
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div className="h-5 w-px bg-slate-200 shrink-0" />
-
-            {/* Difficulty chips */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {(['Foundation', 'Practitioner', 'Advanced'] as const).map(d => (
-                diffCounts[d] ? (
-                  <FilterChip
-                    key={d}
-                    label={d}
-                    count={diffCounts[d]}
-                    active={diffFilter === d}
-                    color={d === 'Foundation' ? '#16a34a' : d === 'Practitioner' ? '#d97706' : '#e11d48'}
-                    onClick={() => setDiffFilter(diffFilter === d ? '' : d)}
-                  />
-                ) : null
-              ))}
-            </div>
-
-            {/* Discipline chips */}
-            {disciplineOptions.length > 0 && (
-              <>
-                <div className="h-5 w-px bg-slate-200 shrink-0" />
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {disciplineOptions.map(d => (
-                    <FilterChip
-                      key={d}
-                      label={d}
-                      count={disciplineCounts[d]}
-                      active={disciplineFilter === d}
-                      onClick={() => setDisciplineFilter(disciplineFilter === d ? '' : d)}
-                    />
-                  ))}
-                </div>
-              </>
+        {/* ── Row A: Search ──────────────────────────────────────────────── */}
+        <div
+          className="px-5 py-3.5 flex flex-wrap items-center gap-3"
+          style={{ borderBottom: '1px solid #eef2f7' }}
+        >
+          <div className="relative flex-1 max-w-md">
+            <Search
+              size={14}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: 'rgba(0,51,89,0.32)' }}
+            />
+            <input
+              type="text"
+              placeholder="Search by title or company…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full text-sm rounded-xl pl-9 pr-8 py-2.5 border transition-all focus:outline-none focus:ring-2"
+              style={{
+                color: '#003359',
+                backgroundColor: '#f8fafd',
+                borderColor: search ? '#4DC5D2' : '#e4eaf3',
+                boxShadow: search ? '0 0 0 3px rgba(77,197,210,0.12)' : undefined,
+              }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                style={{ color: 'rgba(0,51,89,0.35)' }}
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
             )}
+          </div>
 
-            {/* Clear all */}
-            {hasActiveFilter && (
+          {/* Result count + clear */}
+          <div className="ml-auto flex items-center gap-3">
+            {!isLoading && (
+              <span className="text-xs" style={{ color: 'rgba(0,51,89,0.4)' }}>
+                {hasAnyFilter ? (
+                  <><strong style={{ color: '#003359' }}>{filtered.length}</strong> of {items.length}</>
+                ) : (
+                  <>{items.length} total</>
+                )}
+              </span>
+            )}
+            {hasAnyFilter && (
               <button
                 onClick={clearFilters}
-                className="ml-auto text-xs font-medium transition-colors"
+                className="flex items-center gap-1 text-xs font-semibold transition-colors"
                 style={{ color: 'rgba(0,51,89,0.45)' }}
               >
-                Clear filters ×
+                Clear all <X size={11} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Results count */}
-        {!isLoading && hasActiveFilter && (
-          <div className="px-5 py-2 border-b text-xs" style={{ borderColor: '#d5dce8', color: 'rgba(0,51,89,0.4)', backgroundColor: '#f8fafc' }}>
-            Showing <strong style={{ color: '#003359' }}>{filtered.length}</strong> of {items.length} simulations
+        {/* ── Row B: Status tabs ─────────────────────────────────────────── */}
+        <div
+          className="flex items-center overflow-x-auto px-1"
+          style={{ borderBottom: '1px solid #eef2f7' }}
+        >
+          <StatusTab
+            label="All"
+            count={items.length}
+            active={!statusFilter}
+            onClick={() => setStatusFilter('')}
+          />
+          {(['draft', 'pending_review', 'published', 'archived'] as const).map(s =>
+            statusCounts[s] ? (
+              <StatusTab
+                key={s}
+                label={STATUS_LABEL[s]}
+                count={statusCounts[s]}
+                active={statusFilter === s}
+                dotColor={STATUS_DOT[s]}
+                onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+              />
+            ) : null
+          )}
+        </div>
+
+        {/* ── Row C: Secondary filters (difficulty + discipline) ─────────── */}
+        {showSecondaryRow && (
+          <div
+            className="flex items-center gap-2 px-5 py-2.5 flex-wrap"
+            style={{ borderBottom: '1px solid #eef2f7', backgroundColor: '#fafbfd' }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: 'rgba(0,51,89,0.35)' }}>
+              Filters
+            </span>
+
+            {/* Difficulty pills */}
+            {(['Foundation', 'Practitioner', 'Advanced'] as const).map(d =>
+              diffCounts[d] ? (
+                <FilterPill
+                  key={d}
+                  label={d}
+                  count={diffCounts[d]}
+                  active={diffFilter === d}
+                  bg={DIFF_BADGE[d]?.bg}
+                  color={DIFF_BADGE[d]?.color}
+                  border={DIFF_BADGE[d]?.border}
+                  onClick={() => setDiffFilter(diffFilter === d ? '' : d)}
+                />
+              ) : null
+            )}
+
+            {/* Divider if both groups exist */}
+            {hasDiffOptions && disciplineOptions.length > 0 && (
+              <span className="h-4 w-px bg-[#e4eaf3] shrink-0" />
+            )}
+
+            {/* Discipline pills */}
+            {disciplineOptions.map(d => (
+              <FilterPill
+                key={d}
+                label={d}
+                count={disciplineCounts[d]}
+                active={disciplineFilter === d}
+                bg="rgba(124,58,237,0.08)"
+                color="#7c3aed"
+                border="rgba(124,58,237,0.2)"
+                onClick={() => setDisciplineFilter(disciplineFilter === d ? '' : d)}
+              />
+            ))}
+
+            {hasSecondaryFilter && (
+              <button
+                onClick={() => { setDiffFilter(''); setDisciplineFilter('') }}
+                className="ml-auto text-xs font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: 'rgba(0,51,89,0.4)' }}
+              >
+                Reset <X size={11} />
+              </button>
+            )}
           </div>
         )}
 
-        {/* Table */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={filtered.map(s => s.slug)}
-            strategy={verticalListSortingStrategy}
-          >
-            <Table className="bg-white">
-              <THead className="bg-[#f8fafc] border-b border-[#d5dce8]">
-                <TH className="pl-3 w-8">{null}</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Simulation</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Industry</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Difficulty</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Status</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Time</TH>
-                <TH className="text-[rgba(0,51,89,0.55)] font-semibold">Updated</TH>
-                <TH className="w-10">{null}</TH>
+        {/* ── Table ─────────────────────────────────────────────────────── */}
+        <div className="overflow-x-auto">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={filtered.map(s => s.slug)} strategy={verticalListSortingStrategy}>
+            <Table className="bg-white min-w-[640px]">
+              <THead className="bg-[#f8fafd] border-b border-[#eef2f7]">
+                <TH className="pl-4 w-10">{null}</TH>
+                <TH className="text-[10px] font-bold uppercase tracking-wider py-3 text-[rgba(0,51,89,0.4)]">
+                  Simulation
+                </TH>
+                <TH className="text-[10px] font-bold uppercase tracking-wider py-3 text-[rgba(0,51,89,0.4)]">
+                  Status
+                </TH>
+                <TH className="text-[10px] font-bold uppercase tracking-wider py-3 text-[rgba(0,51,89,0.4)]">
+                  Difficulty
+                </TH>
+                <TH className="text-[10px] font-bold uppercase tracking-wider py-3 text-[rgba(0,51,89,0.4)]">
+                  Industry
+                </TH>
+                <TH className="text-[10px] font-bold uppercase tracking-wider py-3 text-[rgba(0,51,89,0.4)]">
+                  Updated
+                </TH>
+                <TH className="w-12">{null}</TH>
               </THead>
-              <TBody className="divide-y">
+
+              <TBody className="divide-y divide-[#f0f4f8]">
                 {isLoading ? (
                   <SkeletonRows />
                 ) : filtered.length === 0 ? (
                   <TR>
-                    <TD colSpan={8} className="bg-white">
+                    <TD colSpan={7} className="bg-white py-16">
                       <EmptyState
-                        title="No simulations match your filters"
-                        description="Adjust your search or filters to find simulations."
+                        title={hasAnyFilter ? 'No simulations match your filters' : 'No simulations yet'}
+                        description={
+                          hasAnyFilter
+                            ? 'Try adjusting your search or filters.'
+                            : 'Create your first simulation to get started.'
+                        }
                         action={
-                          search || statusFilter || diffFilter || disciplineFilter
-                            ? {
-                              label: 'Clear filters',
-                              onClick: () => { setSearch(''); setStatusFilter(''); setDiffFilter(''); setDisciplineFilter('') },
-                            }
-                            : undefined
+                          hasAnyFilter
+                            ? { label: 'Clear filters', onClick: clearFilters }
+                            : { label: 'New simulation', onClick: () => router.push('/admin/simulations/new') }
                         }
                       />
                     </TD>
@@ -954,33 +966,52 @@ export default function SimulationsListPage() {
             </Table>
           </SortableContext>
         </DndContext>
+        </div>
+
+        {/* ── Footer count ──────────────────────────────────────────────── */}
+        {!isLoading && filtered.length > 0 && (
+          <div
+            className="px-5 py-3 flex items-center justify-between"
+            style={{ borderTop: '1px solid #eef2f7', backgroundColor: '#fafbfd' }}
+          >
+            <span className="text-xs" style={{ color: 'rgba(0,51,89,0.4)' }}>
+              {hasAnyFilter
+                ? `Showing ${filtered.length} of ${items.length} simulations`
+                : `${items.length} simulation${items.length !== 1 ? 's' : ''} total`}
+            </span>
+            <span className="text-[10px] font-medium" style={{ color: 'rgba(0,51,89,0.28)' }}>
+              Drag rows to reorder
+            </span>
+          </div>
+        )}
       </div>
-      {/* Delete confirmation */}
+
+      {/* ── Delete dialog ────────────────────────────────────────────────── */}
       <AlertDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <div className="space-y-4">
-          <h2 className="text-base font-semibold text-slate-900">Delete simulation?</h2>
-          <p className="text-slate-600 text-sm leading-relaxed">
+          <h2 className="text-base font-semibold" style={{ color: '#003359' }}>Delete simulation?</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgba(0,51,89,0.6)' }}>
             This will permanently delete{' '}
-            <strong className="text-slate-900 font-medium">{deleteTarget?.title}</strong>{' '}
+            <strong style={{ color: '#003359' }}>{deleteTarget?.title}</strong>{' '}
             and all associated data. This cannot be undone.
           </p>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" size="sm" onClick={handleDelete}>
-              Delete
-            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>Delete</Button>
           </div>
         </div>
       </AlertDialog>
 
-      {/* Import dialog */}
-      <ImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onDone={loadSims}
-      />
+      {/* ── Import dialog ────────────────────────────────────────────────── */}
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} onDone={loadSims} />
     </div>
+  )
+}
+
+export default function SimulationsListPage() {
+  return (
+    <Suspense>
+      <SimulationsListPageInner />
+    </Suspense>
   )
 }

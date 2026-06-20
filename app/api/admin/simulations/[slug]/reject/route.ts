@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth/permissions'
+import { requireReviewerOrAdmin } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/log-activity'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const ctx = await requireAdmin()
+    const ctx = await requireReviewerOrAdmin()
     const { slug } = await params
+
+    let note: string | undefined
+    try {
+      const body = await req.json()
+      if (typeof body?.note === 'string' && body.note.trim()) {
+        note = body.note.trim()
+      }
+    } catch {
+      // body is optional
+    }
 
     const { data: sim, error: fetchErr } = await supabaseServer
       .from('simulations')
@@ -29,11 +39,14 @@ export async function POST(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    const diff: Record<string, unknown> = { status: { from: 'pending_review', to: 'draft' } }
+    if (note) diff.note = note
+
     logActivity({
       simulationId: sim.id,
       userEmail: ctx.email,
-      action: 'updated_metadata',
-      diff: { status: { from: 'pending_review', to: 'draft' } },
+      action: 'status_changed',
+      diff,
     })
 
     return NextResponse.json({ success: true })

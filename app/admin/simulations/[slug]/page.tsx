@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare, Video, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare, Video } from 'lucide-react'
 import Link from 'next/link'
 import {
   Button,
@@ -27,7 +27,7 @@ import { formatDistanceToNow } from 'date-fns'
 // ── Activity types ────────────────────────────────────────────────────────────
 type ActivityEntry = {
   id: string
-  action: 'created' | 'updated_metadata' | 'updated_content' | 'deleted'
+  action: 'created' | 'updated_metadata' | 'updated_content' | 'updated_rubric' | 'deleted' | 'status_changed'
   user_email: string
   diff: Record<string, unknown> | null
   created_at: string
@@ -37,14 +37,18 @@ const ACTION_LABELS: Record<string, string> = {
   created: 'Created',
   updated_metadata: 'Metadata updated',
   updated_content: 'Content updated',
+  updated_rubric: 'Rubric updated',
   deleted: 'Deleted',
+  status_changed: 'Status changed',
 }
 
 const ACTION_COLORS: Record<string, string> = {
   created: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   updated_metadata: 'bg-teal/10 text-teal border-teal/20',
   updated_content: 'bg-amber-50 text-amber-700 border-amber-200',
+  updated_rubric: 'bg-violet-50 text-violet-700 border-violet-200',
   deleted: 'bg-red-50 text-red-700 border-red-200',
+  status_changed: 'bg-blue-50 text-blue-700 border-blue-200',
 }
 
 function ActivityTimeline({ slug }: { slug: string }) {
@@ -99,10 +103,23 @@ function ActivityTimeline({ slug }: { slug: string }) {
     )
   }
 
+  const STATUS_LABELS: Record<string, string> = {
+    draft: 'Draft',
+    pending_review: 'Pending Review',
+    published: 'Published',
+    archived: 'Archived',
+  }
+
   return (
     <div className="p-6 space-y-0">
       {entries.map((entry, i) => {
-        const hasDiff = entry.diff && Object.keys(entry.diff).length > 0
+        const statusDiff = entry.action === 'status_changed'
+          ? (entry.diff?.status as { from?: string; to?: string } | undefined)
+          : undefined
+        const statusNote = entry.action === 'status_changed'
+          ? (entry.diff?.note as string | undefined)
+          : undefined
+        const hasDiff = !statusDiff && entry.diff && Object.keys(entry.diff).length > 0
         const isExpanded = expandedIds.has(entry.id)
         return (
           <div key={entry.id} className="flex gap-4">
@@ -120,11 +137,21 @@ function ActivityTimeline({ slug }: { slug: string }) {
                 >
                   {ACTION_LABELS[entry.action] ?? entry.action}
                 </span>
+                {statusDiff && (
+                  <span className="text-xs text-slate-500">
+                    {STATUS_LABELS[statusDiff.from ?? ''] ?? statusDiff.from}
+                    {' → '}
+                    {STATUS_LABELS[statusDiff.to ?? ''] ?? statusDiff.to}
+                  </span>
+                )}
                 <span className="text-xs text-slate-500">
                   {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
                 </span>
               </div>
               <p className="text-xs text-slate-600 truncate">{entry.user_email}</p>
+              {statusNote && (
+                <p className="mt-1 text-xs text-slate-500 italic">"{statusNote}"</p>
+              )}
               {hasDiff && (
                 <button
                   onClick={() => toggleExpanded(entry.id)}
@@ -291,13 +318,7 @@ function VideoPreviewPanel({ videoUrl }: { videoUrl: string | null }) {
           />
         </div>
       ) : (
-        <div className="p-6 space-y-4">
-          <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
-            <AlertCircle size={15} className="text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-700">
-              This URL cannot be embedded directly. Use YouTube, Vimeo, or Loom for inline preview.
-            </p>
-          </div>
+        <div className="p-6">
           <video
             src={videoUrl}
             controls
@@ -340,7 +361,9 @@ export default function EditSimulationPage() {
   const [simData, setSimData] = useState<Record<string, unknown> | null>(null)
   const [activeTab, setActiveTab] = useState<'metadata' | 'video' | 'activity'>('metadata')
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [actionLoading, setActionLoading] = useState<'submit' | 'approve' | 'reject' | null>(null)
+  const [actionLoading, setActionLoading] = useState<'submit' | 'approve' | 'reject' | 'unpublish' | null>(null)
+  const [showRejectNote, setShowRejectNote] = useState(false)
+  const [rejectNote, setRejectNote] = useState('')
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
   const slugManuallyEdited = useRef(false)
   const slugCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -485,14 +508,34 @@ export default function EditSimulationPage() {
 
   async function handleReject() {
     setActionLoading('reject')
-    const res = await fetch(`/api/admin/simulations/${slug}/reject`, { method: 'POST' })
+    const res = await fetch(`/api/admin/simulations/${slug}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: rejectNote.trim() || undefined }),
+    })
     if (res.ok) {
       toast.success('Returned to draft')
       setSimData(prev => ({ ...prev, status: 'draft' }))
       setValue('status', 'draft' as never, { shouldDirty: false })
+      setShowRejectNote(false)
+      setRejectNote('')
     } else {
       const json = await res.json()
       toast.error(json.error ?? 'Failed to reject')
+    }
+    setActionLoading(null)
+  }
+
+  async function handleUnpublish() {
+    setActionLoading('unpublish')
+    const res = await fetch(`/api/admin/simulations/${slug}/unpublish`, { method: 'POST' })
+    if (res.ok) {
+      toast.success('Unpublished — simulation returned to draft')
+      setSimData(prev => ({ ...prev, status: 'draft' }))
+      setValue('status', 'draft' as never, { shouldDirty: false })
+    } else {
+      const json = await res.json()
+      toast.error(json.error ?? 'Failed to unpublish')
     }
     setActionLoading(null)
   }
@@ -586,7 +629,7 @@ export default function EditSimulationPage() {
             >
               Activity
             </Tab>
-            {userRole && userRole !== 'content_developer' && (
+            {userRole && ['admin', 'super_admin', 'reviewer'].includes(userRole) && (
               <Link
                 href={`/admin/simulations/${slug}/reviews`}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
@@ -637,46 +680,111 @@ export default function EditSimulationPage() {
                         )}
                       </div>
                     ) : (
-                      /* Admin / super_admin: full status selector */
+                      /* Admin / super_admin / reviewer: full status selector + workflow actions */
                       <>
-                        <div className="flex gap-2 flex-wrap">
-                          {(['draft', 'pending_review', 'published', 'archived'] as const).map(s => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => setValue('status', s, { shouldDirty: true })}
-                              className={cn(
-                                'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors',
-                                watchedAll.status === s
-                                  ? STATUS_CONFIG[s]?.selectedClass
-                                  : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
-                              )}
-                            >
-                              {STATUS_CONFIG[s]?.label ?? s}
-                            </button>
-                          ))}
-                        </div>
+                        {/* Status selector — not shown to reviewer (read-only for them) */}
+                        {userRole !== 'reviewer' && (
+                          <div className="flex gap-2 flex-wrap">
+                            {(['draft', 'pending_review', 'published', 'archived'] as const).map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setValue('status', s, { shouldDirty: true })}
+                                className={cn(
+                                  'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors',
+                                  watchedAll.status === s
+                                    ? STATUS_CONFIG[s]?.selectedClass
+                                    : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                                )}
+                              >
+                                {STATUS_CONFIG[s]?.label ?? s}
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
-                        {/* Approve / Reject actions when pending review */}
+                        {/* Reviewer: read-only status badge */}
+                        {userRole === 'reviewer' && (
+                          <span
+                            className={cn(
+                              'px-3 py-1.5 rounded-md text-sm font-medium border',
+                              STATUS_CONFIG[watchedAll.status ?? 'draft']?.selectedClass
+                            )}
+                          >
+                            {STATUS_CONFIG[watchedAll.status ?? 'draft']?.label ?? watchedAll.status}
+                          </span>
+                        )}
+
+                        {/* Approve / Reject when pending review */}
                         {(simData?.status === 'pending_review' || watchedAll.status === 'pending_review') && (
-                          <div className="flex gap-2 pt-1">
+                          <div className="space-y-2 pt-1">
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                disabled={!!actionLoading}
+                                onClick={handleApprove}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                              >
+                                <Check size={13} />
+                                {actionLoading === 'approve' ? 'Approving…' : 'Approve & Publish'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!!actionLoading}
+                                onClick={() => setShowRejectNote(v => !v)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                              >
+                                <X size={13} />
+                                Request changes
+                              </button>
+                            </div>
+
+                            {showRejectNote && (
+                              <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                                <label className="text-xs font-medium text-red-700">
+                                  Note for the author (optional)
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  value={rejectNote}
+                                  onChange={e => setRejectNote(e.target.value)}
+                                  placeholder="Describe what needs to change before this can be published…"
+                                  className="w-full text-sm rounded-md px-3 py-2 border border-red-200 bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={!!actionLoading}
+                                    onClick={handleReject}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    {actionLoading === 'reject' ? 'Returning…' : 'Confirm — return to draft'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setShowRejectNote(false); setRejectNote('') }}
+                                    className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Unpublish when published (admin/super_admin only) */}
+                        {(simData?.status === 'published' || watchedAll.status === 'published') &&
+                          ['admin', 'super_admin'].includes(userRole ?? '') && (
+                          <div className="pt-1">
                             <button
                               type="button"
                               disabled={!!actionLoading}
-                              onClick={handleApprove}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                            >
-                              <Check size={13} />
-                              {actionLoading === 'approve' ? 'Approving…' : 'Approve & Publish'}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!!actionLoading}
-                              onClick={handleReject}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors"
+                              onClick={handleUnpublish}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 disabled:opacity-50 transition-colors"
                             >
                               <X size={13} />
-                              {actionLoading === 'reject' ? 'Rejecting…' : 'Reject (back to draft)'}
+                              {actionLoading === 'unpublish' ? 'Unpublishing…' : 'Unpublish (back to draft)'}
                             </button>
                           </div>
                         )}
@@ -704,7 +812,7 @@ export default function EditSimulationPage() {
                     {...register('company')}
                   />
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Input
                       id="industry"
                       label="Industry"
@@ -867,7 +975,7 @@ export default function EditSimulationPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={reduced ? undefined : { y: 56, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between px-8 py-4 bg-white border-t border-slate-200"
+            className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between px-4 sm:px-8 py-4 bg-white border-t border-slate-200"
           >
             <p className="text-sm text-slate-600">You have unsaved changes</p>
             <div className="flex items-center gap-2">

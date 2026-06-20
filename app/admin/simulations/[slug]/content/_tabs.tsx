@@ -9,9 +9,9 @@ type TabKey = 'overview' | 'prompts' | 'settings' | 'rubric' | 'preview'
 const TABS: { key: TabKey; label: string; Icon: React.ElementType }[] = [
   { key: 'overview',  label: 'Overview',  Icon: LayoutList      },
   { key: 'prompts',   label: 'Prompts',   Icon: MessageSquare   },
-  { key: 'settings',  label: 'Settings',  Icon: Settings2       },
   { key: 'rubric',    label: 'Rubric',    Icon: ClipboardCheck  },
   { key: 'preview',   label: 'Preview',   Icon: Eye             },
+  { key: 'settings',  label: 'Settings',  Icon: Settings2       },
 ]
 
 export function EditorTabs() {

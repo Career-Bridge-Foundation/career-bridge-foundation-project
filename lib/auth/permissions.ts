@@ -126,6 +126,15 @@ export async function requireReviewer(): Promise<RoleContext> {
   return ctx
 }
 
+/** Requires reviewer, admin, or super_admin — for approve/reject workflow actions. */
+export async function requireReviewerOrAdmin(): Promise<RoleContext> {
+  const ctx = await getCurrentUserRole()
+  if (!ctx || !['reviewer', 'admin', 'super_admin'].includes(ctx.role)) {
+    throw new Error('Forbidden')
+  }
+  return ctx
+}
+
 /** Requires partner role with a linked partner org. */
 export async function requirePartner(): Promise<RoleContext> {
   const ctx = await getCurrentUserRole()

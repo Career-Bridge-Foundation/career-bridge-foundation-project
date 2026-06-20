@@ -52,6 +52,7 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
           "id, slug, title, company, industry, sim_role, brief_short, brief_full, video_transcript, video_url, discipline, difficulty, time, status"
         )
         .eq("slug", slug)
+        .eq("status", "published")
         .single();
 
       if (cancelled) return;

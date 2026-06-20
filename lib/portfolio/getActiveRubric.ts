@@ -13,12 +13,15 @@ export type ActiveRubric = {
   system_prompt: string;
   model: string;
   max_score: number;
+  criteria: Array<{ name: string; description?: string; max_points: number }> | null;
+  verdict_bands: { Distinction: number; Merit: number; Pass: number } | null;
+  output_instructions: string | null;
 };
 
 export async function getActiveRubric(simulationSlug: string): Promise<ActiveRubric> {
   const { data, error } = await adminClient
     .from("rubrics")
-    .select("id, version, system_prompt, model, max_score")
+    .select("id, version, system_prompt, model, max_score, criteria, verdict_bands, output_instructions")
     .eq("simulation_slug", simulationSlug)
     .eq("is_active", true)
     .single();
