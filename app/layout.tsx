@@ -6,7 +6,7 @@ const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "Evidentize";
 export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_BASE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://app.evidentize.io')
   ),
   applicationName: APP_NAME,
   title: `${APP_NAME} | Practice into proof. Proof into portfolio.`,
