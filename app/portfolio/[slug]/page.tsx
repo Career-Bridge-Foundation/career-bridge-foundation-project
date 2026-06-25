@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
 import { createClient } from '@/lib/supabase/server';
 import { EditPortfolioButton } from './EditPortfolioButton';
+import { ShareButton } from './ShareButton';
 import { TemplateRenderer } from './templates/TemplateRenderer';
 
 const TEAL = '#4DC5D2';
@@ -125,7 +126,10 @@ export default async function PortfolioPage({
             Back to Home
           </Link>
 
-          <EditPortfolioButton isOwner={isOwner} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShareButton candidateName={data.candidate.fullName} slug={slug} />
+            <EditPortfolioButton isOwner={isOwner} />
+          </div>
         </div>
 
         {/* ── Template-driven layout ─────────────────────────────── */}
