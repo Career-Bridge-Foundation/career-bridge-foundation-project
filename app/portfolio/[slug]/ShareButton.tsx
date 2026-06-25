@@ -18,7 +18,21 @@ export function ShareButton({ candidateName, slug }: Props) {
   const portfolioUrl = typeof window !== 'undefined'
     ? window.location.href
     : `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'}/portfolio/${slug}`;
-  const shareText = `Check out ${candidateName}'s verified portfolio on Evidentize`;
+
+  const whatsappText = encodeURIComponent(
+    `${candidateName} has earned verified credentials through Evidentize workplace simulations.\n\nView their portfolio here: ${portfolioUrl}`
+  );
+
+  const emailSubject = encodeURIComponent(`${candidateName}'s Verified Portfolio — Evidentize`);
+  const emailBody    = encodeURIComponent(
+    `Hi,\n\nI wanted to share ${candidateName}'s verified portfolio on Evidentize.\n\n` +
+    `${candidateName} has completed real workplace simulations and earned credentials that demonstrate proven skills.\n\n` +
+    `View their portfolio here:\n${portfolioUrl}`
+  );
+
+  const tweetText = encodeURIComponent(
+    `${candidateName} has earned verified credentials through Evidentize workplace simulations.`
+  );
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
@@ -30,19 +44,7 @@ export function ShareButton({ candidateName, slug }: Props) {
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, [open]);
 
-  async function handleClick() {
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: `${candidateName} — Evidentize Portfolio`,
-          text:  shareText,
-          url:   portfolioUrl,
-        });
-      } catch {
-        // User cancelled — ignore
-      }
-      return;
-    }
+  function handleClick() {
     setOpen(v => !v);
   }
 
@@ -53,34 +55,33 @@ export function ShareButton({ candidateName, slug }: Props) {
     setTimeout(() => setOpen(false), 2200);
   }
 
-  const encodedUrl  = encodeURIComponent(portfolioUrl);
-  const encodedText = encodeURIComponent(shareText);
+  const encodedUrl = encodeURIComponent(portfolioUrl);
 
   const platforms = [
     {
-      label:   'LinkedIn',
-      bg:      '#0A66C2',
-      color:   '#fff',
-      href:    `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+      label: 'LinkedIn',
+      bg:    '#0A66C2',
+      color: '#fff',
+      href:  `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
     },
     {
-      label:   'X (Twitter)',
-      bg:      '#000',
-      color:   '#fff',
-      href:    `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+      label: 'X (Twitter)',
+      bg:    '#000',
+      color: '#fff',
+      href:  `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodedUrl}`,
     },
     {
-      label:   'WhatsApp',
-      bg:      '#25D366',
-      color:   '#fff',
-      href:    `https://wa.me/?text=${encodeURIComponent(`${shareText} ${portfolioUrl}`)}`,
+      label: 'WhatsApp',
+      bg:    '#25D366',
+      color: '#fff',
+      href:  `https://wa.me/?text=${whatsappText}`,
     },
     {
-      label:   'Email',
-      bg:      '#fff',
-      color:   NAVY,
-      border:  '1px solid #D5DCE8',
-      href:    `mailto:?subject=${encodeURIComponent(`${candidateName}'s Evidentize Portfolio`)}&body=${encodeURIComponent(`${shareText}\n\n${portfolioUrl}`)}`,
+      label:  'Email',
+      bg:     '#fff',
+      color:  NAVY,
+      border: '1px solid #D5DCE8',
+      href:   `mailto:?subject=${emailSubject}&body=${emailBody}`,
     },
   ];
 
@@ -180,7 +181,7 @@ export function ShareButton({ candidateName, slug }: Props) {
             onClick={copyLink}
             style={{
               fontSize:      '12px',
-              fontWeight:    600,
+              fontWeight:     600,
               color:         copied ? TEAL : NAVY,
               background:    '#F3F3F3',
               border:        'none',
