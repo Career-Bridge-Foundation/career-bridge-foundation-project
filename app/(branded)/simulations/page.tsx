@@ -1,6 +1,7 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DisciplineCard } from "@/components/simulation/DisciplineCard";
+import { WaitlistButton } from "@/components/simulation/WaitlistModal";
 import { disciplines } from "@/lib/disciplines-data";
 
 export default function SimulationsPage() {
@@ -52,12 +53,7 @@ export default function SimulationsPage() {
             We are constantly expanding our simulation library. Get notified when new disciplines
             launch.
           </p>
-          <a
-            href="#"
-            className="btn-apply-inverted text-xs font-medium uppercase px-7 py-3.5 mt-2"
-          >
-            Join the Waitlist
-          </a>
+          <WaitlistButton />
         </div>
       </section>
 

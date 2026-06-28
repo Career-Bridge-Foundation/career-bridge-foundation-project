@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, Suspense } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
@@ -363,42 +363,96 @@ function StatusTab({
 }
 
 // ── Filter pill (secondary filters) ──────────────────────────────────────────
-function FilterPill({
+function FilterDropdown({
   label,
-  count,
-  active,
-  bg,
-  color,
-  border,
-  onClick,
+  value,
+  options,
+  onChange,
+  accentColor = '#003359',
 }: {
   label: string
-  count?: number
-  active: boolean
-  bg?: string
-  color?: string
-  border?: string
-  onClick: () => void
+  value: string
+  options: { value: string; label: string; count?: number }[]
+  onChange: (v: string) => void
+  accentColor?: string
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [])
+
+  const selected = options.find(o => o.value === value)
+  const isActive = !!value
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold border transition-all"
-      style={
-        active
-          ? { backgroundColor: bg ?? '#eef2f7', color: color ?? '#003359', borderColor: border ?? '#e4eaf3' }
-          : { backgroundColor: '#ffffff', color: 'rgba(0,51,89,0.55)', borderColor: '#e4eaf3' }
-      }
-    >
-      {active && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color ?? '#003359' }} />}
-      {label}
-      {count !== undefined && (
-        <span style={{ color: active ? color ?? '#003359' : 'rgba(0,51,89,0.35)', opacity: 0.8 }}>
-          {count}
-        </span>
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap"
+        style={isActive
+          ? { backgroundColor: `${accentColor}14`, color: accentColor, borderColor: `${accentColor}33` }
+          : { backgroundColor: '#fff', color: 'rgba(0,51,89,0.55)', borderColor: '#e4eaf3' }
+        }
+      >
+        {isActive && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />}
+        <span>{isActive ? selected?.label : label}</span>
+        <ChevronDown size={11} style={{ transition: 'transform 0.15s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute top-full left-0 mt-1.5 min-w-[170px] bg-white rounded-xl border py-1 z-20 overflow-hidden"
+          style={{ borderColor: '#e4eaf3', boxShadow: '0 4px 16px rgba(0,51,89,0.1)' }}
+        >
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false) }}
+            className="flex items-center justify-between w-full px-3 py-2 text-xs transition-colors hover:bg-[#f5f8fd]"
+            style={{ color: !value ? '#003359' : 'rgba(0,51,89,0.5)', fontWeight: !value ? 600 : 400 }}
+          >
+            <span>All {label}s</span>
+            {!value && <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#003359' }} />}
+          </button>
+
+          {options.map(o => {
+            const active = value === o.value
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => { onChange(active ? '' : o.value); setOpen(false) }}
+                className="flex items-center justify-between w-full px-3 py-2 text-xs transition-colors hover:bg-[#f5f8fd]"
+                style={{
+                  color: active ? accentColor : 'rgba(0,51,89,0.7)',
+                  fontWeight: active ? 600 : 400,
+                  backgroundColor: active ? `${accentColor}08` : undefined,
+                }}
+              >
+                <span>{o.label}</span>
+                {o.count !== undefined && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded-md"
+                    style={{
+                      backgroundColor: active ? `${accentColor}14` : '#f0f4f9',
+                      color: active ? accentColor : 'rgba(0,51,89,0.45)',
+                    }}
+                  >
+                    {o.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -588,6 +642,7 @@ function SimulationsListPageInner() {
   const [importOpen, setImportOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [canExport, setCanExport] = useState(false)
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false)
 
   const loadSims = useCallback(async () => {
     const res = await fetch('/api/admin/simulations')
@@ -703,7 +758,8 @@ function SimulationsListPageInner() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Desktop actions */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           {canExport && (
             <DropdownMenu
               align="end"
@@ -751,11 +807,92 @@ function SimulationsListPageInner() {
             size="sm"
             leftIcon={<Plus size={14} />}
             onClick={() => router.push('/admin/simulations/new')}
-            style={{ backgroundColor: '#003359' }}
+            style={{ backgroundColor: '#003359', color: 'white' }}
           >
             New simulation
           </Button>
         </div>
+
+        {/* Mobile actions trigger */}
+        <button
+          className="sm:hidden flex items-center justify-center w-9 h-9 rounded-lg border transition-colors shrink-0"
+          style={{ borderColor: '#e4eaf3', backgroundColor: '#fff', color: '#003359' }}
+          onClick={() => setMobileActionsOpen(true)}
+          aria-label="Simulation actions"
+        >
+          <MoreHorizontal size={18} />
+        </button>
+
+        {/* Mobile actions modal */}
+        {mobileActionsOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:hidden"
+            style={{ backgroundColor: 'rgba(0,51,89,0.35)' }}
+            onClick={() => setMobileActionsOpen(false)}
+          >
+            <div
+              className="w-full rounded-t-2xl p-5 space-y-2"
+              style={{ backgroundColor: '#fff', boxShadow: '0 -4px 24px rgba(0,51,89,0.12)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold" style={{ color: '#003359' }}>Simulations</p>
+                <button
+                  onClick={() => setMobileActionsOpen(false)}
+                  className="flex items-center justify-center w-7 h-7 rounded-full transition-colors"
+                  style={{ backgroundColor: 'rgba(0,51,89,0.07)', color: '#003359' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <button
+                onClick={() => { setMobileActionsOpen(false); router.push('/admin/simulations/new') }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold transition-colors text-white"
+                style={{ backgroundColor: '#003359' }}
+              >
+                <Plus size={16} />
+                New simulation
+              </button>
+
+              <button
+                onClick={() => { setMobileActionsOpen(false); setImportOpen(true) }}
+                className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-semibold border transition-colors"
+                style={{ borderColor: '#e4eaf3', color: '#003359', backgroundColor: '#fff' }}
+              >
+                <Upload size={16} />
+                Import simulations
+              </button>
+
+              {canExport && (
+                <div className="rounded-xl border overflow-hidden" style={{ borderColor: '#e4eaf3' }}>
+                  <div className="px-4 py-2.5 flex items-center gap-2" style={{ backgroundColor: '#f8fafd', borderBottom: '1px solid #e4eaf3' }}>
+                    <Download size={14} style={{ color: 'rgba(0,51,89,0.45)' }} />
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'rgba(0,51,89,0.45)' }}>Export as</span>
+                  </div>
+                  {(
+                    [
+                      { format: 'json',     label: 'JSON',          hint: 're-importable backup' },
+                      { format: 'csv',      label: 'CSV (full)',     hint: 'all fields' },
+                      { format: 'csv-meta', label: 'CSV (metadata)', hint: 'no prompts / briefs' },
+                      { format: 'tsv',      label: 'TSV',            hint: 'paste into Excel' },
+                    ] as const
+                  ).map(({ format, label, hint }, i, arr) => (
+                    <button
+                      key={format}
+                      onClick={() => { setMobileActionsOpen(false); handleExport(format) }}
+                      className="flex items-center justify-between gap-4 w-full px-4 py-3 text-sm transition-colors hover:bg-[#f5f8fd]"
+                      style={{ borderTop: i > 0 ? '1px solid #f0f4f9' : undefined, color: '#003359' }}
+                    >
+                      <span className="font-medium">{label}</span>
+                      <span className="text-xs" style={{ color: 'rgba(0,51,89,0.38)' }}>{hint}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Table card ────────────────────────────────────────────────────── */}
@@ -854,49 +991,31 @@ function SimulationsListPageInner() {
             className="flex items-center gap-2 px-5 py-2.5 flex-wrap"
             style={{ borderBottom: '1px solid #eef2f7', backgroundColor: '#fafbfd' }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: 'rgba(0,51,89,0.35)' }}>
-              Filters
-            </span>
-
-            {/* Difficulty pills */}
-            {(['Foundation', 'Practitioner', 'Advanced'] as const).map(d =>
-              diffCounts[d] ? (
-                <FilterPill
-                  key={d}
-                  label={d}
-                  count={diffCounts[d]}
-                  active={diffFilter === d}
-                  bg={DIFF_BADGE[d]?.bg}
-                  color={DIFF_BADGE[d]?.color}
-                  border={DIFF_BADGE[d]?.border}
-                  onClick={() => setDiffFilter(diffFilter === d ? '' : d)}
-                />
-              ) : null
-            )}
-
-            {/* Divider if both groups exist */}
-            {hasDiffOptions && disciplineOptions.length > 0 && (
-              <span className="h-4 w-px bg-[#e4eaf3] shrink-0" />
-            )}
-
-            {/* Discipline pills */}
-            {disciplineOptions.map(d => (
-              <FilterPill
-                key={d}
-                label={d}
-                count={disciplineCounts[d]}
-                active={disciplineFilter === d}
-                bg="rgba(124,58,237,0.08)"
-                color="#7c3aed"
-                border="rgba(124,58,237,0.2)"
-                onClick={() => setDisciplineFilter(disciplineFilter === d ? '' : d)}
+            {hasDiffOptions && (
+              <FilterDropdown
+                label="Difficulty"
+                value={diffFilter}
+                options={(['Foundation', 'Practitioner', 'Advanced'] as const)
+                  .filter(d => diffCounts[d])
+                  .map(d => ({ value: d, label: d, count: diffCounts[d] }))}
+                onChange={setDiffFilter}
               />
-            ))}
+            )}
+
+            {disciplineOptions.length > 0 && (
+              <FilterDropdown
+                label="Discipline"
+                value={disciplineFilter}
+                options={disciplineOptions.map(d => ({ value: d, label: d, count: disciplineCounts[d] }))}
+                onChange={setDisciplineFilter}
+                accentColor="#7c3aed"
+              />
+            )}
 
             {hasSecondaryFilter && (
               <button
                 onClick={() => { setDiffFilter(''); setDisciplineFilter('') }}
-                className="ml-auto text-xs font-semibold flex items-center gap-1 transition-colors"
+                className="ml-auto flex items-center gap-1 text-xs font-semibold transition-colors"
                 style={{ color: 'rgba(0,51,89,0.4)' }}
               >
                 Reset <X size={11} />
@@ -930,7 +1049,7 @@ function SimulationsListPageInner() {
                 <TH className="w-12">{null}</TH>
               </THead>
 
-              <TBody className="divide-y divide-[#f0f4f8]">
+              <TBody className="divide-y divide-[#e4eaf3]">
                 {isLoading ? (
                   <SkeletonRows />
                 ) : filtered.length === 0 ? (

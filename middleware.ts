@@ -97,14 +97,23 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Home page guard ──────────────────────────────────────────────────────
-  // Reviewers → /reviewer (they have no business on the candidate home page)
-  // All other visitors (authenticated or not) → allowed
+  // Authenticated dashboard users landing on / are redirected to their own
+  // dashboard. Candidates and unauthenticated visitors are allowed through.
   if (pathname === '/') {
     if (user) {
       const role = await getRole()
-      if (role === 'reviewer') {
+      const dashboardRedirects: Record<string, string> = {
+        reviewer:          '/reviewer',
+        partner:           '/partner',
+        mentor:            '/mentor',
+        admin:             '/admin',
+        super_admin:       '/admin',
+        content_developer: '/admin',
+      }
+      const dest = dashboardRedirects[role]
+      if (dest) {
         const url = request.nextUrl.clone()
-        url.pathname = '/reviewer'
+        url.pathname = dest
         return NextResponse.redirect(url)
       }
     }

@@ -259,6 +259,15 @@ body {
   color: rgba(255, 255, 255, 0.75);
 }
 
+/* ── Scrollbar hide utility ──────────────────────────────── */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── cmdk command palette — dark (admin) ─────────────────── */
 [cmdk-root] {
   background-color: var(--color-bg-elevated);

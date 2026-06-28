@@ -525,7 +525,7 @@ export default async function AdminPage() {
             <ImportButton />
             <Link
               href="/admin/simulations/new"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 px-4  py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: '#003359', color: '#ffff' }}
             >
               <Plus size={14} />
