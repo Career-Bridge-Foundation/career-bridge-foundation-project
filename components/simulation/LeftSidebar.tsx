@@ -106,6 +106,29 @@ export function LeftSidebar({ currentStep, lastSavedText, sim, prompts }: LeftSi
           Complete all tasks to earn your verified Evidentize credential for this simulation.
         </p>
 
+        {/* Simulation Debrief indicator */}
+        <div className="p-3 border border-teal/30 bg-teal/5 rounded-sm">
+          <div className="flex items-center gap-2 mb-1.5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4DC5D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" />
+              <path d="M5 10a7 7 0 0 0 14 0" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="9" y1="22" x2="15" y2="22" />
+            </svg>
+            <span className="text-xs font-semibold text-teal uppercase tracking-brand-md">Simulation Debrief</span>
+          </div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-teal bg-teal/10 px-2 py-0.5 rounded-full leading-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal animate-pulse inline-block" />
+              Voice Agent
+            </span>
+            <span className="text-[10px] font-medium text-[#aaa]">· Optional</span>
+          </div>
+          <p className="text-xs text-[#888] leading-[1.65]">
+            Speak with an AI voice agent after each task to debrief your response.
+          </p>
+        </div>
+
         {/* Save status */}
         <div className="pt-4 border-t border-border-light">
           <p className="text-xs italic text-[#bbb]">Last saved: {lastSavedText()}</p>
