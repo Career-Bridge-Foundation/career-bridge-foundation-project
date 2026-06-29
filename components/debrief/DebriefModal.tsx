@@ -615,8 +615,16 @@ export function DebriefModal({ open, sessionId, onClose, candidateName, verdictB
 
         if (res.status === 409) {
           const { debrief_id } = (await res.json()) as { debrief_id: string };
-          const r2 = await fetch(`/api/debrief/${debrief_id}`);
-          if (!r2.ok) throw new Error("Could not load existing debrief");
+
+          // Retry up to 3 times to guard against transient network failures
+          let r2: Response | null = null;
+          for (let attempt = 0; attempt < 3; attempt++) {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+            r2 = await fetch(`/api/debrief/${debrief_id}`);
+            if (r2.ok) break;
+          }
+
+          if (!r2 || !r2.ok) throw new Error("Could not load existing debrief");
           const existing = (await r2.json()) as DebriefRecord;
           setDebrief(existing);
           if (existing.status === "pending_review") setFlowState("reviewing");
