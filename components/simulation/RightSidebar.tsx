@@ -55,6 +55,28 @@ export function RightSidebar({ prompt, currentStep, timeRemaining }: RightSideba
           </span>
         </div>
 
+        {/* AI Debrief indicator */}
+        <div className="p-4 border border-teal/30 bg-teal/5 rounded-sm">
+          <div className="flex items-center gap-2 mb-2">
+            {/* Mic icon */}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4DC5D2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="12" rx="3" />
+              <path d="M5 10a7 7 0 0 0 14 0" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="9" y1="22" x2="15" y2="22" />
+            </svg>
+            <span className="text-xs font-semibold uppercase text-teal tracking-brand-md">
+              AI Debrief
+            </span>
+            <span className="ml-auto text-[10px] font-medium text-teal/70 bg-teal/10 px-1.5 py-0.5 rounded-full leading-none">
+              Optional
+            </span>
+          </div>
+          <p className="text-xs text-[#666] leading-[1.7]">
+            After you receive your feedback, you can speak with an AI coach to explore your results and deepen your learning.
+          </p>
+        </div>
+
       </div>
     </aside>
   );

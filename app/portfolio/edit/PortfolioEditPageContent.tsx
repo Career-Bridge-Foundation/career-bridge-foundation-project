@@ -319,6 +319,8 @@ export function PortfolioEditPageContent({ initial }: Props) {
         .pf-link-remove:hover:not(:disabled) { color: #c33; }
         .pf-add-link { transition: opacity 0.15s ease; }
         .pf-add-link:hover:not(:disabled) { opacity: 0.75; }
+        .pf-evidence-header:hover { color: ${NAVY} !important; }
+        .pf-add-evidence:hover:not(:disabled) { background: #F0FBFC !important; }
       `}</style>
 
       {/* ── Portfolio Layout ─────────────────────────────────── */}
@@ -925,6 +927,70 @@ function TemplatePreviewModal({
   );
 }
 
+function ToggleRow({
+  label,
+  checked,
+  onToggle,
+  disabled = false,
+}: {
+  label:    string;
+  checked:  boolean;
+  onToggle: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        display:        'flex',
+        alignItems:     'center',
+        justifyContent: 'space-between',
+        gap:            '12px',
+        opacity:        disabled ? 0.4 : 1,
+        transition:     'opacity 0.15s ease',
+      }}
+    >
+      <span style={{ fontSize: '13px', color: '#4A5568', fontWeight: 500, userSelect: 'none' }}>
+        {label}
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onToggle}
+        disabled={disabled}
+        style={{
+          width:        '40px',
+          height:       '22px',
+          borderRadius: '11px',
+          background:   checked ? TEAL : '#D0D8E4',
+          border:       'none',
+          cursor:       disabled ? 'not-allowed' : 'pointer',
+          position:     'relative',
+          transition:   'background 0.22s ease',
+          flexShrink:   0,
+          padding:      0,
+          outline:      'none',
+        }}
+      >
+        <span
+          style={{
+            position:     'absolute',
+            top:          '2px',
+            left:         checked ? '20px' : '2px',
+            width:        '18px',
+            height:       '18px',
+            borderRadius: '50%',
+            background:   '#fff',
+            boxShadow:    '0 1px 4px rgba(0,0,0,0.22)',
+            transition:   'left 0.22s ease',
+            display:      'block',
+          }}
+        />
+      </button>
+    </div>
+  );
+}
+
 function SimulationCard({
   sim,
   onChange,
@@ -932,16 +998,6 @@ function SimulationCard({
   sim:      EditableSimulation;
   onChange: (patch: Partial<EditableSimulation>) => void;
 }) {
-  const toggleStyle: React.CSSProperties = {
-    display:        'flex',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    gap:            '12px',
-    fontSize:       '13px',
-    color:          '#333',
-    cursor:         'pointer',
-    userSelect:     'none',
-  };
 
   const [showDebrief,        setShowDebrief]        = useState(sim.showDebrief);
   const [debriefToggling,    setDebriefToggling]    = useState(false);
@@ -1163,8 +1219,11 @@ function SimulationCard({
   return (
     <div
       style={{
-        border:        '1px solid #D5DCE8',
+        border:        '1.5px solid #E8EDF4',
+        borderRadius:  '16px',
         background:    '#fff',
+        boxShadow:     '0 2px 12px rgba(0,51,89,0.07)',
+        overflow:      'hidden',
         display:       'flex',
         flexDirection: 'column',
       }}
@@ -1172,7 +1231,7 @@ function SimulationCard({
       {/* ── Top row: simulation info + visibility toggles ──── */}
       <div
         style={{
-          padding:    '16px 18px',
+          padding:    '20px 22px',
           display:    'flex',
           flexWrap:   'wrap',
           gap:        '20px',
@@ -1184,7 +1243,7 @@ function SimulationCard({
           <p
             style={{
               fontSize:     '15px',
-              fontWeight:   600,
+              fontWeight:   700,
               color:        NAVY,
               marginBottom: '4px',
               lineHeight:   1.3,
@@ -1194,9 +1253,9 @@ function SimulationCard({
           </p>
           <p
             style={{
-              fontSize:     '13px',
-              color:        '#666',
-              marginBottom: '8px',
+              fontSize:     '12px',
+              color:        '#7A8A9A',
+              marginBottom: '10px',
             }}
           >
             {sim.discipline} · {formatMonthYear(sim.achievedAt)}
@@ -1214,42 +1273,30 @@ function SimulationCard({
             minWidth:       '180px',
           }}
         >
-          <label style={toggleStyle}>
-            <span>Show on portfolio</span>
-            <input
-              type="checkbox"
-              checked={sim.showOnPortfolio}
-              onChange={(e) => onChange({ showOnPortfolio: e.target.checked })}
-            />
-          </label>
-          <label style={{ ...toggleStyle, opacity: sim.showOnPortfolio ? 1 : 0.5 }}>
-            <span>Show score</span>
-            <input
-              type="checkbox"
-              checked={sim.showScores}
-              disabled={!sim.showOnPortfolio}
-              onChange={(e) => onChange({ showScores: e.target.checked })}
-            />
-          </label>
-          <label style={{ ...toggleStyle, opacity: sim.showOnPortfolio ? 1 : 0.5 }}>
-            <span>Show feedback</span>
-            <input
-              type="checkbox"
-              checked={sim.showFeedback}
-              disabled={!sim.showOnPortfolio}
-              onChange={(e) => onChange({ showFeedback: e.target.checked })}
-            />
-          </label>
+          <ToggleRow
+            label="Show on portfolio"
+            checked={sim.showOnPortfolio}
+            onToggle={() => onChange({ showOnPortfolio: !sim.showOnPortfolio })}
+          />
+          <ToggleRow
+            label="Show score"
+            checked={sim.showScores}
+            disabled={!sim.showOnPortfolio}
+            onToggle={() => onChange({ showScores: !sim.showScores })}
+          />
+          <ToggleRow
+            label="Show feedback"
+            checked={sim.showFeedback}
+            disabled={!sim.showOnPortfolio}
+            onToggle={() => onChange({ showFeedback: !sim.showFeedback })}
+          />
           {sim.debriefId && (
-            <label style={{ ...toggleStyle, opacity: sim.showOnPortfolio && !debriefToggling ? 1 : 0.5 }}>
-              <span>Show reflection</span>
-              <input
-                type="checkbox"
-                checked={showDebrief}
-                disabled={!sim.showOnPortfolio || debriefToggling}
-                onChange={handleToggleDebrief}
-              />
-            </label>
+            <ToggleRow
+              label="Show reflection"
+              checked={showDebrief}
+              disabled={!sim.showOnPortfolio || debriefToggling}
+              onToggle={handleToggleDebrief}
+            />
           )}
           {debriefToggleError && (
             <p style={{ fontSize: '11px', color: '#c0392b', margin: '2px 0 0' }}>
@@ -1262,8 +1309,8 @@ function SimulationCard({
       {/* ── Evidence section ─────────────────────────────── */}
       <div
         style={{
-          borderTop:  '1px solid #D5DCE8',
-          background: '#FAFAFA',
+          borderTop:  '1.5px solid #F0F4F8',
+          background: '#F8FAFC',
         }}
       >
         <button
@@ -1277,25 +1324,43 @@ function SimulationCard({
             justifyContent: 'space-between',
             background:     'transparent',
             border:         'none',
-            padding:        '10px 18px',
+            padding:        '11px 22px',
             cursor:         'pointer',
-            fontSize:       '12px',
-            fontWeight:     600,
-            color:          '#666',
-            letterSpacing:  '0.06em',
+            fontSize:       '11px',
+            fontWeight:     700,
+            color:          '#7A8A9A',
+            letterSpacing:  '0.1em',
             textTransform:  'uppercase',
             fontFamily:     'inherit',
           }}
           aria-expanded={isEvidenceExpanded}
         >
-          <span>Evidence ({evidence.length})</span>
-          <span style={{ fontSize: '16px', lineHeight: 1, color: '#999' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+            </svg>
+            Evidence ({evidence.length})
+          </span>
+          <span style={{
+            width:          '22px',
+            height:         '22px',
+            borderRadius:   '50%',
+            background:     isEvidenceExpanded ? TEAL : '#E0E8F0',
+            color:          isEvidenceExpanded ? '#fff' : '#7A8A9A',
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+            fontSize:       '15px',
+            lineHeight:     1,
+            transition:     'background 0.2s ease, color 0.2s ease',
+            flexShrink:     0,
+          }}>
             {isEvidenceExpanded ? '−' : '+'}
           </span>
         </button>
 
         {isEvidenceExpanded && (
-          <div style={{ padding: '0 18px 16px' }}>
+          <div style={{ padding: '0 22px 18px' }}>
             {evidenceError && (
               <p
                 style={{
@@ -1401,15 +1466,17 @@ function SimulationCard({
                     disabled={atLimit || !!uploadingFile}
                     className="pf-add-evidence"
                     style={{
-                      background:    'transparent',
-                      border:        `1px solid ${atLimit || uploadingFile ? '#D5DCE8' : TEAL}`,
+                      background:    atLimit || uploadingFile ? 'transparent' : '#fff',
+                      border:        `1.5px solid ${atLimit || uploadingFile ? '#D5DCE8' : TEAL}`,
+                      borderRadius:  '20px',
                       color:         atLimit || uploadingFile ? '#aaa' : TEAL,
-                      padding:       '6px 12px',
+                      padding:       '6px 14px',
                       fontSize:      '12px',
                       fontWeight:    600,
                       letterSpacing: '0.04em',
                       cursor:        atLimit || uploadingFile ? 'not-allowed' : 'pointer',
                       fontFamily:    'inherit',
+                      transition:    'background 0.15s, border-color 0.15s',
                     }}
                   >
                     + Add file
@@ -1423,15 +1490,17 @@ function SimulationCard({
                     disabled={atLimit || !!uploadingFile}
                     className="pf-add-evidence"
                     style={{
-                      background:    'transparent',
-                      border:        `1px solid ${atLimit || uploadingFile ? '#D5DCE8' : TEAL}`,
+                      background:    atLimit || uploadingFile ? 'transparent' : '#fff',
+                      border:        `1.5px solid ${atLimit || uploadingFile ? '#D5DCE8' : TEAL}`,
+                      borderRadius:  '20px',
                       color:         atLimit || uploadingFile ? '#aaa' : TEAL,
-                      padding:       '6px 12px',
+                      padding:       '6px 14px',
                       fontSize:      '12px',
                       fontWeight:    600,
                       letterSpacing: '0.04em',
                       cursor:        atLimit || uploadingFile ? 'not-allowed' : 'pointer',
                       fontFamily:    'inherit',
+                      transition:    'background 0.15s, border-color 0.15s',
                     }}
                   >
                     + Add link
