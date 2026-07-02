@@ -57,9 +57,13 @@ function SignupForm() {
   async function handleOAuth(provider: 'google' | 'linkedin_oidc') {
     setLoading(true)
     setError(null)
+    const nextParam = searchParams.get('next')
+    const callbackUrl = nextParam
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
+      : `${window.location.origin}/auth/callback`
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl },
     })
     if (error) {
       setError(error.message)
