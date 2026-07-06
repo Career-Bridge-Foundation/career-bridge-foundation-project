@@ -2,15 +2,17 @@
 
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
+import { sanitizeNextPath } from '@/lib/auth/sanitizeNextPath'
 
 function SignupForm() {
   const branding = useBranding()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -37,7 +39,7 @@ function SignupForm() {
     const callbackUrl = nextParam
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
       : `${window.location.origin}/auth/callback`
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -50,6 +52,16 @@ function SignupForm() {
       setLoading(false)
       return
     }
+    // With email confirmations disabled, signUp() returns a live session
+    // immediately and no confirmation email is ever sent — the /auth/callback
+    // route (and its ?next= handling) never runs. Redirect straight to next
+    // here so an invite/redeem token isn't silently dropped. Only show the
+    // "check your email" screen if a session truly wasn't issued.
+    if (data.session) {
+      const safeNext = sanitizeNextPath(nextParam)
+      router.push(safeNext !== '/' ? safeNext : '/account/profile?onboarding=1')
+      return
+    }
     setSuccess(true)
     setLoading(false)
   }
@@ -57,9 +69,13 @@ function SignupForm() {
   async function handleOAuth(provider: 'google' | 'linkedin_oidc') {
     setLoading(true)
     setError(null)
+    const nextParam = searchParams.get('next')
+    const callbackUrl = nextParam
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
+      : `${window.location.origin}/auth/callback`
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl },
     })
     if (error) {
       setError(error.message)
