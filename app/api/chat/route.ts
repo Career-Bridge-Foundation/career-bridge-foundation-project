@@ -4,10 +4,24 @@ import { createClient as createSupabaseServerClient } from "@/lib/supabase/serve
 import { checkRateLimit } from "@/lib/rate-limit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const ALLOWED_CORS_ORIGIN = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
+const ALLOWED_CORS_ORIGINS = [
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NEXT_PUBLIC_SITE_URL,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
+]
+  .filter((origin): origin is string => Boolean(origin))
+  .map((origin) => origin.trim())
+  .filter((origin, index, origins) => origins.indexOf(origin) === index);
+
+function isAllowedOrigin(origin: string | null): origin is string {
+  return Boolean(origin && ALLOWED_CORS_ORIGINS.includes(origin));
+}
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
-  if (!origin || !ALLOWED_CORS_ORIGIN || origin !== ALLOWED_CORS_ORIGIN) {
+  if (!isAllowedOrigin(origin)) {
     return {};
   }
 
@@ -21,10 +35,10 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && ALLOWED_CORS_ORIGIN && origin !== ALLOWED_CORS_ORIGIN) {
+  if (origin && !isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), {
       status: 403,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getCorsHeaders(origin) },
     });
   }
 
@@ -146,8 +160,13 @@ Rules:
 
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && ALLOWED_CORS_ORIGIN && origin !== ALLOWED_CORS_ORIGIN) {
-    return new Response(null, { status: 403 });
+  if (origin && !isAllowedOrigin(origin)) {
+    return new Response(null, {
+      status: 403,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
   }
 
   return new Response(null, {
