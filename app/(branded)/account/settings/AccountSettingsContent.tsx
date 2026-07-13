@@ -71,6 +71,61 @@ export function AccountSettingsContent({ initial }: { initial: InitialData }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
 
+  // Security: set/change password
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
+
+  // Security: connect Google
+  const [googleConnecting, setGoogleConnecting] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
+
+  async function handleSetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPasswordError(null)
+    setPasswordSuccess(false)
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+    setPasswordSaving(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setPasswordSaving(false)
+    if (error) {
+      setPasswordError(error.message)
+      return
+    }
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordSuccess(true)
+  }
+
+  async function handleConnectGoogle() {
+    setGoogleConnecting(true)
+    setGoogleError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/account/settings` },
+    })
+    if (error) {
+      setGoogleError(
+        error.code === 'identity_already_exists'
+          ? 'Google is already connected to this account'
+          : error.message
+      )
+      setGoogleConnecting(false)
+    }
+    // On success, linkIdentity redirects the browser — no further state needed.
+  }
+
   async function handlePortfolioToggle(val: boolean) {
     setPortfolioPublic(val)
     setPrivacySaving(true)
@@ -118,6 +173,60 @@ export function AccountSettingsContent({ initial }: { initial: InitialData }) {
               description="Your account email — contact support to change it"
               control={
                 <span className="text-sm text-slate-500 font-mono">{initial.email}</span>
+              }
+            />
+          </Section>
+
+          {/* Security */}
+          <Section title="Security" description="Manage how you sign in">
+            <div className="px-6 py-5">
+              <form onSubmit={handleSetPassword} className="flex flex-col gap-3">
+                <p className="text-sm font-medium text-slate-800">Set a password</p>
+                {passwordError && (
+                  <p className="text-xs text-red-600">{passwordError}</p>
+                )}
+                {passwordSuccess && (
+                  <p className="text-xs text-teal">Password updated.</p>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="New password"
+                    className="sim-input w-full rounded-lg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="sim-input w-full rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={passwordSaving || !newPassword || !confirmPassword}
+                  className="self-start px-4 py-2 bg-navy text-white text-sm font-medium rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {passwordSaving ? 'Saving…' : 'Save password'}
+                </button>
+              </form>
+            </div>
+            <SettingRow
+              label="Google sign-in"
+              description="Connect Google so you can sign in with it"
+              control={
+                <div className="flex flex-col items-end gap-1">
+                  <button
+                    onClick={handleConnectGoogle}
+                    disabled={googleConnecting}
+                    className="px-4 py-2 border border-slate-200 text-sm font-medium rounded-md hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                  >
+                    {googleConnecting ? 'Redirecting…' : 'Connect Google'}
+                  </button>
+                  {googleError && <p className="text-xs text-red-600">{googleError}</p>}
+                </div>
               }
             />
           </Section>

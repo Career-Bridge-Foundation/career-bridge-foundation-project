@@ -2,11 +2,17 @@ import { redirect } from 'next/navigation'
 import { requireMentor } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { getPartnerCandidateProgress, type PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
+import { SecureAccountBanner } from '@/components/ui/SecureAccountBanner'
 import { CandidatesPanel } from '@/app/partner/_candidates-panel'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MentorDashboardPage() {
+export default async function MentorDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>
+}) {
+  const { welcome } = await searchParams
   let ctx
   try {
     ctx = await requireMentor()
@@ -37,6 +43,7 @@ export default async function MentorDashboardPage() {
 
   return (
     <div className="space-y-8">
+      {welcome === '1' && <SecureAccountBanner />}
       <header>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Candidates</p>
         <h1 className="text-2xl font-bold text-navy">Your candidates</h1>

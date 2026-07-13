@@ -1,12 +1,18 @@
 import { redirect } from 'next/navigation'
 import { requirePartner } from '@/lib/auth/permissions'
 import { getPartnerCandidateProgress, type PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
+import { SecureAccountBanner } from '@/components/ui/SecureAccountBanner'
 import { MintForm } from './_mint-form'
 import { CandidatesPanel } from './_candidates-panel'
 
 export const dynamic = 'force-dynamic'
 
-export default async function PartnerCandidatesPage() {
+export default async function PartnerCandidatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>
+}) {
+  const { welcome } = await searchParams
   let ctx
   try {
     ctx = await requirePartner()
@@ -25,6 +31,7 @@ export default async function PartnerCandidatesPage() {
 
   return (
     <div className="space-y-8">
+      {welcome === '1' && <SecureAccountBanner />}
       <header>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Candidates</p>
         <h1 className="text-2xl font-bold text-navy">Your candidates</h1>

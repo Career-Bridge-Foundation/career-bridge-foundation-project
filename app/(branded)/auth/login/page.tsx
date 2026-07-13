@@ -143,7 +143,7 @@ function LoginForm() {
 
               <div className="text-right -mt-1">
                 <Link
-                  href="/auth/reset-password"
+                  href={nextParam ? `/auth/reset-password?next=${encodeURIComponent(nextParam)}` : '/auth/reset-password'}
                   className="text-xs text-link-blue hover:opacity-80"
                 >
                   Forgot password?

@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 type State =
   | { kind: 'loading' }
   | { kind: 'no_token' }
+  | { kind: 'ready_to_accept'; token: string }
   | { kind: 'needs_auth'; token: string }
   | { kind: 'accepting' }
   | { kind: 'already' }
@@ -27,6 +28,51 @@ function AcceptInviteInner() {
   const branding = useBranding()
   const [state, setState] = useState<State>({ kind: 'loading' })
 
+  async function acceptInvite(tokenToAccept: string) {
+    setState({ kind: 'accepting' })
+    try {
+      const res = await fetch('/api/partner/invites/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenToAccept }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (res.ok) {
+        // Email-bound + cross-org checks (or, for a brand-new account, the
+        // invite token itself) already proved authorization server-side, so
+        // acceptance is the authorization — go straight to the console.
+        const role = typeof data?.role === 'string' ? data.role : 'partner'
+        const dest = role === 'mentor' ? '/mentor' : '/partner'
+        router.replace(data?.provisioned ? `${dest}?welcome=1` : dest)
+        return
+      }
+
+      if (res.status === 401) {
+        // Either no session yet, or (no-session path) this email already has
+        // an account — auto-provisioning never applies to an existing one.
+        setState({ kind: 'needs_auth', token: tokenToAccept })
+      } else if (res.status === 409) {
+        // Two distinct 409s: already-accepted vs cross-org hijack.
+        if (typeof data?.error === 'string' && data.error.includes('already accepted')) {
+          setState({ kind: 'already' })
+        } else {
+          setState({ kind: 'cross_org' })
+        }
+      } else if (res.status === 410) {
+        setState({ kind: 'expired' })
+      } else if (res.status === 403) {
+        setState({ kind: 'wrong_account' })
+      } else if (res.status === 400 || res.status === 404) {
+        setState({ kind: 'invalid' })
+      } else {
+        setState({ kind: 'error' })
+      }
+    } catch {
+      setState({ kind: 'error' })
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -38,56 +84,26 @@ function AcceptInviteInner() {
 
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      if (cancelled) return
 
-      if (!user) {
-        if (!cancelled) setState({ kind: 'needs_auth', token })
+      if (user) {
+        // Already signed in — accept immediately, same as before.
+        await acceptInvite(token)
         return
       }
 
-      // Logged in — attempt acceptance.
-      if (!cancelled) setState({ kind: 'accepting' })
-      try {
-        const res = await fetch('/api/partner/invites/accept', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (cancelled) return
-
-        if (res.ok) {
-          // Email-bound + cross-org checks already ran server-side before
-          // elevation, so acceptance itself is the authorization — go
-          // straight to the console rather than making them click through.
-          const role = typeof data?.role === 'string' ? data.role : 'partner'
-          router.replace(role === 'mentor' ? '/mentor' : '/partner')
-          return
-        } else if (res.status === 409) {
-          // Two distinct 409s: already-accepted vs cross-org hijack.
-          if (typeof data?.error === 'string' && data.error.includes('already accepted')) {
-            setState({ kind: 'already' })
-          } else {
-            setState({ kind: 'cross_org' })
-          }
-        } else if (res.status === 410) {
-          setState({ kind: 'expired' })
-        } else if (res.status === 403) {
-          setState({ kind: 'wrong_account' })
-        } else if (res.status === 400 || res.status === 404) {
-          setState({ kind: 'invalid' })
-        } else {
-          setState({ kind: 'error' })
-        }
-      } catch {
-        if (!cancelled) setState({ kind: 'error' })
-      }
+      // No session: require one explicit click before accepting. A scanner
+      // or link-preview bot that executes JS but never clicks a button can no
+      // longer silently burn the invite the way an auto-fire would allow.
+      setState({ kind: 'ready_to_accept', token })
     }
 
     run()
     return () => {
       cancelled = true
     }
-  }, [token, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   // Token-preserving auth links. The accept URL (with token) is the return
   // destination, URL-encoded so its own ?token= survives as part of `next`.
@@ -117,24 +133,39 @@ function AcceptInviteInner() {
               <p className="text-sm text-gray-500 py-6">Setting up your access…</p>
             )}
 
+            {state.kind === 'ready_to_accept' && (
+              <>
+                <h1 className="text-2xl font-bold text-navy mb-2">You&rsquo;ve been invited</h1>
+                <p className="text-sm text-gray-500 leading-relaxed mb-8">
+                  Accept your invitation to set up your account and get straight to your dashboard.
+                </p>
+                <button
+                  onClick={() => acceptInvite(state.token)}
+                  className="block w-full rounded-lg bg-navy text-white text-sm font-semibold py-3 hover:opacity-90"
+                >
+                  Accept invitation
+                </button>
+              </>
+            )}
+
             {state.kind === 'needs_auth' && (
               <>
                 <h1 className="text-2xl font-bold text-navy mb-2">You&rsquo;ve been invited</h1>
                 <p className="text-sm text-gray-500 leading-relaxed mb-8">
-                  You&rsquo;ve been invited to join an organisation. Create your
-                  account to accept, or sign in if you already have one.
+                  This email already has an account. Sign in to accept, or create a
+                  new account if this isn&rsquo;t the right one.
                 </p>
                 <Link
-                  href={signupHref}
+                  href={loginHref}
                   className="block w-full rounded-lg bg-navy text-white text-sm font-semibold py-3 mb-3 hover:opacity-90"
                 >
-                  Create your account
+                  Sign in
                 </Link>
                 <Link
-                  href={loginHref}
+                  href={signupHref}
                   className="block w-full rounded-lg border border-border-light text-navy text-sm font-semibold py-3 hover:bg-gray-50"
                 >
-                  Sign in
+                  Create your account
                 </Link>
               </>
             )}
