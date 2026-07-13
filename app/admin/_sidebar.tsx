@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   Users,
+  Building2,
   ChevronRight,
   X,
 } from 'lucide-react'
@@ -37,6 +38,13 @@ const ALL_NAV = [
     icon: Users,
     exact: false,
     roles: ['admin', 'super_admin'],
+  },
+  {
+    href: '/admin/partners',
+    label: 'Partners',
+    icon: Building2,
+    exact: false,
+    roles: ['super_admin'],
   },
   {
     href: '/admin/settings',
