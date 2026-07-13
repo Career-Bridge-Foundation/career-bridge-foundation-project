@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 
 const NAVY = '#003359'
@@ -60,6 +61,7 @@ function SettingRow({ label, description, control }: { label: string; descriptio
 }
 
 export function AccountSettingsContent({ initial }: { initial: InitialData }) {
+  const router = useRouter()
   const [portfolioPublic, setPortfolioPublic] = useState(initial.portfolioPublic)
   const [privacySaving, setPrivacySaving] = useState(false)
 
@@ -149,9 +151,16 @@ export function AccountSettingsContent({ initial }: { initial: InitialData }) {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header variant="solid" />
+      <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-10 pb-24">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors mb-6"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-24">
         {/* Page header */}
         <div className="mb-8">
           <h1
