@@ -1,7 +1,7 @@
 'use client'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckCircle, AlertCircle } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -13,7 +13,6 @@ type State =
   | { kind: 'no_token' }
   | { kind: 'needs_auth'; token: string }
   | { kind: 'accepting' }
-  | { kind: 'success'; role: string }
   | { kind: 'already' }
   | { kind: 'expired' }
   | { kind: 'wrong_account' }
@@ -23,6 +22,7 @@ type State =
 
 function AcceptInviteInner() {
   const params = useSearchParams()
+  const router = useRouter()
   const token = params.get('token')
   const branding = useBranding()
   const [state, setState] = useState<State>({ kind: 'loading' })
@@ -56,7 +56,12 @@ function AcceptInviteInner() {
         if (cancelled) return
 
         if (res.ok) {
-          setState({ kind: 'success', role: typeof data?.role === 'string' ? data.role : 'partner' })
+          // Email-bound + cross-org checks already ran server-side before
+          // elevation, so acceptance itself is the authorization — go
+          // straight to the console rather than making them click through.
+          const role = typeof data?.role === 'string' ? data.role : 'partner'
+          router.replace(role === 'mentor' ? '/mentor' : '/partner')
+          return
         } else if (res.status === 409) {
           // Two distinct 409s: already-accepted vs cross-org hijack.
           if (typeof data?.error === 'string' && data.error.includes('already accepted')) {
@@ -82,7 +87,7 @@ function AcceptInviteInner() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, router])
 
   // Token-preserving auth links. The accept URL (with token) is the return
   // destination, URL-encoded so its own ?token= survives as part of `next`.
@@ -130,26 +135,6 @@ function AcceptInviteInner() {
                   className="block w-full rounded-lg border border-border-light text-navy text-sm font-semibold py-3 hover:bg-gray-50"
                 >
                   Sign in
-                </Link>
-              </>
-            )}
-
-            {state.kind === 'success' && (
-              <>
-                <div className="flex items-center justify-center mb-4">
-                  <CheckCircle size={48} className="text-teal" />
-                </div>
-                <h1 className="text-2xl font-bold text-navy mb-2">You&rsquo;re all set</h1>
-                <p className="text-sm text-gray-500 leading-relaxed mb-6">
-                  {state.role === 'mentor'
-                    ? 'Your mentor access is active — you can now see the candidates and disciplines assigned to you.'
-                    : 'Your admin access is active. You can now manage your organisation’s candidates, mentors, and team.'}
-                </p>
-                <Link
-                  href={state.role === 'mentor' ? '/mentor' : '/partner'}
-                  className="block w-full rounded-lg bg-navy text-white text-sm font-semibold py-3 hover:opacity-90"
-                >
-                  {state.role === 'mentor' ? 'Go to your mentor console' : 'Go to your console'}
                 </Link>
               </>
             )}
