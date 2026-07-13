@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, supabaseServer } from '@/lib/supabase/server'
 import { sanitizeNextPath } from '@/lib/auth/sanitizeNextPath'
 
 function isProfileIncomplete(fullName: string | null | undefined): boolean {
@@ -18,7 +18,6 @@ function getOrigin(request: NextRequest): string {
 }
 
 async function roleBasedRedirect(
-  supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   origin: string,
   explicitNext: string,
@@ -26,7 +25,12 @@ async function roleBasedRedirect(
   // If the caller supplied a real destination, honour it
   if (explicitNext !== '/') return `${origin}${explicitNext}`
 
-  const { data: roleRow } = await supabase
+  // Service-role read: this runs immediately after exchangeCodeForSession/
+  // verifyOtp in the same request, and a per-request cookie client can hit an
+  // RLS/session-propagation timing gap right at that boundary. Role lookup is
+  // a plain read keyed by the already-verified userId, so there's no reason
+  // to route it through the user's own (just-minted) session at all.
+  const { data: roleRow } = await supabaseServer
     .from('user_roles')
     .select('role')
     .eq('user_id', userId)
@@ -41,7 +45,7 @@ async function roleBasedRedirect(
   }
 
   // Candidates: send incomplete profiles to onboarding before the dashboard
-  const { data: profile } = await supabase
+  const { data: profile } = await supabaseServer
     .from('profiles')
     .select('full_name')
     .eq('id', userId)
@@ -66,7 +70,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error && data.user) {
-      const dest = await roleBasedRedirect(supabase, data.user.id, origin, next)
+      const dest = await roleBasedRedirect(data.user.id, origin, next)
       return NextResponse.redirect(dest)
     }
     const msg = error?.message ?? 'auth_error'
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const { data, error } = await supabase.auth.verifyOtp({ token_hash, type })
     if (!error && data.user) {
-      const dest = await roleBasedRedirect(supabase, data.user.id, origin, next)
+      const dest = await roleBasedRedirect(data.user.id, origin, next)
       return NextResponse.redirect(dest)
     }
     const msg = error?.message ?? 'auth_error'
