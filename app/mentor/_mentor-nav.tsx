@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ConsoleSignOutButton } from '@/components/ui/ConsoleSignOutButton'
 
 export function MentorNav() {
   const pathname = usePathname()
@@ -13,6 +14,7 @@ export function MentorNav() {
       >
         Candidates
       </Link>
+      <ConsoleSignOutButton />
     </nav>
   )
 }

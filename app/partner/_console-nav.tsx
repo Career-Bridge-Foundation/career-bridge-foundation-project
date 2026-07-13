@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ConsoleSignOutButton } from '@/components/ui/ConsoleSignOutButton'
 
 const NAV: { label: string; href?: string; live: boolean }[] = [
   { label: 'Candidates', href: '/partner', live: true },
@@ -42,6 +43,7 @@ export function ConsoleNav() {
           </Link>
         )
       })}
+      <ConsoleSignOutButton />
     </nav>
   )
 }
