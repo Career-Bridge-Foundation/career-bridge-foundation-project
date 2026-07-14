@@ -81,11 +81,18 @@ export async function POST(request: Request) {
     }
 
     // 3. LOOKUP (service-role) by hash
-    const { data: invite } = await supabaseServer
+    const { data: invite, error: lookupErr } = await supabaseServer
       .from('partner_invites')
       .select('id, partner_id, invited_email, status, expires_at, invited_by, role, pending_disciplines')
       .eq('token_hash', tokenHash)
       .maybeSingle()
+    if (lookupErr) {
+      // A genuine query error (e.g. a column that doesn't exist yet) is NOT
+      // the same as "no matching row" — conflating the two here previously
+      // surfaced schema drift as a confusing "invite not found" to the user.
+      console.error('[invites/accept] invite lookup failed', lookupErr.message)
+      return NextResponse.json({ error: 'internal error' }, { status: 500 })
+    }
     if (!invite) {
       return NextResponse.json({ error: 'invite not found' }, { status: 404 })
     }
