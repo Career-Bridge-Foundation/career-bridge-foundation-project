@@ -3,17 +3,27 @@ import { createClient, supabaseServer } from '@/lib/supabase/server'
 import { hashInviteToken } from '@/lib/partners/inviteToken'
 import { isCrossOrgHijack } from '@/lib/auth/assertNoCrossOrgHijack'
 import { elevateUser } from '@/lib/auth/elevateUser'
+import { defaultPermissionsFor } from '@/lib/auth/permissions'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
 /**
- * POST /api/partner/invites/accept — accept a partner/mentor invite.
+ * POST /api/partner/invites/accept — accept a partner/mentor/staff invite.
  *
- * Two paths:
+ * Two invite shapes share this one table (`partner_invites`):
+ *   - Org-scoped (partner_id set): partner peer-invites, mentor invites.
+ *   - Staff (partner_id null): admin/reviewer/content_developer invites sent
+ *     from /admin/team when no account exists yet — see
+ *     app/api/admin/team/route.ts and schema-reference/05.11-staff-invites.sql.
+ *
+ * Two auth paths:
  *   - Authenticated: the logged-in invitee accepts, elevated to the invite's
  *     role. Identity and non-capture are proven BEFORE any elevation (strict
- *     email binding, cross-org hijack guard) — unchanged from before.
+ *     email binding always; cross-org hijack guard for org-scoped invites only
+ *     — a staff invite matches the direct-add path's own unconditional
+ *     overwrite, since a super-admin-initiated staff grant is already fully
+ *     authorized).
  *   - No session: only when `invited_email` has NO existing Supabase account
  *     — the account is created and signed in server-side (possession of the
  *     invite token substitutes for a password), then elevated the same way.
@@ -26,11 +36,12 @@ export const runtime = 'nodejs'
  *   2. invite resolved by token hash                       → 404
  *   3. state guards: already-accepted 409 / expired 410
  *   4a. [authenticated] STRICT EMAIL BINDING                → 403
- *   4b. [authenticated] cross-org hijack guard              → 409
+ *   4b. [authenticated, org-scoped only] cross-org hijack guard → 409
  *   4c. [no session] admin.createUser — 'email_exists'      → 401
  *   4d. [no session] generateLink + verifyOtp establishes a real session
- *   5. elevateUser(role, partner_id from the invite)
+ *   5. elevateUser(role, partner_id from the invite, permissions for staff)
  *   6. mark accepted atomically (.eq status 'pending')
+ *   7. reviewer disciplines applied from the invite (staff invites only)
  *
  * The no-session existence check is `admin.createUser`'s own unique-constraint
  * failure, not a `listUsers` scan — that's DB-authoritative and can't silently
@@ -72,7 +83,7 @@ export async function POST(request: Request) {
     // 3. LOOKUP (service-role) by hash
     const { data: invite } = await supabaseServer
       .from('partner_invites')
-      .select('id, partner_id, invited_email, status, expires_at, invited_by, role')
+      .select('id, partner_id, invited_email, status, expires_at, invited_by, role, pending_disciplines')
       .eq('token_hash', tokenHash)
       .maybeSingle()
     if (!invite) {
@@ -96,7 +107,7 @@ export async function POST(request: Request) {
     let provisioned = false
 
     if (sessionUser?.email) {
-      // 5a. STRICT EMAIL BINDING — before elevate.
+      // 5a. STRICT EMAIL BINDING — before elevate. Applies to every invite.
       if (sessionUser.email.toLowerCase().trim() !== invite.invited_email.toLowerCase().trim()) {
         return NextResponse.json(
           { error: 'this invite is not for your account' },
@@ -104,26 +115,30 @@ export async function POST(request: Request) {
         )
       }
 
-      // 5b. CROSS-ORG HIJACK GUARD — before elevate. A partner invite may only
-      //     elevate an unaffiliated user (no role) or a plain candidate; anyone
-      //     already holding a role in another org is rejected.
-      const { data: existing, error: exErr } = await supabaseServer
-        .from('user_roles')
-        .select('role, partner_id')
-        .eq('user_id', sessionUser.id)
-        .maybeSingle()
-      if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
-      if (
-        isCrossOrgHijack({
-          existing: existing as { role: string; partner_id: string | null } | null,
-          partnerId: invite.partner_id,
-          allowedRoles: ['candidate'],
-        })
-      ) {
-        return NextResponse.json(
-          { error: 'This account already has a role in another organisation' },
-          { status: 409 }
-        )
+      // 5b. CROSS-ORG HIJACK GUARD — org-scoped invites only (partner/mentor).
+      //     A staff invite (partner_id null — admin/reviewer/content_developer,
+      //     sent from /admin/team) has no organisation to hijack, and matches
+      //     the direct-add path in app/api/admin/team/route.ts, which already
+      //     unconditionally overwrites user_roles with no hijack check at all.
+      if (invite.partner_id !== null) {
+        const { data: existing, error: exErr } = await supabaseServer
+          .from('user_roles')
+          .select('role, partner_id')
+          .eq('user_id', sessionUser.id)
+          .maybeSingle()
+        if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
+        if (
+          isCrossOrgHijack({
+            existing: existing as { role: string; partner_id: string | null } | null,
+            partnerId: invite.partner_id,
+            allowedRoles: ['candidate'],
+          })
+        ) {
+          return NextResponse.json(
+            { error: 'This account already has a role in another organisation' },
+            { status: 409 }
+          )
+        }
       }
 
       targetUserId = sessionUser.id
@@ -169,12 +184,16 @@ export async function POST(request: Request) {
     }
 
     // 6. ELEVATE (role from the invite, partner_id FORCED from the invite row).
+    // Staff invites (partner_id null) get real permissions for their role —
+    // partner/mentor keep the {} default (their access is gated by
+    // requirePartner/requireMentor, not the permissions JSON).
     const { error: elevErr } = await elevateUser({
       targetUserId,
       email: targetEmail,
       role: invite.role,
       partnerId: invite.partner_id,
       grantedBy: invite.invited_by ?? targetUserId,
+      permissions: invite.partner_id === null ? defaultPermissionsFor(invite.role) : undefined,
     })
     if (elevErr) {
       // Do NOT mark accepted — the invite stays pending and is retryable.
@@ -196,6 +215,15 @@ export async function POST(request: Request) {
     if (markErr) {
       // Elevation already succeeded — the mark is bookkeeping. Log, don't fail.
       console.error('[invites/accept] failed to mark accepted', markErr.message)
+    }
+
+    // 8. Reviewer disciplines carried on the invite (staff invite only —
+    // mirrors app/api/admin/team/route.ts's direct-add delete+insert).
+    if (invite.role === 'reviewer' && invite.pending_disciplines?.length) {
+      await supabaseServer.from('reviewer_disciplines').delete().eq('reviewer_id', targetUserId)
+      await supabaseServer.from('reviewer_disciplines').insert(
+        invite.pending_disciplines.map((d: string) => ({ reviewer_id: targetUserId, discipline: d }))
+      )
     }
 
     return NextResponse.json({

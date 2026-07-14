@@ -1,5 +1,5 @@
 import { supabaseServer } from '@/lib/supabase/server'
-import type { UserRole } from '@/lib/auth/permissions'
+import type { UserRole, AdminPermissions } from '@/lib/auth/permissions'
 
 /**
  * Shared core of every role elevation: the upsert into `user_roles`.
@@ -25,8 +25,9 @@ export function elevateUser(params: {
   role: UserRole
   partnerId: string | null
   grantedBy: string
+  permissions?: AdminPermissions
 }) {
-  const { targetUserId, email, role, partnerId, grantedBy } = params
+  const { targetUserId, email, role, partnerId, grantedBy, permissions } = params
   return supabaseServer
     .from('user_roles')
     .upsert(
@@ -34,7 +35,7 @@ export function elevateUser(params: {
         user_id: targetUserId,
         email,
         role,
-        permissions: {},
+        permissions: permissions ?? {},
         partner_id: partnerId,
         granted_by: grantedBy,
       },

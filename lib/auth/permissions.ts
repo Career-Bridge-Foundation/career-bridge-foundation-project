@@ -51,7 +51,7 @@ const NO_PERMISSIONS: AdminPermissions = {
  *  Unlisted roles get NO admin permissions — their access comes from dedicated
  *  paths, not these booleans. (Previously every unlisted role silently inherited
  *  DEFAULT_ADMIN_PERMISSIONS via fallthrough — a privilege leak.) */
-function defaultPermissionsFor(role: UserRole): AdminPermissions {
+export function defaultPermissionsFor(role: UserRole): AdminPermissions {
   switch (role) {
     case 'super_admin':       return SUPER_ADMIN_PERMISSIONS
     case 'admin':             return DEFAULT_ADMIN_PERMISSIONS

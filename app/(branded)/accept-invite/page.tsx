@@ -43,7 +43,11 @@ function AcceptInviteInner() {
         // invite token itself) already proved authorization server-side, so
         // acceptance is the authorization — go straight to the console.
         const role = typeof data?.role === 'string' ? data.role : 'partner'
-        const dest = role === 'mentor' ? '/mentor' : '/partner'
+        const dest =
+          role === 'mentor' ? '/mentor' :
+          role === 'reviewer' ? '/reviewer' :
+          role === 'partner' ? '/partner' :
+          '/admin' // admin, content_developer, super_admin
         router.replace(data?.provisioned ? `${dest}?welcome=1` : dest)
         return
       }

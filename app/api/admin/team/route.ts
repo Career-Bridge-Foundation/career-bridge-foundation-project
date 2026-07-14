@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
+import { generateInviteToken, hashInviteToken } from '@/lib/partners/inviteToken'
+import { sendInvitationEmail } from '@/lib/email/invitations'
+
+const INVITE_TTL_DAYS = 7 // mirrors app/api/partner/invites/route.ts
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Admin',
+  reviewer: 'Reviewer',
+  content_developer: 'Content Developer',
+}
 
 export async function GET() {
   try {
@@ -84,12 +93,53 @@ export async function POST(request: NextRequest) {
     }
 
     // Resolve user by email via admin API
-    const { data: { users }, error: listErr } = await supabaseServer.auth.admin.listUsers()
+    const { data: { users }, error: listErr } =
+      await supabaseServer.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 })
 
     const targetUser = users.find(u => u.email === email)
     if (!targetUser) {
-      return NextResponse.json({ error: 'No user found with that email' }, { status: 404 })
+      // No account yet — invite instead of failing. Reuses the partner_invites
+      // pipeline with partner_id: null (staff invite, not org-scoped) — see
+      // schema-reference/05.11-staff-invites.sql for the constraint changes
+      // this depends on, and app/api/partner/invites/accept/route.ts for the
+      // acceptance side (skips the org-hijack guard when partner_id is null).
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      if (!appUrl) {
+        return NextResponse.json({ error: 'server misconfiguration' }, { status: 500 })
+      }
+
+      const token = generateInviteToken()
+      const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400_000)
+
+      const { error: insErr } = await supabaseServer.from('partner_invites').insert({
+        partner_id: null,
+        invited_email: email,
+        invited_by: ctx.userId,
+        role,
+        token_hash: hashInviteToken(token),
+        status: 'pending',
+        expires_at: expiresAt.toISOString(),
+        pending_disciplines: role === 'reviewer' && Array.isArray(disciplines) ? disciplines : null,
+      })
+      if (insErr) {
+        console.error('[admin/team] staff invite insert failed', insErr.message)
+        return NextResponse.json({ error: 'could not create invite' }, { status: 500 })
+      }
+
+      try {
+        await sendInvitationEmail({
+          to: email,
+          inviteUrl: `${appUrl}/accept-invite?token=${token}`,
+          partnerId: null,
+          expiresInDays: INVITE_TTL_DAYS,
+          roleLabel: ROLE_LABELS[role],
+        })
+      } catch (e) {
+        console.error('[admin/team] invite email send failed (invite persisted)', e)
+      }
+
+      return NextResponse.json({ success: true, invited: true, email })
     }
 
     const defaultPerms = role === 'admin'

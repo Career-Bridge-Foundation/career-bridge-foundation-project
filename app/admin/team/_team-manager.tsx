@@ -60,6 +60,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
   const [addDisciplines, setAddDisciplines] = useState<string[]>([])
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [addInviteSentMsg, setAddInviteSentMsg] = useState<string | null>(null)
 
   async function handleRemove(userId: string) {
     if (!confirm('Remove this member from the team?')) return
@@ -198,6 +199,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
     e.preventDefault()
     setAddLoading(true)
     setAddError(null)
+    setAddInviteSentMsg(null)
     try {
       const res = await fetch('/api/admin/team', {
         method: 'POST',
@@ -205,9 +207,18 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
         credentials: 'include',
         body: JSON.stringify({ email: addEmail, role: addRole, disciplines: addRole === 'reviewer' ? addDisciplines : [] }),
       })
+      const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Failed to add member')
+      }
+      if (body.invited) {
+        // No account existed yet — an invite was sent instead. They won't
+        // appear in the list below until they accept it.
+        setAddInviteSentMsg(`Invite sent to ${body.email}`)
+        setAddEmail('')
+        setAddRole('admin')
+        setAddDisciplines([])
+        return
       }
       setAddEmail('')
       setAddRole('admin')
@@ -237,7 +248,11 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
           </h2>
           {canManage && (
             <button
-              onClick={() => setShowAdd(v => !v)}
+              onClick={() => {
+                setShowAdd(v => !v)
+                setAddInviteSentMsg(null)
+                setAddError(null)
+              }}
               className="text-xs font-medium text-teal hover:text-teal/80 transition-colors"
             >
               {showAdd ? 'Cancel' : '+ Add member'}
@@ -303,6 +318,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
             )}
 
             {addError && <p className="text-xs text-red-600">{addError}</p>}
+            {addInviteSentMsg && <p className="text-xs text-teal">{addInviteSentMsg}</p>}
 
             <button
               type="submit"
