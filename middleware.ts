@@ -108,7 +108,7 @@ export async function middleware(request: NextRequest) {
         mentor:            '/mentor',
         admin:             '/admin',
         super_admin:       '/admin',
-        content_developer: '/admin',
+        content_developer: '/admin/simulations',
       }
       const dest = dashboardRedirects[role]
       if (dest) {
@@ -120,24 +120,41 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // ── Reviewer isolation ───────────────────────────────────────────────────
-  // Reviewers may only access /reviewer/** and /auth/** (for sign-in/out).
-  // Every other route — including public pages and non-reviewer APIs — redirects
-  // them back to /reviewer.
+  // ── Dashboard-only role isolation ────────────────────────────────────────
+  // reviewer/partner/mentor/content_developer may only access their own
+  // dashboard area, plus a small set of paths every role needs regardless
+  // (sign-in/out, account settings, accepting a future invite). admin and
+  // super_admin are exempt — they keep full site access (see below).
+  // content_developer is scoped to /admin/simulations specifically, not all
+  // of /admin — that's the only area their own sidebar nav ever shows them
+  // (app/admin/_sidebar.tsx: Team/Partners/Settings are admin/super_admin-only).
   const isAuthPath = pathname.startsWith('/auth') || pathname.startsWith('/api/auth')
+  const isAccountPath = pathname.startsWith('/account') || pathname.startsWith('/api/account')
+  const isAcceptInvitePath =
+    pathname.startsWith('/accept-invite') || pathname.startsWith('/api/partner/invites/accept')
+  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath
 
-  if (user && !isReviewerPath && !isAuthPath) {
+  const DASHBOARD_ONLY_PATHS: Record<string, string> = {
+    reviewer: '/reviewer',
+    partner: '/partner',
+    mentor: '/mentor',
+    content_developer: '/admin/simulations',
+  }
+
+  if (user && !isSharedPath) {
     const role = await getRole()
-    if (role === 'reviewer') {
+    const ownDashboard = DASHBOARD_ONLY_PATHS[role]
+    if (ownDashboard && !pathname.startsWith(ownDashboard) && !pathname.startsWith(`/api${ownDashboard}`)) {
       const url = request.nextUrl.clone()
-      url.pathname = '/reviewer'
+      url.pathname = ownDashboard
       url.search = ''
       return NextResponse.redirect(url)
     }
   }
 
   // ── Admin / staff routes ─────────────────────────────────────────────────
-  // Route guards disabled for admin/super_admin/content_developer roles
+  // Route guards disabled for admin/super_admin (full site access, by design).
+  // content_developer is now restricted above, not part of this exemption.
 
   // ── Reviewer routes ──────────────────────────────────────────────────────
   if (isReviewerPath) {
