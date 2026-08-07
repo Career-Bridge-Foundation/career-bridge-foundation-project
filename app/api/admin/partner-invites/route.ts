@@ -5,6 +5,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { generateInviteToken, hashInviteToken } from '@/lib/partners/inviteToken'
 import { sendInvitationEmail } from '@/lib/email/invitations'
 import { slugify } from '@/lib/slugify'
+import { partnerAppUrl } from '@/lib/partners/branding'
 
 export const runtime = 'nodejs'
 
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     // 1. Create the org. Retry once with a random suffix on a slug collision —
     // a second collision in a row is not worth more code for how rarely it'll happen.
     const baseSlug = slugify(trimmedName)
-    let partner: { id: string; name: string; slug: string } | null = null
+    let partner: { id: string; name: string; slug: string; subdomain: string | null } | null = null
     for (const slug of [baseSlug, `${baseSlug}-${randomBytes(2).toString('hex')}`]) {
       const { data, error } = await supabaseServer
         .from('partners')
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
           approved_by: ctx.userId,
           is_first_party: false,
         })
-        .select('id, name, slug')
+        .select('id, name, slug, subdomain')
         .single()
 
       if (!error) {
@@ -109,10 +110,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Best-effort email — a send failure leaves a valid pending invite.
+    const baseUrl = partnerAppUrl(partner.subdomain, appUrl)
     try {
       await sendInvitationEmail({
         to: invitedEmail,
-        inviteUrl: `${appUrl}/accept-invite?token=${token}`,
+        inviteUrl: `${baseUrl}/accept-invite?token=${token}`,
         partnerId: partner.id,
         partnerName: partner.name,
         expiresInDays: INVITE_TTL_DAYS,

@@ -1,6 +1,7 @@
 import { signPartnerToken, hashPartnerToken } from '@/lib/partners/token'
 import { supabaseServer } from '@/lib/supabase/server'
 import { disciplines } from '@/lib/disciplines-data'
+import { partnerAppUrl } from '@/lib/partners/branding'
 
 const DISCIPLINE_NAME_TO_SLUG = new Map(
   disciplines.map((d) => [d.name, d.slug] as const)
@@ -76,8 +77,17 @@ export async function mintRedemptionToken(params: MintParams): Promise<MintResul
     throw new MintError('persist_failed', insertError.message)
   }
 
+  // Point the redemption link at the partner's own subdomain when they have
+  // one assigned, so the candidate lands on branded pages immediately.
+  const { data: partnerRow } = await supabaseServer
+    .from('partners')
+    .select('subdomain')
+    .eq('id', partnerId)
+    .maybeSingle()
+  const baseUrl = partnerAppUrl(partnerRow?.subdomain as string | null | undefined, appUrl)
+
   return {
-    redemption_url: `${appUrl}/redeem?token=${token}`,
+    redemption_url: `${baseUrl}/redeem?token=${token}`,
     expires_at: expires_at.toISOString(),
   }
 }

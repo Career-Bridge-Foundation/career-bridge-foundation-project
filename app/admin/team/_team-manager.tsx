@@ -18,10 +18,14 @@ const PERMISSION_LABELS: { key: keyof AdminPermissions; label: string }[] = [
   { key: 'canExportData',        label: 'Export data'        },
 ]
 
-const ALL_DISCIPLINES = [
-  'Marketing', 'Finance', 'Operations', 'HR', 'Product Management',
-  'Sales', 'Legal', 'Technology', 'Strategy', 'Data & Analytics',
-]
+// Human label for a discipline slug (e.g. "cyber-security" -> "Cyber Security").
+// Matches the convention already used in app/(branded)/redeem/page.tsx.
+function disciplineLabel(slug: string): string {
+  return slug
+    .split('-')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
 
 const ASSIGN_TYPE_LABELS: Record<string, string> = {
   discipline: 'Discipline',
@@ -45,9 +49,10 @@ interface Props {
   canManage: boolean
   industries: string[]
   simOptions: { slug: string; title: string | null }[]
+  disciplines: string[]
 }
 
-export function TeamManager({ members, currentUserId, currentRole, canManage, industries, simOptions }: Props) {
+export function TeamManager({ members, currentUserId, currentRole, canManage, industries, simOptions, disciplines }: Props) {
   const router = useRouter()
   const [expanded, setExpanded] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
@@ -97,28 +102,6 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.error ?? 'Failed to update permissions')
-      }
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  async function handleDisciplinesUpdate(member: Member, disciplines: string[]) {
-    setLoading(member.user_id + 'disc')
-    setError(null)
-    try {
-      const res = await fetch(`/api/admin/team/${member.user_id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ disciplines }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error ?? 'Failed to update disciplines')
       }
       router.refresh()
     } catch (err) {
@@ -295,7 +278,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
                   Disciplines <span className="text-slate-400 font-normal">(optional — can also configure after adding)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {ALL_DISCIPLINES.map(d => (
+                  {disciplines.map(d => (
                     <button
                       key={d}
                       type="button"
@@ -310,7 +293,7 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
                           : 'bg-white text-slate-600 border-slate-200 hover:border-teal/50'
                       }`}
                     >
-                      {d}
+                      {disciplineLabel(d)}
                     </button>
                   ))}
                 </div>
@@ -455,26 +438,18 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
                         </div>
                       )}
 
-                      {/* Reviewer assignment editors */}
+                      {/* Reviewer assignment editor */}
                       {member.role === 'reviewer' && (
-                        <>
-                          <ReviewerDisciplinesEditor
-                            member={member}
-                            saving={loading === member.user_id + 'disc'}
-                            onSave={disciplines => handleDisciplinesUpdate(member, disciplines)}
-                          />
-                          <div className="border-t border-slate-200 pt-4">
-                            <ReviewerAssignmentsEditor
-                              member={member}
-                              industries={industries}
-                              simOptions={simOptions}
-                              addingAssignment={loading === member.user_id + ':add-assign'}
-                              removingId={loading}
-                              onAdd={assignment => handleAddAssignment(member, assignment)}
-                              onRemove={id => handleRemoveAssignment(id)}
-                            />
-                          </div>
-                        </>
+                        <ReviewerAssignmentsEditor
+                          member={member}
+                          industries={industries}
+                          simOptions={simOptions}
+                          disciplines={disciplines}
+                          addingAssignment={loading === member.user_id + ':add-assign'}
+                          removingId={loading}
+                          onAdd={assignment => handleAddAssignment(member, assignment)}
+                          onRemove={id => handleRemoveAssignment(id)}
+                        />
                       )}
                     </div>
                   )}
@@ -488,84 +463,13 @@ export function TeamManager({ members, currentUserId, currentRole, canManage, in
   )
 }
 
-// ─── Disciplines editor (existing reviewer_disciplines table) ─────────────────
-
-function ReviewerDisciplinesEditor({
-  member,
-  saving,
-  onSave,
-}: {
-  member: Member
-  saving: boolean
-  onSave: (disciplines: string[]) => void
-}) {
-  // Merge the standard list with any raw DB values that don't match (e.g. "product-management" vs "Product Management")
-  const allOptions = [...new Set([...ALL_DISCIPLINES, ...member.disciplines])]
-  const [selected, setSelected] = useState<string[]>(member.disciplines)
-
-  function toggle(d: string) {
-    setSelected(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])
-  }
-
-  const hasActiveDisciplines = member.disciplines.length > 0
-
-  return (
-    <div>
-      <p className="text-xs font-medium text-slate-700 mb-1">Disciplines</p>
-      <p className="text-xs text-slate-400 mb-2">
-        Grants access to <em>all</em> simulations with a matching discipline.
-        To restrict to specific simulations only, deselect all and save.
-      </p>
-
-      {/* Warning: broad discipline access overrides specific slug assignments */}
-      {hasActiveDisciplines && (
-        <div className="mb-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-          <span className="mt-px shrink-0">⚠</span>
-          <span>
-            Broad access is active for: <strong>{member.disciplines.join(', ')}</strong>.
-            This gives access to <em>all</em> matching simulations and overrides any specific assignments below.
-            Deselect these chips and click Save to use specific assignments only.
-          </span>
-        </div>
-      )}
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        {allOptions.map(d => {
-          const isNonStandard = !ALL_DISCIPLINES.includes(d)
-          return (
-            <button
-              key={d}
-              type="button"
-              onClick={() => toggle(d)}
-              className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                selected.includes(d)
-                  ? 'bg-teal text-white border-teal'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-teal/50'
-              }`}
-            >
-              {d}
-              {isNonStandard && <span className="ml-1 opacity-60 text-[10px]">↑DB</span>}
-            </button>
-          )
-        })}
-      </div>
-      <button
-        onClick={() => onSave(selected)}
-        disabled={saving}
-        className="text-xs px-3 py-1.5 bg-teal text-white rounded-md hover:bg-teal/90 disabled:opacity-50 transition-colors"
-      >
-        {saving ? 'Saving…' : 'Save disciplines'}
-      </button>
-    </div>
-  )
-}
-
 // ─── Granular assignments editor (reviewer_assignments table) ─────────────────
 
 interface AssignmentsEditorProps {
   member: Member
   industries: string[]
   simOptions: { slug: string; title: string | null }[]
+  disciplines: string[]
   addingAssignment: boolean
   removingId: string | null
   onAdd: (assignment: { discipline?: string; industry?: string; slug?: string }) => void
@@ -576,6 +480,7 @@ function ReviewerAssignmentsEditor({
   member,
   industries,
   simOptions,
+  disciplines,
   addingAssignment,
   removingId,
   onAdd,
@@ -665,7 +570,10 @@ function ReviewerAssignmentsEditor({
               className="w-full text-xs border border-slate-200 rounded-md px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-teal/40"
             >
               <option value="">Select discipline…</option>
-              {ALL_DISCIPLINES.map(d => <option key={d} value={d}>{d}</option>)}
+              {disciplines.length === 0
+                ? <option disabled>No disciplines found in simulations</option>
+                : disciplines.map(d => <option key={d} value={d}>{disciplineLabel(d)}</option>)
+              }
             </select>
           )}
           {addType === 'industry' && (

@@ -13,12 +13,18 @@ export async function sendMentorAddedEmail(params: SendMentorAddedParams) {
   const sender = await resolvePartnerSender(partnerId);
   const senderName = sender.partnerName;
 
-  const html = renderMentorAddedEmail({ consoleUrl, senderName });
+  const html = renderMentorAddedEmail({
+    consoleUrl,
+    senderName,
+    logoUrl: sender.logoUrl,
+    accentColor: sender.accentColor,
+  });
 
   return sendEmail({
     to,
     from: sender.from,
     subject: `You've been added as a mentor for ${senderName}`,
     html,
+    ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
   });
 }

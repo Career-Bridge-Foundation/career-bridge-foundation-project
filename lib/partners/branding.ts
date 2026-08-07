@@ -10,7 +10,17 @@
  * This module does not gate access. Branding ≠ authorisation.
  */
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'evidentize.io'
+export const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'evidentize.io'
+
+// Labels that must never resolve to a partner, even if one somehow ended up
+// with this value in the DB — infra/product subdomains and DNS-record labels
+// already in use (see supabase/email-templates and the MX setup for
+// email./send.email.evidentize.io) take precedence over any partner.
+export const RESERVED_SUBDOMAINS = new Set([
+  'app', 'www', 'api', 'admin', 'mail', 'email', 'send', 'ftp',
+  'staging', 'dev', 'test', 'blog', 'docs', 'status', 'support',
+  'help', 'cdn', 'static', 'assets', 'ns1', 'ns2',
+])
 
 export type PartnerBranding = {
   id: string
@@ -47,9 +57,27 @@ export function subdomainFromHost(host: string | null): string | null {
   if (!hostname.endsWith(`.${ROOT_DOMAIN}`)) return null // custom domain / vercel.app / etc.
 
   const label = hostname.slice(0, -(`.${ROOT_DOMAIN}`.length))
-  if (!label || label === 'www') return null
+  if (!label || RESERVED_SUBDOMAINS.has(label)) return null
   if (label.includes('.')) return null // e.g. multi-level → neutral for MVP
   return label
+}
+
+// Standard DNS label rules: lowercase letters/digits, optional internal
+// hyphens, 1-63 chars, no leading/trailing hyphen.
+const SUBDOMAIN_FORMAT = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+
+export function isValidSubdomainFormat(s: string): boolean {
+  return SUBDOMAIN_FORMAT.test(s)
+}
+
+/**
+ * Builds the URL a partner-scoped link (invite, redemption, notification)
+ * should point at: the partner's own subdomain when they have one assigned,
+ * falling back to the main app URL otherwise. Centralised so every caller
+ * (mint.ts, invite routes, mentor notifications) stays consistent.
+ */
+export function partnerAppUrl(subdomain: string | null | undefined, fallbackAppUrl: string): string {
+  return subdomain ? `https://${subdomain}.${ROOT_DOMAIN}` : fallbackAppUrl
 }
 
 export async function resolvePartnerBranding(

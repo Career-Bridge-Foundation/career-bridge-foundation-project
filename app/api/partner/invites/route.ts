@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { generateInviteToken, hashInviteToken } from '@/lib/partners/inviteToken'
 import { getPartnerInvites } from '@/lib/partners/inviteRoster'
 import { sendInvitationEmail } from '@/lib/email/invitations'
+import { partnerAppUrl } from '@/lib/partners/branding'
 
 export const runtime = 'nodejs'
 
@@ -89,18 +90,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'could not create invite' }, { status: 500 })
     }
 
-    // Partner name for the email display/sender.
+    // Partner name + subdomain for the email display/sender and branded link.
     const { data: partner } = await supabaseServer
       .from('partners')
-      .select('name')
+      .select('name, subdomain')
       .eq('id', ctx.partnerId)
       .maybeSingle()
+
+    const baseUrl = partnerAppUrl(partner?.subdomain as string | null | undefined, appUrl)
 
     // Best-effort email — a send failure leaves a valid pending invite.
     try {
       await sendInvitationEmail({
         to: invitedEmail,
-        inviteUrl: `${appUrl}/accept-invite?token=${token}`,
+        inviteUrl: `${baseUrl}/accept-invite?token=${token}`,
         partnerId: ctx.partnerId,
         partnerName: partner?.name ?? undefined,
         expiresInDays: INVITE_TTL_DAYS,

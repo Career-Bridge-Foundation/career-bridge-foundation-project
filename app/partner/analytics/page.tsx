@@ -37,7 +37,7 @@ export default async function PartnerAnalyticsPage() {
         </div>
       ) : analytics.funnel.provisioned === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          No candidates provisioned yet — once you provision candidates, their progress will appear here.
+          No candidates provisioned yet, once you provision candidates, their progress will appear here.
         </div>
       ) : (
         <AnalyticsView analytics={analytics} />

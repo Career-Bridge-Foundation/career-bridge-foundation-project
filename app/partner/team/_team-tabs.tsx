@@ -47,7 +47,7 @@ export function TeamTabs({
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
               <h2 className="text-base font-semibold text-slate-900">No mentors yet</h2>
               <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-                Add your first mentor below — they must already have a Career Bridge account.
+                Add your first mentor below, they must already have a Career Bridge account.
               </p>
             </div>
           ) : (

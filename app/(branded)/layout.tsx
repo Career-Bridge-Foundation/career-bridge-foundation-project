@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import type { CSSProperties } from 'react'
+import type { Metadata } from 'next'
 import type { PartnerBranding } from '@/lib/partners/branding'
 import { BrandingProvider } from '@/components/branding/BrandingProvider'
 
@@ -7,6 +8,27 @@ import { BrandingProvider } from '@/components/branding/BrandingProvider'
 // explicitly to match the codebase pattern for header-dependent segments
 // (e.g. app/admin/layout.tsx, app/partner/page.tsx).
 export const dynamic = 'force-dynamic'
+
+/**
+ * Overrides <title>/OG/Twitter text with the partner's name on a resolved
+ * subdomain (Spec 05.4). Reads the same x-partner-name header the component
+ * below reads — no extra DB call. Returns {} (no override) on the apex
+ * domain or an unresolved subdomain, so app/layout.tsx's neutral defaults
+ * apply unchanged — Next merges child generateMetadata over parent metadata.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers()
+  const partnerName = h.get('x-partner-name')
+  if (!partnerName) return {}
+
+  const title = `${partnerName} | Practice into proof. Proof into portfolio.`
+  return {
+    applicationName: partnerName,
+    title,
+    openGraph: { title, siteName: partnerName },
+    twitter: { title },
+  }
+}
 
 /**
  * (branded) route-group layout — Spec 05.4 Phase 2a.

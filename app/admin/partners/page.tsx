@@ -1,7 +1,10 @@
 import React from 'react'
 import { supabaseServer } from '@/lib/supabase/server'
 import { requireSuperAdmin } from '@/lib/auth/permissions'
+import { ROOT_DOMAIN } from '@/lib/partners/branding'
 import { PartnerInviteForm } from './_partner-invite-form'
+import { SubdomainEditor } from './_subdomain-editor'
+import { SenderEditor } from './_sender-editor'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +21,7 @@ export default async function PartnersPage() {
 
   const { data: partners } = await supabaseServer
     .from('partners')
-    .select('id, name, slug, status, contact_email, created_at')
+    .select('id, name, slug, status, contact_email, subdomain, email_sender_name, email_sender_domain, created_at')
     .order('created_at', { ascending: false })
 
   return (
@@ -45,20 +48,32 @@ export default async function PartnersPage() {
         ) : (
           <div className="divide-y divide-slate-100">
             {partners.map(partner => (
-              <div key={partner.id} className="px-6 py-4 flex items-center justify-between">
+              <div key={partner.id} className="px-6 py-4 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-slate-900 truncate">{partner.name}</div>
                   <div className="text-xs text-slate-500 truncate">
                     {partner.slug} · {partner.contact_email}
                   </div>
                 </div>
-                <span
-                  className={`shrink-0 ml-4 text-xs font-medium px-2 py-1 rounded-full border ${
-                    STATUS_STYLE[partner.status] ?? 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}
-                >
-                  {partner.status}
-                </span>
+                <div className="shrink-0 flex items-center gap-4">
+                  <SenderEditor
+                    partnerId={partner.id}
+                    initialSenderName={(partner.email_sender_name as string | null) ?? null}
+                    initialSenderDomain={(partner.email_sender_domain as string | null) ?? null}
+                  />
+                  <SubdomainEditor
+                    partnerId={partner.id}
+                    initialSubdomain={(partner.subdomain as string | null) ?? null}
+                    rootDomain={ROOT_DOMAIN}
+                  />
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded-full border ${
+                      STATUS_STYLE[partner.status] ?? 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {partner.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
