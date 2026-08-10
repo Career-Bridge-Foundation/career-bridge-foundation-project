@@ -22,6 +22,7 @@ export const disciplines: Discipline[] = [
     description:
       "Stand out from the crowd with verified evidence of your project management capability. Real scenarios, real skills, real proof that goes beyond your CV.",
     status: "available",
+    grantable: true,
     // HARDCODED TIER LABEL — not derived from published sims. Update by hand
     // when a new difficulty tier ships, together with the hero badge in
     // app/(branded)/simulations/project-management/page.tsx ("Difficulty: ...").
