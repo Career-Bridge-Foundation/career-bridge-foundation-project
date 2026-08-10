@@ -20,7 +20,7 @@ import { ChatWidget } from "@/components/simulation/ChatWidget";
 import { collectSubmitWarnings } from "@/lib/simulation/submitWarnings";
 import type { SubmitWarning } from "@/lib/simulation/submitWarnings";
 import { createClient } from "@/lib/supabase/client";
-import { checkSimulationAccess } from "@/lib/access-control";
+import { checkSimulationAccess, checkActivationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
 
 // ── Access gate states ────────────────────────────────────────
@@ -147,7 +147,14 @@ export default function SimulationExecutionPage() {
 
       const { hasAccess, viaEntitlement: ve } = await checkSimulationAccess(data.user.id, content.discipline ?? undefined);
       setViaEntitlement(ve);
-      if (!hasAccess) {
+
+      // Spec 15: also accept a valid simulation_activations row (credit already burned at activation time)
+      let viaActivation = false;
+      if (!hasAccess && content.simulationUuid) {
+        viaActivation = await checkActivationAccess(data.user.id, content.simulationUuid);
+      }
+
+      if (!hasAccess && !viaActivation) {
         window.location.replace("/no-access");
         return;
       }
@@ -158,7 +165,7 @@ export default function SimulationExecutionPage() {
       const redirect = encodeURIComponent(window.location.pathname);
       window.location.replace(`/auth/login?redirect=${redirect}`);
     });
-  }, [content.loading, content.discipline]);
+  }, [content.loading, content.discipline, content.simulationUuid]);
 
   // ── Evaluation message cycling ────────────────────────────────
   useEffect(() => {

@@ -55,3 +55,35 @@ export async function checkSimulationAccess(
     viaEntitlement,
   };
 }
+
+/**
+ * Returns true if the authenticated user has a simulation_activations row
+ * for the given simulation UUID (Spec 15 credit system). Called from the
+ * workspace page after simulation content has loaded and the UUID is known.
+ *
+ * Two queries: portfolio_profiles (get candidate id) then simulation_activations.
+ * Both are RLS-scoped to the authenticated user's own rows.
+ */
+export async function checkActivationAccess(
+  userId: string,
+  simulationUuid: string,
+): Promise<boolean> {
+  const supabase = createClient();
+
+  const { data: portfolio } = await supabase
+    .from("portfolio_profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!portfolio) return false;
+
+  const { data: activation } = await supabase
+    .from("simulation_activations")
+    .select("id")
+    .eq("simulation_id", simulationUuid)
+    .eq("candidate_id", portfolio.id)
+    .maybeSingle();
+
+  return !!activation;
+}

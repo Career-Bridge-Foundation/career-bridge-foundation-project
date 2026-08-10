@@ -6,6 +6,7 @@ import { ConsoleSignOutButton } from '@/components/ui/ConsoleSignOutButton'
 const NAV: { label: string; href?: string; live: boolean }[] = [
   { label: 'Candidates', href: '/partner', live: true },
   { label: 'Usage', href: '/partner/usage', live: true },
+  { label: 'Codes', href: '/partner/codes', live: true },
   { label: 'Analytics', href: '/partner/analytics', live: true },
   { label: 'Team', href: '/partner/team', live: true },
   { label: 'Branding', href: '/partner/branding', live: true },

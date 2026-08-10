@@ -1,7 +1,7 @@
 // ── Simulation list ──────────────────────────────────────
 
 export interface Simulation {
-  id: number;
+  id: string | number;
   slug: string;
   title: string;
   company: string;
@@ -11,6 +11,10 @@ export interface Simulation {
   time: string;
   description: string;
   discipline?: string;
+  /** UUID from the simulations table — used by AssessmentPackModal */
+  simulation_uuid?: string;
+  /** 'assessed' | 'practice' — gated by AssessmentPackModal if assessed */
+  simulation_type?: string;
 }
 
 // ── Disciplines ──────────────────────────────────────────

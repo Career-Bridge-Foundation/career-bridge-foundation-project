@@ -51,6 +51,21 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Re-record cap: max 3 total debriefs per session (1 original + 2 re-records).
+  // Count ALL debriefs including discarded — each discard+restart uses one slot.
+  const { count: totalCount } = await supabaseServer
+    .from("debriefs")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", session_id)
+    .eq("user_id", user.id);
+
+  if (totalCount !== null && totalCount >= 3) {
+    return new Response(
+      JSON.stringify({ error: "Re-record limit reached — you may record a debrief up to 3 times per session", code: "re_record_limit" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   // Guard: one active debrief per session (discarded ones are ignored)
   const { data: existing } = await supabaseServer
     .from("debriefs")
