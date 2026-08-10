@@ -27,6 +27,7 @@ export const disciplines: Discipline[] = [
     // app/(branded)/simulations/project-management/page.tsx ("Difficulty: ...").
     count: "Foundation",
     href: "/simulations/project-management",
+    grantable: true,
   },
   {
     id: 3,
@@ -49,6 +50,7 @@ export const disciplines: Discipline[] = [
     description:
       "Build hands-on capability in cloud infrastructure, deployment pipelines, and DevOps practices through realistic workplace simulations.",
     status: "coming-soon",
+    grantable: true,
   },
   {
     id: 5,
@@ -57,6 +59,7 @@ export const disciplines: Discipline[] = [
     description:
       "Develop the customer facing capabilities organisations are actively hiring for. Go beyond knowledge and demonstrate the skills that make you the candidate they want.",
     status: "coming-soon",
+    grantable: true,
   },
   {
     id: 6,
@@ -65,6 +68,7 @@ export const disciplines: Discipline[] = [
     description:
       "Develop practical healthcare support skills through scenario based simulations aligned to real workplace expectations in the healthcare sector.",
     status: "coming-soon",
+    grantable: true,
   },
   {
     id: 7,
@@ -73,6 +77,7 @@ export const disciplines: Discipline[] = [
     description:
       "Demonstrate your ability to analyse data, generate insights, and communicate findings through realistic business scenarios.",
     status: "coming-soon",
+    grantable: true,
   },
   {
     id: 8,
@@ -81,6 +86,7 @@ export const disciplines: Discipline[] = [
     description:
       "Build and prove your digital marketing and SEO capability through practical simulations aligned to what employers are looking for.",
     status: "coming-soon",
+    grantable: true,
   },
   {
     id: 9,
@@ -89,6 +95,7 @@ export const disciplines: Discipline[] = [
     description:
       "Prove your ability to gather requirements, map processes, and communicate analysis through structured workplace simulations.",
     status: "coming-soon",
+    grantable: true,
   },
 ];
 
