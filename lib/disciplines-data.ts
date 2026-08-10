@@ -8,8 +8,12 @@ export const disciplines: Discipline[] = [
     description:
       "Prove your product thinking across strategy, discovery, and delivery through simulations verified by experienced product managers and industry practitioners.",
     status: "available",
+    // HARDCODED TIER LABEL — not derived from published sims. Update by hand
+    // when a new difficulty tier ships, together with the hero badge in
+    // app/(branded)/simulations/product-management/page.tsx ("Difficulty: ...").
     count: "Foundation to Advanced",
     href: "/simulations/product-management",
+    grantable: true,
   },
   {
     id: 2,
@@ -17,7 +21,12 @@ export const disciplines: Discipline[] = [
     slug: "project-management",
     description:
       "Stand out from the crowd with verified evidence of your project management capability. Real scenarios, real skills, real proof that goes beyond your CV.",
-    status: "coming-soon",
+    status: "available",
+    // HARDCODED TIER LABEL — not derived from published sims. Update by hand
+    // when a new difficulty tier ships, together with the hero badge in
+    // app/(branded)/simulations/project-management/page.tsx ("Difficulty: ...").
+    count: "Foundation",
+    href: "/simulations/project-management",
   },
   {
     id: 3,
@@ -26,8 +35,12 @@ export const disciplines: Discipline[] = [
     description:
       "Simulations aligned to the UK Cyber Security Council Career Framework and verified by expert consultants. Build credible evidence for roles across the cyber security sector.",
     status: "available",
+    // HARDCODED TIER LABEL — not derived from published sims. Update by hand
+    // when a new difficulty tier ships, together with the hero badge in
+    // app/(branded)/simulations/cyber-security/page.tsx ("Difficulty: ...").
     count: "Foundation to Advanced",
     href: "/simulations/cyber-security",
+    grantable: true,
   },
   {
     id: 4,
@@ -79,9 +92,18 @@ export const disciplines: Discipline[] = [
   },
 ];
 
-/** Discipline NAMES currently available (status === 'available'). The shared
- *  grant/mint vocabulary, stored by name. See issue #64 — there is no
- *  partner-offered set yet, so grants/mints validate against this global list. */
-export const availableDisciplineNames: string[] = disciplines
-  .filter((d) => d.status === "available")
-  .map((d) => d.name);
+/** Disciplines partners may mint or grant (grantable === true). Deliberately
+ *  separate from `status`: a discipline can be visible in the candidate
+ *  catalogue without being grantable to partners. See issue #64 — there is no
+ *  partner-offered set yet, so grants/mints validate against this global list.
+ *
+ *  Every mint/grant call site MUST derive from these two exports rather than
+ *  re-filtering `disciplines` locally, or the two notions drift apart again. */
+export const grantableDisciplines: Discipline[] = disciplines.filter(
+  (d) => d.grantable === true
+);
+
+/** Grantable discipline NAMES — the shared grant/mint vocabulary, stored by name. */
+export const availableDisciplineNames: string[] = grantableDisciplines.map(
+  (d) => d.name
+);
