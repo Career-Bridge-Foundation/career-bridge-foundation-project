@@ -21,19 +21,15 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabase/server'
 import { getKeyPrefix, verifyApiKeyHash } from '@/lib/partners/apiKey'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
-import { disciplines } from '@/lib/disciplines-data'
+import { availableDisciplineNames } from '@/lib/disciplines-data'
 
 export const runtime = 'nodejs'
-
-const AVAILABLE_DISCIPLINES = disciplines
-  .filter((d) => d.status === 'available')
-  .map((d) => d.name)
 
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
   disciplines: z
-    .array(z.enum(AVAILABLE_DISCIPLINES as [string, ...string[]]))
+    .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
 })

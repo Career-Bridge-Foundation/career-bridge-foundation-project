@@ -23,6 +23,10 @@ export interface Discipline {
   status: "available" | "coming-soon";
   count?: string;
   href?: string;
+  /** Partners may mint/grant this discipline. Independent of catalogue
+   *  visibility: a discipline can be `available` to candidates while not
+   *  yet grantable to partners. */
+  grantable?: boolean;
 }
 
 // ── Simulation execution ─────────────────────────────────
