@@ -28,6 +28,34 @@ function FilterSelect({ label, value, options, onChange }: FilterSelectProps) {
   );
 }
 
+/* Fallback option sets — the full platform-wide vocabulary. Pages that do not
+ * pass explicit options keep the historical behaviour of showing every tier,
+ * type and industry regardless of what their query returned. Prefer passing
+ * options derived from the returned rows: a hardcoded option with no matching
+ * simulation dead-ends the candidate on "No simulations match your filters."
+ * See app/(branded)/simulations/business-analysis/page.tsx for the pattern. */
+const DEFAULT_TYPE_OPTIONS = [
+  "All", "Strategy", "Discovery", "Delivery", "Go-to-Market", "Analysis", "Stakeholder",
+];
+const DEFAULT_DIFF_OPTIONS = ["All", "Foundation", "Practitioner", "Advanced"];
+const DEFAULT_INDUSTRY_OPTIONS = [
+  "All",
+  "Financial Services",
+  "HealthTech",
+  "SaaS",
+  "Software Development",
+  "Consumer Mobile",
+  "EdTech",
+  "Consumer Goods",
+  "Analytics",
+  "Infrastructure",
+  "E-commerce",
+  "International Retail",
+  "Sports Technology",
+  "Enterprise Software",
+  "Venture Capital",
+];
+
 interface FilterBarProps {
   typeFilter: string;
   diffFilter: string;
@@ -37,6 +65,11 @@ interface FilterBarProps {
   onIndustryChange: (v: string) => void;
   onClear: () => void;
   hasActiveFilter: boolean;
+  /** Option lists, each including the leading "All". Omit to fall back to the
+   *  full platform-wide vocabulary above. */
+  typeOptions?: string[];
+  diffOptions?: string[];
+  industryOptions?: string[];
 }
 
 export function FilterBar({
@@ -48,6 +81,9 @@ export function FilterBar({
   onIndustryChange,
   onClear,
   hasActiveFilter,
+  typeOptions = DEFAULT_TYPE_OPTIONS,
+  diffOptions = DEFAULT_DIFF_OPTIONS,
+  industryOptions = DEFAULT_INDUSTRY_OPTIONS,
 }: FilterBarProps) {
   return (
     <div className="bg-white px-6 py-6 border-b border-border-light">
@@ -55,35 +91,19 @@ export function FilterBar({
         <FilterSelect
           label="Scenario Type"
           value={typeFilter}
-          options={["All", "Strategy", "Discovery", "Delivery", "Go-to-Market", "Analysis", "Stakeholder"]}
+          options={typeOptions}
           onChange={onTypeChange}
         />
         <FilterSelect
           label="Difficulty"
           value={diffFilter}
-          options={["All", "Foundation", "Practitioner", "Advanced"]}
+          options={diffOptions}
           onChange={onDiffChange}
         />
         <FilterSelect
           label="Industry"
           value={industryFilter}
-          options={[
-            "All",
-            "Financial Services",
-            "HealthTech",
-            "SaaS",
-            "Software Development",
-            "Consumer Mobile",
-            "EdTech",
-            "Consumer Goods",
-            "Analytics",
-            "Infrastructure",
-            "E-commerce",
-            "International Retail",
-            "Sports Technology",
-            "Enterprise Software",
-            "Venture Capital",
-          ]}
+          options={industryOptions}
           onChange={onIndustryChange}
         />
 
