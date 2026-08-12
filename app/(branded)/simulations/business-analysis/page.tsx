@@ -77,10 +77,22 @@ export default function BusinessAnalysisPage() {
     () => ["All", ...Array.from(new Set(simsList.map((s) => s.type))).sort()],
     [simsList]
   );
-  const diffOptions = useMemo(() => {
+  // Tiers actually present in the returned rows, in canonical order. Feeds both
+  // the Difficulty filter options and the hero badge, so the two cannot drift.
+  const presentTiers = useMemo(() => {
     const present = new Set(simsList.map((s) => s.difficulty));
-    return ["All", ...DIFFICULTY_ORDER.filter((d) => present.has(d))];
+    return DIFFICULTY_ORDER.filter((d) => present.has(d));
   }, [simsList]);
+  const diffOptions = useMemo(() => ["All", ...presentTiers], [presentTiers]);
+
+  // "Difficulty: Foundation" for a single tier, "Difficulty: <lowest> to
+  // <highest>" for a range. Updates itself when new tiers are published, so the
+  // badge never needs a copy change.
+  const difficultyLabel = useMemo(() => {
+    if (presentTiers.length === 0) return null;
+    if (presentTiers.length === 1) return `Difficulty: ${presentTiers[0]}`;
+    return `Difficulty: ${presentTiers[0]} to ${presentTiers[presentTiers.length - 1]}`;
+  }, [presentTiers]);
   const industryOptions = useMemo(
     () => ["All", ...Array.from(new Set(simsList.map((s) => s.industry))).sort()],
     [simsList]
@@ -132,9 +144,11 @@ export default function BusinessAnalysisPage() {
             <span className="text-xs font-medium uppercase px-4 py-2 border border-teal text-teal tracking-brand-sm">
               Industry Recognised Capabilities
             </span>
-            <span className="text-xs font-medium uppercase px-4 py-2 border border-white/30 text-white/70 tracking-brand-sm">
-              Difficulty: Foundation
-            </span>
+            {!isLoading && difficultyLabel && (
+              <span className="text-xs font-medium uppercase px-4 py-2 border border-white/30 text-white/70 tracking-brand-sm">
+                {difficultyLabel}
+              </span>
+            )}
           </div>
         </div>
       </section>
