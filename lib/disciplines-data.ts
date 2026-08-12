@@ -45,6 +45,20 @@ export const disciplines: Discipline[] = [
   },
   {
     id: 4,
+    name: "Business Analysis",
+    slug: "business-analysis",
+    description:
+      "Prove your ability to gather requirements, map processes, and communicate analysis through structured workplace simulations.",
+    status: "available",
+    // HARDCODED TIER LABEL — not derived from published sims. Update by hand
+    // when a new difficulty tier ships, together with the hero badge in
+    // app/(branded)/simulations/business-analysis/page.tsx ("Difficulty: ...").
+    count: "Foundation",
+    href: "/simulations/business-analysis",
+    grantable: true,
+  },
+  {
+    id: 5,
     name: "Cloud DevOps",
     slug: "cloud-devops",
     description:
@@ -53,7 +67,7 @@ export const disciplines: Discipline[] = [
     grantable: true,
   },
   {
-    id: 5,
+    id: 6,
     name: "Customer Service",
     slug: "customer-service",
     description:
@@ -62,7 +76,7 @@ export const disciplines: Discipline[] = [
     grantable: true,
   },
   {
-    id: 6,
+    id: 7,
     name: "Healthcare Assistance",
     slug: "healthcare-assistance",
     description:
@@ -71,7 +85,7 @@ export const disciplines: Discipline[] = [
     grantable: true,
   },
   {
-    id: 7,
+    id: 8,
     name: "Data Analytics",
     slug: "data-analytics",
     description:
@@ -80,20 +94,11 @@ export const disciplines: Discipline[] = [
     grantable: true,
   },
   {
-    id: 8,
+    id: 9,
     name: "SEO Analysis",
     slug: "seo-analysis",
     description:
       "Build and prove your digital marketing and SEO capability through practical simulations aligned to what employers are looking for.",
-    status: "coming-soon",
-    grantable: true,
-  },
-  {
-    id: 9,
-    name: "Business Analysis",
-    slug: "business-analysis",
-    description:
-      "Prove your ability to gather requirements, map processes, and communicate analysis through structured workplace simulations.",
     status: "coming-soon",
     grantable: true,
   },
