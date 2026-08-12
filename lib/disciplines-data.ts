@@ -25,7 +25,7 @@ export const disciplines: Discipline[] = [
     // HARDCODED TIER LABEL — not derived from published sims. Update by hand
     // when a new difficulty tier ships, together with the hero badge in
     // app/(branded)/simulations/project-management/page.tsx ("Difficulty: ...").
-    count: "Foundation",
+    count: "Foundation to Advanced",
     href: "/simulations/project-management",
     grantable: true,
   },
@@ -53,7 +53,7 @@ export const disciplines: Discipline[] = [
     // HARDCODED TIER LABEL — not derived from published sims. Update by hand
     // when a new difficulty tier ships, together with the hero badge in
     // app/(branded)/simulations/business-analysis/page.tsx ("Difficulty: ...").
-    count: "Foundation",
+    count: "Foundation to Advanced",
     href: "/simulations/business-analysis",
     grantable: true,
   },
