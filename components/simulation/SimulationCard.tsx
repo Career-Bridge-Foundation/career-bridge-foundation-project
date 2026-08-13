@@ -26,7 +26,14 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
       return;
     }
 
-    // Practice simulations (or assessed without a resolved UUID): old route guard
+    if (!isAssessed) {
+      // Practice Trials: free, unlimited, no entitlement check at all
+      // (Spec 14 decision 2) — never route through the /no-access guard.
+      router.push(`/practice/${sim.slug}`);
+      return;
+    }
+
+    // Assessed without a resolved UUID yet: old route guard
     router.push(
       hasAccess
         ? `/simulations/${sim.discipline}/${sim.slug}`
@@ -42,6 +49,13 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
   return (
     <>
       <div className="bg-white flex flex-col p-8">
+        {/* Practice badge — distinction must be legible before Start (Spec 14) */}
+        {!isAssessed && (
+          <span className="self-start mb-3 text-[10px] font-semibold uppercase tracking-brand-xs px-2.5 py-1 bg-teal/10 text-teal">
+            Free Practice
+          </span>
+        )}
+
         {/* Title + company */}
         <h3 className="text-base font-bold text-navy leading-[1.35] mb-1">{sim.title}</h3>
         <p className="text-xs text-[#888] mb-4">
@@ -78,6 +92,7 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
           onActivated={handleActivated}
           simulationId={sim.simulation_uuid}
           simulationTitle={sim.title}
+          returnTo={`/simulations/${sim.discipline}/${sim.slug}`}
         />
       )}
     </>

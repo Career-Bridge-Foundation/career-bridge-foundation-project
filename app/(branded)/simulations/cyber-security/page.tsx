@@ -58,29 +58,15 @@ export default function CyberSecurityPage() {
         console.error("Error message:", error.message);
       }
 
-      const list: SimulationListItem[] = data ?? [];
-
-      // Enrich with UUID + simulation_type from simulations table (Spec 15)
-      if (list.length > 0) {
-        const slugs = list.map((s) => s.slug);
-        const { data: simRows } = await supabase
-          .from('simulations')
-          .select('id, slug, simulation_type')
-          .in('slug', slugs);
-
-        if (simRows) {
-          const bySlug = Object.fromEntries(
-            simRows.map((r) => [r.slug as string, r as { id: string; simulation_type?: string }])
-          );
-          list.forEach((s) => {
-            const row = bySlug[s.slug];
-            if (row) {
-              s.simulation_uuid = row.id;
-              s.simulation_type = row.simulation_type ?? 'assessed';
-            }
-          });
-        }
-      }
+      // simulations_catalog is a straight SELECT off simulations (same id,
+      // same slug), so no second lookup is needed — reading simulation_type
+      // and the UUID directly off this row avoids a fragile second
+      // slug-matching query that silently no-ops on any error.
+      const list: SimulationListItem[] = (data ?? []).map((s) => ({
+        ...s,
+        simulation_uuid: s.id,
+        simulation_type: s.simulation_type ?? 'assessed',
+      }));
 
       setSimsList(list);
       setIsLoading(false);

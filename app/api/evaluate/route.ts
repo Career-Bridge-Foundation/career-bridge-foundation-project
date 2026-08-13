@@ -5,6 +5,7 @@ import { createClient as createSupabaseServerClient } from "@/lib/supabase/serve
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensurePortfolioProfile } from "@/lib/portfolio/ensureProfile";
 import { getActiveRubric } from "@/lib/portfolio/getActiveRubric";
+import { getSimulationBySlug } from "@/lib/practice/getPracticeSimulation";
 import type { VerdictBand } from "@/types/database";
 
 // Vercel/Next.js function timeout — Claude evaluation calls can take 30–90s
@@ -388,6 +389,17 @@ export async function POST(request: NextRequest) {
   }
   if (!session_id) {
     console.warn("[evaluate] session_id missing — evaluation will run but result will not be persisted");
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // ─── Spec 14 decision 7: explicit rejection at the top of the handler — ───
+  // ─── Practice Trials are never evaluated by this endpoint. ────────────────
+  const evaluatedSim = await getSimulationBySlug(simulation_slug);
+  if (evaluatedSim?.simulation_type === "practice") {
+    return new Response(
+      JSON.stringify({ error: "practice_simulation" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
   }
   // ──────────────────────────────────────────────────────────────────────────
 

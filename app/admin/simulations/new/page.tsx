@@ -111,6 +111,7 @@ export default function NewSimulationPage() {
       discipline: '',
       video_url: '',
       status: 'draft' as const,
+      simulation_type: 'assessed' as const,
       slug: '',
     },
     mode: 'onBlur',
@@ -213,6 +214,34 @@ export default function NewSimulationPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Simulation type — Spec 14: practice sims are free, unlimited,
+                  and never assessed; assessed sims are credit-gated. */}
+              <div className="flex flex-col gap-2">
+                <label className="text-slate-900 text-sm font-medium">Simulation type</label>
+                <div className="flex gap-2">
+                  {(['assessed', 'practice'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setValue('simulation_type', t, { shouldDirty: true, shouldValidate: true })}
+                      className={cn(
+                        'flex-1 py-1.5 rounded-md text-sm font-medium border transition-colors capitalize',
+                        watchedAll.simulation_type === t
+                          ? t === 'practice'
+                            ? 'bg-teal/10 text-teal border-teal'
+                            : 'bg-slate-100 text-slate-700 border-slate-400'
+                          : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400">
+                  Practice Trials are free, unlimited-replay, and never produce a score or credential.
+                </p>
               </div>
 
               {/* Title */}
