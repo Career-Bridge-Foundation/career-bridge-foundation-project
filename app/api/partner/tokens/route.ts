@@ -1,21 +1,17 @@
 import { NextResponse, after } from 'next/server'
 import { z } from 'zod'
 import { requirePartner } from '@/lib/auth/permissions'
-import { disciplines } from '@/lib/disciplines-data'
+import { availableDisciplineNames } from '@/lib/disciplines-data'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
 import { sendInvitationEmail } from '@/lib/email/invitations'
 
 export const runtime = 'nodejs'
 
-const AVAILABLE_DISCIPLINES = disciplines
-  .filter((d) => d.status === 'available')
-  .map((d) => d.name)
-
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
   disciplines: z
-    .array(z.enum(AVAILABLE_DISCIPLINES as [string, ...string[]]))
+    .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
 })
