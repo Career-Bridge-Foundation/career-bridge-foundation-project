@@ -16,12 +16,14 @@ const CREDIT_UNLOCKS = [
 
 type Balance = { total: number; fungible: number; cohortScoped: Record<string, number> }
 
+type PackOption = { pack: 'builder' | 'professional'; label: string; credits: number; amount: number | null; currency: string }
+
 // Modal state machine
 type Mode =
   | 'loading'
   | 'balance_first'   // has credits, first activation — show full T&C acceptance
   | 'balance_repeat'  // has credits, terms already accepted — brief confirmation only
-  | 'no_balance'      // no credits — show sponsor code entry
+  | 'no_balance'      // no credits — show sponsor code entry + buy-credits option
   | 'redeeming'       // submitting a sponsor code
   | 'activating'      // calling activate endpoint
 
@@ -39,6 +41,11 @@ const ACTIVATE_ERROR_MESSAGES: Record<string, string> = {
   simulation_not_found:  'Simulation not found.',
 }
 
+function formatPackPrice(amount: number | null, currency: string): string {
+  if (amount == null) return ''
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency.toUpperCase() }).format(amount / 100)
+}
+
 export interface AssessmentPackModalProps {
   open: boolean
   /** Called when the candidate chooses to go back without activating. */
@@ -48,6 +55,8 @@ export interface AssessmentPackModalProps {
   simulationId: string
   simulationTitle: string
   cohortId?: string
+  /** Relative path to return to once a credit purchase completes and activation succeeds. */
+  returnTo?: string
 }
 
 export function AssessmentPackModal({
@@ -57,6 +66,7 @@ export function AssessmentPackModal({
   simulationId,
   simulationTitle,
   cohortId,
+  returnTo,
 }: AssessmentPackModalProps) {
   const [mode, setMode]               = useState<Mode>('loading')
   const [balance, setBalance]         = useState<Balance | null>(null)
@@ -66,6 +76,31 @@ export function AssessmentPackModal({
   const [codeError, setCodeError]     = useState<string | null>(null)
   const [activateError, setActivateError] = useState<string | null>(null)
 
+  // ── Buy-credits sub-state (no_balance mode only) ──
+  const [packs, setPacks]                       = useState<PackOption[]>([])
+  const [packsError, setPacksError]             = useState<string | null>(null)
+  const [selectedPack, setSelectedPack]         = useState<PackOption['pack'] | null>(null)
+  const [purchaseTermsChecked, setPurchaseTerms]     = useState(false)
+  const [purchaseConsentChecked, setPurchaseConsent] = useState(false)
+  const [purchasing, setPurchasing]             = useState(false)
+  const [purchaseError, setPurchaseError]       = useState<string | null>(null)
+
+  const fetchPacks = useCallback(async () => {
+    setPacksError(null)
+    try {
+      const res  = await fetch('/api/candidate/packs')
+      const data = await res.json()
+      if (!res.ok) {
+        setPacksError(data.error ?? 'Unable to load credit packs right now.')
+        return
+      }
+      setPacks(data.packs)
+      setSelectedPack((current) => current ?? data.packs[0]?.pack ?? null)
+    } catch {
+      setPacksError('Unable to load credit packs right now.')
+    }
+  }, [])
+
   const fetchEntitlement = useCallback(async () => {
     setMode('loading')
     try {
@@ -74,13 +109,15 @@ export function AssessmentPackModal({
       setBalance(data.balance)
       if (!res.ok || data.balance.total === 0) {
         setMode('no_balance')
+        fetchPacks()
       } else {
         setMode(data.termsAccepted ? 'balance_repeat' : 'balance_first')
       }
     } catch {
       setMode('no_balance') // fail-open: show code entry rather than a blank modal
+      fetchPacks()
     }
-  }, [])
+  }, [fetchPacks])
 
   useEffect(() => {
     if (open) {
@@ -89,6 +126,13 @@ export function AssessmentPackModal({
       setCode('')
       setCodeError(null)
       setActivateError(null)
+      setPacks([])
+      setPacksError(null)
+      setSelectedPack(null)
+      setPurchaseTerms(false)
+      setPurchaseConsent(false)
+      setPurchasing(false)
+      setPurchaseError(null)
       fetchEntitlement()
     }
   }, [open, fetchEntitlement])
@@ -144,10 +188,41 @@ export function AssessmentPackModal({
     }
   }
 
+  async function handlePurchase() {
+    if (!selectedPack || purchasing) return
+    setPurchasing(true)
+    setPurchaseError(null)
+    try {
+      const res  = await fetch('/api/candidate/checkout-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pack: selectedPack,
+          terms_accepted: purchaseTermsChecked,
+          immediate_performance_consent: purchaseConsentChecked,
+          simulation_id: simulationId,
+          cohort_id: cohortId ?? null,
+          return_to: returnTo ?? null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.url) {
+        setPurchaseError(data.error ?? 'Something went wrong. Please try again.')
+        setPurchasing(false)
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      setPurchaseError('Something went wrong. Please try again.')
+      setPurchasing(false)
+    }
+  }
+
   const isActivating    = mode === 'activating'
   const showCodeEntry   = mode === 'no_balance' || mode === 'redeeming'
   const showActions     = mode === 'balance_first' || mode === 'balance_repeat' || mode === 'activating'
   const canConfirm      = mode === 'balance_first' ? termsChecked && consentChecked : true
+  const canPurchase     = !!selectedPack && purchaseTermsChecked && purchaseConsentChecked && !purchasing
 
   return (
     <Dialog open={open} onClose={isActivating ? () => {} : onClose}>
@@ -229,6 +304,99 @@ export function AssessmentPackModal({
                 <p className="text-xs text-slate-400">
                   Don't have a code? Contact your programme partner — not Evidentize.
                 </p>
+              </div>
+            )}
+
+            {/* ── Buy a credit pack (no-balance variant) ── */}
+            {mode === 'no_balance' && (
+              <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+                <p className="text-sm font-medium text-slate-700">Or buy an Assessment Pack:</p>
+
+                {packsError && (
+                  <p className="text-xs text-red-600">{packsError}</p>
+                )}
+
+                {!packsError && packs.length === 0 && (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-9 rounded bg-slate-100" />
+                    <div className="h-9 rounded bg-slate-100" />
+                  </div>
+                )}
+
+                {packs.length > 0 && (
+                  <div className="space-y-2">
+                    {packs.map((p) => (
+                      <label
+                        key={p.pack}
+                        className="flex cursor-pointer items-center justify-between rounded-md border border-slate-200 px-3 py-2 has-[:checked]:border-navy has-[:checked]:bg-navy/5"
+                      >
+                        <span className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="pack"
+                            checked={selectedPack === p.pack}
+                            onChange={() => setSelectedPack(p.pack)}
+                            className="h-4 w-4 accent-navy"
+                          />
+                          <span className="text-sm text-slate-700">
+                            <span className="font-medium">{p.label}</span> — {p.credits} credit{p.credits === 1 ? '' : 's'}
+                          </span>
+                        </span>
+                        <span className="text-sm font-semibold text-navy">
+                          {formatPackPrice(p.amount, p.currency)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {packs.length > 0 && (
+                  <div className="space-y-3 border-t border-slate-100 pt-3">
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={purchaseTermsChecked}
+                        onChange={(e) => setPurchaseTerms(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-navy"
+                      />
+                      <span className="text-sm text-slate-700">
+                        I have read and accept the{' '}
+                        <a
+                          href="/legal/terms/v1"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-navy underline underline-offset-2"
+                        >
+                          Terms &amp; Conditions
+                        </a>
+                      </span>
+                    </label>
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={purchaseConsentChecked}
+                        onChange={(e) => setPurchaseConsent(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-navy"
+                      />
+                      <span className="text-sm text-slate-700">
+                        I consent to my performance being evaluated by AI immediately after purchase.
+                      </span>
+                    </label>
+
+                    {purchaseError && (
+                      <p className="text-xs text-red-600">{purchaseError}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handlePurchase}
+                      disabled={!canPurchase}
+                      className="w-full rounded-md bg-navy px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                    >
+                      {purchasing ? 'Redirecting to payment…' : 'Continue to payment'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -55,7 +55,15 @@ export function FilterBar({
         <FilterSelect
           label="Scenario Type"
           value={typeFilter}
-          options={["All", "Strategy", "Discovery", "Delivery", "Go-to-Market", "Analysis", "Stakeholder"]}
+          options={[
+            "All",
+            "Strategy",
+            "Discovery",
+            "Delivery",
+            "Go-to-Market",
+            "Analysis",
+            "Stakeholder",
+          ]}
           onChange={onTypeChange}
         />
         <FilterSelect
