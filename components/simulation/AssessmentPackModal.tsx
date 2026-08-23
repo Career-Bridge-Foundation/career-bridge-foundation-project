@@ -277,7 +277,7 @@ export function AssessmentPackModal({
             {showCodeEntry && (
               <div className="space-y-3 rounded-lg border border-slate-200 p-4">
                 <p className="text-sm font-medium text-slate-700">
-                  Enter a sponsor code from your programme partner:
+                  Enter an access code from your programme partner:
                 </p>
                 <div className="flex gap-2">
                   <input

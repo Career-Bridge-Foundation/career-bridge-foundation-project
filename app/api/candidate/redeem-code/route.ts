@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, supabaseServer } from '@/lib/supabase/server'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { normalizeCodeInput } from '@/lib/entitlement/sponsorCode'
 
 export const runtime = 'nodejs'
 
@@ -8,8 +9,9 @@ export const runtime = 'nodejs'
  * POST /api/candidate/redeem-code
  *
  * Redeems a sponsor code for the authenticated candidate, granting credits
- * into their ledger. The code is normalised to lowercase before lookup (codes
- * are stored lowercase; the CHECK constraint enforces it).
+ * into their ledger. The code is normalised (whitespace + hyphens stripped,
+ * lowercased) before lookup — storage has no hyphen, see the "code format
+ * change" note in schema-reference/spec-18-sponsor-codes.sql.
  *
  * Body: { code: string }
  *
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'code required' }, { status: 400 })
     }
 
-    const code = rawCode.trim().toLowerCase()
+    const code = normalizeCodeInput(rawCode)
 
     // 3. RESOLVE PORTFOLIO
     const { data: portfolio } = await supabaseServer
@@ -132,9 +134,16 @@ export async function POST(request: Request) {
     }
 
     // 7. ATOMICALLY INCREMENT redemptions_used (WHERE guard prevents over-issuance)
+    // Flips status to 'exhausted' in the same update when this redemption is
+    // the last one — status is stored/maintained by this transaction, not
+    // derived at read time (see schema-reference/spec-18-sponsor-codes.sql).
+    const nextRedemptionsUsed = sponsorCode.redemptions_used + 1
     const { data: incremented } = await supabaseServer
       .from('sponsor_codes')
-      .update({ redemptions_used: sponsorCode.redemptions_used + 1 })
+      .update({
+        redemptions_used: nextRedemptionsUsed,
+        ...(nextRedemptionsUsed >= sponsorCode.max_redemptions ? { status: 'exhausted' } : {}),
+      })
       .eq('id', sponsorCode.id)
       .lt('redemptions_used', sponsorCode.max_redemptions)  // guard
       .is('revoked_at', null)
