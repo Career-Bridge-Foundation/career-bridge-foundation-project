@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient, supabaseServer } from '@/lib/supabase/server'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,10 @@ export const runtime = 'nodejs'
  * Body: { code: string }
  *
  * Distinct error messages (per Spec 15 — partners must be able to diagnose):
- *   invalid_code        — not found or belongs to another partner (same message to prevent enumeration)
+ *   invalid_code        — not found (same message as wrong-partner to prevent enumeration
+ *                          of which partners exist, but wrong_partner below is distinct
+ *                          per Spec 18 acceptance criterion 3)
+ *   wrong_partner        — code belongs to a different partner than this candidate's
  *   code_expired        — past expires_at
  *   code_revoked        — revoked_at is set
  *   code_exhausted      — redemptions_used >= max_redemptions (distinct from invalid)
@@ -36,6 +40,23 @@ export async function POST(request: Request) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // 1.5 RATE LIMIT — per candidate and per IP (Spec 18 security-critical:
+    // brute-force redemption attempts must be rate limited and logged).
+    const forwardedFor = request.headers.get('x-forwarded-for')
+    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : 'unknown'
+
+    const userLimit = checkRateLimit({ key: `redeem-code:user:${user.id}`, limit: 10, windowMs: 60 * 60_000 })
+    const ipLimit = checkRateLimit({ key: `redeem-code:ip:${ip}`, limit: 10, windowMs: 60 * 60_000 })
+
+    if (!userLimit.allowed || !ipLimit.allowed) {
+      const retryAfterSeconds = Math.max(userLimit.retryAfterSeconds, ipLimit.retryAfterSeconds)
+      console.warn('[candidate/redeem-code] rate limit exceeded', { userId: user.id, ip })
+      return NextResponse.json(
+        { error: 'too many attempts — try again later', code: 'rate_limited' },
+        { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } },
+      )
+    }
 
     // 2. PARSE BODY
     let body: unknown
@@ -72,6 +93,18 @@ export async function POST(request: Request) {
 
     if (!sponsorCode) {
       return NextResponse.json({ error: 'invalid code', code: 'invalid_code' }, { status: 404 })
+    }
+
+    // 4.5 PARTNER-MATCH CHECK — a code may only be redeemed by a candidate of
+    // the minting partner (Spec 18 decision 4 / acceptance criterion 3). The
+    // platform is B2B-only; every candidate arrives through a partner invite,
+    // so this closes the obvious cross-partner abuse path. Message is
+    // distinct from invalid_code so a partner-admin can diagnose it.
+    if (sponsorCode.partner_id !== portfolio.provisioned_by_partner) {
+      return NextResponse.json(
+        { error: 'this code belongs to a different partner', code: 'wrong_partner' },
+        { status: 403 },
+      )
     }
 
     // 5. VALIDATE STATE (ordered: revoked → expired → exhausted)
