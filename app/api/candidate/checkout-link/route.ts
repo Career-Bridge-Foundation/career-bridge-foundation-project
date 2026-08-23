@@ -105,23 +105,32 @@ export async function POST(request: NextRequest) {
     // distance-selling position requires legal commitment before financial.
     // Skip if this candidate already has a row for the current version
     // (matches the dedup logic in the Spec 15 activate_simulation RPC).
+    // Written to candidate_terms_acceptances (Spec 19 shape — see
+    // schema-reference/spec-19-terms-acceptance-shape.sql), not the older
+    // terms_acceptances table.
     const { data: existingTerms } = await supabaseServer
-      .from('terms_acceptances')
+      .from('candidate_terms_acceptances')
       .select('id')
       .eq('candidate_id', candidateId)
-      .eq('terms_version', CURRENT_TERMS_VERSION)
+      .eq('document_type', 'platform_terms')
+      .is('partner_id', null)
+      .eq('version', CURRENT_TERMS_VERSION)
       .maybeSingle()
 
     if (!existingTerms) {
       const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-      const { error: termsError } = await supabaseServer.from('terms_acceptances').insert({
+      const userAgent = request.headers.get('user-agent') ?? null
+      const { error: termsError } = await supabaseServer.from('candidate_terms_acceptances').insert({
         candidate_id: candidateId,
-        terms_version: CURRENT_TERMS_VERSION,
+        document_type: 'platform_terms',
+        partner_id: null,
+        version: CURRENT_TERMS_VERSION,
         ip_address: ipAddress,
+        user_agent: userAgent,
         immediate_performance_consent: true,
       })
       if (termsError) {
-        console.error('[candidate/checkout-link] terms_acceptances insert failed', termsError)
+        console.error('[candidate/checkout-link] candidate_terms_acceptances insert failed', termsError)
         return NextResponse.json({ error: 'internal error' }, { status: 500 })
       }
     }

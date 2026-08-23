@@ -33,10 +33,12 @@ export async function GET() {
     const [balance, termsRow] = await Promise.all([
       getCandidateBalance(portfolio.id),
       supabaseServer
-        .from('terms_acceptances')
+        .from('candidate_terms_acceptances')
         .select('id')
         .eq('candidate_id', portfolio.id)
-        .eq('terms_version', CURRENT_TERMS_VERSION)
+        .eq('document_type', 'platform_terms')
+        .is('partner_id', null)
+        .eq('version', CURRENT_TERMS_VERSION)
         .maybeSingle(),
     ])
 
