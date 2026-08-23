@@ -153,8 +153,42 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── Admin / staff routes ─────────────────────────────────────────────────
-  // Route guards disabled for admin/super_admin (full site access, by design).
-  // content_developer is now restricted above, not part of this exemption.
+  // Defense in depth: every /admin and /api/admin path requires a staff role
+  // (admin/super_admin/content_developer), enforced here at the edge so a
+  // page or route handler that forgets its own requireXxx() check is still
+  // blocked, rather than relying solely on per-page/per-route discipline.
+  // content_developer's further restriction to /admin/simulations only is
+  // already handled by DASHBOARD_ONLY_PATHS above — admin/super_admin get
+  // full access within this block (full site access, by design).
+  const STAFF_ROLES = ['admin', 'super_admin', 'content_developer']
+  if (isAdminPath) {
+    if (!user) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      url.searchParams.set('next', pathname)
+      return NextResponse.redirect(url)
+    }
+
+    const userRole = await getRole()
+
+    if (!STAFF_ROLES.includes(userRole)) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+  }
 
   // ── Reviewer routes ──────────────────────────────────────────────────────
   if (isReviewerPath) {

@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
 import { ReorderSchema } from '@/lib/validations/simulation'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export async function POST(request: NextRequest) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   let body: unknown
   try {
     body = await request.json()

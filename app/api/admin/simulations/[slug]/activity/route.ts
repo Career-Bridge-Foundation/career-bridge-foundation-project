@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
 
   const { data: sim } = await supabaseServer

@@ -172,7 +172,10 @@ enable_signup = true
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
-enable_manual_linking = false
+# Enabled so the "Connect Google" flow in Account Settings
+# (app/(branded)/account/settings/AccountSettingsContent.tsx) actually works.
+# Mirror this in the live project: Authentication -> Settings -> Allow manual linking.
+enable_manual_linking = true
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
@@ -220,7 +223,12 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Required for Supabase to safely auto-link a later Google/LinkedIn sign-in
+# to an existing password account with the same email — automatic linking
+# only trusts an email that's already confirmed, otherwise an unconfirmed
+# signup could be used to pre-claim someone else's email address.
+# Mirror this in the live project: Authentication -> Providers -> Email -> Confirm email.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
@@ -284,6 +292,20 @@ max_frequency = "5s"
 # [auth.hook.custom_access_token]
 # enabled = true
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
+
+# Replaces Supabase's own (unbranded, project-wide) auth emails with a custom
+# send via app/api/auth/send-email-hook/route.ts, so signup confirmation,
+# password recovery, magic link, and email-change emails can be rendered with
+# the recipient's partner branding (see lib/email/templates/auth-hook.ts and
+# docs/WHITE_LABELING.md). Mirrors the Dashboard (Authentication -> Hooks ->
+# Send Email hook), which is the actual source of truth for the hosted
+# project — do NOT enable there until the endpoint has been deployed and
+# smoke-tested; a hook failure means the auth action completes but no email
+# is sent, with no fallback to Supabase's default template.
+# [auth.hook.send_email]
+# enabled = true
+# uri = "https://<your-deployed-domain>/api/auth/send-email-hook"
+# secrets = "env(SUPABASE_AUTH_HOOK_SECRET)"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
 [auth.sms.twilio]

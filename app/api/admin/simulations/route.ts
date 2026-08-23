@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
 import { SimulationMetadataSchema } from '@/lib/schemas/simulation'
 import { logActivity } from '@/lib/supabase/log-activity'
+import { requireStaff } from '@/lib/auth/permissions'
 
 async function getCallerEmail(request: NextRequest): Promise<string> {
   try {
@@ -15,6 +16,12 @@ async function getCallerEmail(request: NextRequest): Promise<string> {
 }
 
 export async function GET() {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { data, error } = await supabaseServer
     .from('simulations')
     .select('slug, title, company, industry, discipline, difficulty, time, status, published_at, display_order, updated_at')
@@ -25,6 +32,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   let body: unknown
   try {
     body = await request.json()
