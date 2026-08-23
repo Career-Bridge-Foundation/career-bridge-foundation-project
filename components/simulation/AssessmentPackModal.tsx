@@ -33,6 +33,8 @@ const CODE_ERROR_MESSAGES: Record<string, string> = {
   code_expired:     'This code has expired.',
   code_revoked:     'This code is no longer valid.',
   invalid_code:     'Invalid code — check the spelling and try again.',
+  wrong_partner:    'This code isn’t valid for your account — check with your programme partner.',
+  rate_limited:     'Too many attempts — please wait a while and try again.',
 }
 
 const ACTIVATE_ERROR_MESSAGES: Record<string, string> = {
