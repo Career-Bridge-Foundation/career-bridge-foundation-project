@@ -23,6 +23,8 @@ interface UseSimulationContentReturn {
   discipline: string | null;
   status: string | null;
   videoUrl: string | null;
+  videoProvider: string | null;
+  videoId: string | null;
 }
 
 export function useSimulationContent(slug: string): UseSimulationContentReturn {
@@ -37,6 +39,8 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
   const [discipline, setDiscipline] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoProvider, setVideoProvider] = useState<string | null>(null);
+  const [videoId, setVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,7 +53,7 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
       const { data: simRow, error: simError } = await supabase
         .from("simulations")
         .select(
-          "id, slug, title, company, industry, sim_role, brief_short, brief_full, video_transcript, video_url, discipline, difficulty, time, status"
+          "id, slug, title, company, industry, sim_role, brief_short, brief_full, video_transcript, video_url, video_provider, video_id, discipline, difficulty, time, status"
         )
         .eq("slug", slug)
         .eq("status", "published")
@@ -102,6 +106,8 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
       setDiscipline(simRow.discipline ?? null);
       setStatus(simRow.status ?? null);
       setVideoUrl(simRow.video_url ?? null);
+      setVideoProvider(simRow.video_provider ?? null);
+      setVideoId(simRow.video_id ?? null);
       setLoading(false);
     }
 
@@ -128,5 +134,7 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
     discipline,
     status,
     videoUrl,
+    videoProvider,
+    videoId,
   };
 }
