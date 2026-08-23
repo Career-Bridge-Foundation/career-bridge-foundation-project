@@ -4,7 +4,9 @@
 -- NOT EXECUTED BY ANY MIGRATION TOOL. Applied manually via the
 -- Supabase Dashboard SQL Editor. Run as a single statement.
 --
--- Apply AFTER spec-15-assessment-credits.sql (all tables must exist).
+-- Apply AFTER spec-15-assessment-credits.sql (all tables must exist) AND
+-- AFTER fix-credit-origin-attribution.sql (credit_ledger.debited_reason
+-- must exist — this RPC writes it on every activation debit).
 --
 -- Security model:
 --   SECURITY DEFINER — the function runs as its owner (postgres),
@@ -62,6 +64,11 @@ DECLARE
   v_cohort_balance  INTEGER := 0;
   v_fungible_balance INTEGER := 0;
   v_spend_cohort_id UUID;       -- NULL = spend from fungible, non-NULL = spend from cohort
+  v_debited_reason  TEXT;       -- 'code_redemption' | 'purchase' — which grant type this debit draws down
+  v_code_granted    INTEGER := 0;
+  v_code_debited    INTEGER := 0;
+  v_purchase_granted INTEGER := 0;
+  v_purchase_debited INTEGER := 0;
   v_ledger_id       UUID;
   v_activation_id   UUID;
 BEGIN
@@ -138,15 +145,76 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'code', 'insufficient_balance');
   END IF;
 
-  -- ── 6. Debit credit_ledger ──
+  -- ── 6. Resolve debit origin (fix: credit origin must carry through to
+  -- consumption — Spec 18 acceptance criterion 5 / August 2026 handover
+  -- "verify before building" #1). GET /api/partner/allocation sums debits
+  -- by partner_id; without this, a self-purchased credit's debit is
+  -- indistinguishable from a sponsor-code-funded one and over-bills the
+  -- sponsoring partner.
+  --
+  -- A cohort-scoped spend (v_spend_cohort_id IS NOT NULL) is always
+  -- code_redemption — only POST /api/candidate/redeem-code ever grants a
+  -- cohort-scoped credit; POST /api/webhooks/stripe/:partnerId (Spec 16
+  -- purchases) always grants cohort_id = NULL. No ambiguity to resolve.
+  --
+  -- A fungible spend (v_spend_cohort_id IS NULL) may be backed by either
+  -- grant type. Preference order: code_redemption first, purchase second
+  -- — a candidate's sponsored allocation is drawn down before their own
+  -- money, so credits they paid for personally are the last to be spent.
+  -- Remaining balance per origin = granted so far minus already-debited-
+  -- against-that-origin, both scoped the same way v_spend_cohort_id was.
+  IF v_spend_cohort_id IS NOT NULL THEN
+    v_debited_reason := 'code_redemption';
+  ELSE
+    SELECT COALESCE(SUM(delta), 0) INTO v_code_granted
+    FROM   credit_ledger
+    WHERE  candidate_id = p_candidate_id
+      AND  reason       = 'code_redemption'
+      AND  cohort_id IS NULL;
+
+    SELECT COALESCE(SUM(-delta), 0) INTO v_code_debited
+    FROM   credit_ledger
+    WHERE  candidate_id   = p_candidate_id
+      AND  reason         = 'activation'
+      AND  debited_reason = 'code_redemption'
+      AND  cohort_id IS NULL;
+
+    IF (v_code_granted - v_code_debited) > 0 THEN
+      v_debited_reason := 'code_redemption';
+    ELSE
+      SELECT COALESCE(SUM(delta), 0) INTO v_purchase_granted
+      FROM   credit_ledger
+      WHERE  candidate_id = p_candidate_id
+        AND  reason       = 'purchase'
+        AND  cohort_id IS NULL;
+
+      SELECT COALESCE(SUM(-delta), 0) INTO v_purchase_debited
+      FROM   credit_ledger
+      WHERE  candidate_id   = p_candidate_id
+        AND  reason         = 'activation'
+        AND  debited_reason = 'purchase'
+        AND  cohort_id IS NULL;
+
+      IF (v_purchase_granted - v_purchase_debited) > 0 THEN
+        v_debited_reason := 'purchase';
+      ELSE
+        -- Should not happen: v_fungible_balance > 0 passed the balance
+        -- check above, so some grant type must have headroom. Fail safe
+        -- to code_redemption rather than leave the debit unattributed.
+        v_debited_reason := 'code_redemption';
+      END IF;
+    END IF;
+  END IF;
+
+  -- ── 7. Debit credit_ledger ──
   INSERT INTO credit_ledger (
-    candidate_id, partner_id, cohort_id, delta, reason
+    candidate_id, partner_id, cohort_id, delta, reason, debited_reason
   ) VALUES (
-    p_candidate_id, p_partner_id, v_spend_cohort_id, -1, 'activation'
+    p_candidate_id, p_partner_id, v_spend_cohort_id, -1, 'activation', v_debited_reason
   )
   RETURNING id INTO v_ledger_id;
 
-  -- ── 7. Create simulation_activations row ──
+  -- ── 8. Create simulation_activations row ──
   -- UNIQUE(candidate_id, simulation_id, attempt_number) catches any concurrent
   -- double-activation: the second INSERT raises unique_violation, caught below.
   INSERT INTO simulation_activations (
@@ -156,7 +224,7 @@ BEGIN
   )
   RETURNING id INTO v_activation_id;
 
-  -- ── 8. Backfill source_activation_id on the ledger row ──
+  -- ── 9. Backfill source_activation_id on the ledger row ──
   -- Closes the circular reference without a FK constraint. Both rows now exist.
   UPDATE credit_ledger
   SET    source_activation_id = v_activation_id

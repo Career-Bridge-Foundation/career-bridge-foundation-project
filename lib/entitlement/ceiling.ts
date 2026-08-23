@@ -49,12 +49,20 @@ export async function getAllocationState(partnerId: string): Promise<AllocationS
   const bufferPct = alloc.buffer_pct as number
   const hardCeiling = committed + Math.floor((committed * bufferPct) / 100)
 
-  // Consumed = credits spent on activations originating from this partner
+  // Consumed = credits spent on activations that drew down a sponsor-code
+  // grant from this partner. Filtered on debited_reason = 'code_redemption'
+  // (set by activate_simulation() — schema-reference/spec-15-activate-rpc.sql)
+  // so a candidate's self-purchase (Spec 16) never counts against the
+  // partner's sponsored ceiling — see schema-reference/fix-credit-origin-
+  // attribution.sql and Spec 18 acceptance criterion 5. Historic debits
+  // written before that migration have debited_reason = NULL and are
+  // excluded here, undercounting rather than overcounting old data.
   const { data: consumedRows, error: consumedErr } = await supabaseServer
     .from('credit_ledger')
     .select('delta')
     .eq('partner_id', partnerId)
     .eq('reason', 'activation')
+    .eq('debited_reason', 'code_redemption')
 
   if (consumedErr) throw new CeilingError('db_error', consumedErr.message)
 
