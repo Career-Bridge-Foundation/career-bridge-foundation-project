@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTTS } from "@/hooks/useTTS";
+import { SimulationVideo } from "@/components/simulation/SimulationVideo";
 import type { Prompt } from "@/types";
 
 interface TaskPromptProps {
@@ -18,6 +19,8 @@ interface TaskPromptProps {
   briefFull: string;
   transcript: string;
   videoUrl?: string | null;
+  videoProvider?: string | null;
+  videoId?: string | null;
 }
 
 export function TaskPrompt({
@@ -34,6 +37,8 @@ export function TaskPrompt({
   briefFull,
   transcript,
   videoUrl,
+  videoProvider,
+  videoId,
 }: TaskPromptProps) {
   const { state: ttsState, isSupported, stop, toggle } = useTTS();
 
@@ -67,26 +72,14 @@ export function TaskPrompt({
 
       {/* Video section */}
       <div className="mb-6 border border-border-light">
-        {videoUrl ? (
-          <video
-            controls
-            muted={muted}
-            className="w-full bg-[#001a2e] aspect-video"
-            src={videoUrl}
-          />
-        ) : (
-          /* Placeholder shown when no video_url is set */
-          <div className="relative w-full flex items-center justify-center bg-[#001a2e] aspect-video">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 bg-white/[0.08] border-2 border-white/20">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              </div>
-              <p className="text-sm text-white/60">Video briefing · {sim?.company}</p>
-            </div>
-          </div>
-        )}
+        <SimulationVideo
+          videoProvider={videoProvider ?? null}
+          videoId={videoId ?? null}
+          videoUrl={videoUrl ?? null}
+          muted={muted}
+          company={sim?.company}
+          title={sim?.title}
+        />
 
         {/* Transcript toggle */}
         <div className="bg-white p-4">
