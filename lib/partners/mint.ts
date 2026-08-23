@@ -23,6 +23,8 @@ export type MintParams = {
   /** Discipline NAMES (e.g. "Cyber Security") — mapped to slugs internally. */
   disciplineNames: string[]
   expiresInDays: number
+  /** ISO 3166-1 alpha-2, uppercase. Required — see the country-and-pricing amendment. */
+  country: string
   appUrl: string
 }
 
@@ -38,7 +40,7 @@ export type MintResult = {
  * responsibility — this function trusts the partnerId it is given.
  */
 export async function mintRedemptionToken(params: MintParams): Promise<MintResult> {
-  const { partnerId, candidateEmail, candidateName, disciplineNames, expiresInDays, appUrl } = params
+  const { partnerId, candidateEmail, candidateName, disciplineNames, expiresInDays, country, appUrl } = params
 
   // Map discipline names to canonical slugs (matches simulations table +
   // candidate_entitlements).
@@ -70,6 +72,7 @@ export async function mintRedemptionToken(params: MintParams): Promise<MintResul
       candidate_name: candidateName?.trim() ?? null,
       disciplines: disciplineSlugs,
       expires_at: expires_at.toISOString(),
+      country,
     })
 
   if (insertError) {

@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 
     const { data: portfolio } = await supabaseServer
       .from('portfolio_profiles')
-      .select('id')
+      .select('id, country')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -122,6 +122,21 @@ export async function POST(request: Request) {
         { error: 'could not resolve portfolio' },
         { status: 500 }
       )
+    }
+
+    // Carry the country captured at invite onto the portfolio. Only if not
+    // already set — a candidate redeeming a second token must not have their
+    // country silently overwritten (country-and-pricing amendment).
+    if (!portfolio?.country && row.country) {
+      const { error: countryError } = await supabaseServer
+        .from('portfolio_profiles')
+        .update({ country: row.country })
+        .eq('id', portfolioId)
+        .is('country', null)
+
+      if (countryError) {
+        console.error('[redeem] failed to set country from token', countryError)
+      }
     }
 
     // 8. PROVISION ENTITLEMENTS (idempotent via the unique constraint)

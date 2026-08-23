@@ -1,6 +1,9 @@
 'use client'
 import React, { useState } from 'react'
 import { grantableDisciplines } from '@/lib/disciplines-data'
+import { COUNTRIES } from '@/lib/countries'
+import { getPricingRegion, getPresentmentCurrency } from '@/lib/entitlement/pricingRegion'
+import { FOUNDING_COHORT_PER_CREDIT, PRICING_REGION_LABEL } from '@/lib/entitlement/foundingCohortPricing'
 
 const AVAILABLE = grantableDisciplines
 
@@ -13,10 +16,23 @@ export function MintForm() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [country, setCountry] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // Inline pricing consequence — Amendment §Console UI: a bare dropdown gives
+  // no signal that a pricing decision was just made on someone's behalf.
+  const pricingPreview = country
+    ? (() => {
+        const region = getPricingRegion(country)
+        const currency = getPresentmentCurrency(country)
+        const perCredit = FOUNDING_COHORT_PER_CREDIT[region]
+        const countryName = COUNTRIES.find((c) => c.code === country)?.name ?? country
+        return `${countryName} — ${PRICING_REGION_LABEL[region]} pricing, $${perCredit.toFixed(2)} per credit, shown in ${currency}.`
+      })()
+    : null
 
   function toggleDiscipline(name: string) {
     setSelected((prev) =>
@@ -34,6 +50,10 @@ export function MintForm() {
       setError('Select at least one discipline.')
       return
     }
+    if (!country) {
+      setError('Select the candidate\'s country — this sets their pricing and cannot default.')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/partner/tokens', {
@@ -43,6 +63,7 @@ export function MintForm() {
           candidate_email: email.trim(),
           candidate_name: name.trim() || undefined,
           disciplines: selected,
+          country,
         }),
       })
       const data = await res.json()
@@ -74,6 +95,7 @@ export function MintForm() {
     setEmail('')
     setName('')
     setSelected([])
+    setCountry('')
     setResult(null)
     setError(null)
     setCopied(false)
@@ -160,13 +182,35 @@ export function MintForm() {
         ))}
       </div>
 
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Candidate country
+      </label>
+      <select
+        value={country}
+        onChange={(e) => setCountry(e.target.value)}
+        required
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-1 bg-white"
+      >
+        <option value="">Select country…</option>
+        {COUNTRIES.map((c) => (
+          <option key={c.code} value={c.code}>{c.name}</option>
+        ))}
+      </select>
+      {pricingPreview ? (
+        <p className="text-xs text-[#006FAD] mb-4">{pricingPreview}</p>
+      ) : (
+        <p className="text-xs text-slate-400 mb-4">
+          Sets the candidate&apos;s pricing tier and currency. No default — required before this invite can be sent.
+        </p>
+      )}
+
       {error && (
         <p className="text-sm text-red-600 mb-4">{error}</p>
       )}
 
       <button
         onClick={handleSubmit}
-        disabled={submitting}
+        disabled={submitting || !country}
         className="rounded-md bg-[#003359] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#00253f] disabled:opacity-50"
       >
         {submitting ? 'Generating…' : 'Generate redemption link'}

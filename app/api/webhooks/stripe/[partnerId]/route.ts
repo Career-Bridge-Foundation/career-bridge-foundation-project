@@ -214,6 +214,20 @@ export async function POST(
       return NextResponse.json({ error: 'Database write failed' }, { status: 500 })
     }
 
+    // Lock the candidate's country on first purchase (country-and-pricing
+    // amendment) — closes the arbitrage of flipping country to a cheaper
+    // region, buying, then flipping back. Only ever sets it, never clears —
+    // safe to run on every purchase, not just the first.
+    const { error: lockError } = await supabaseServer
+      .from('portfolio_profiles')
+      .update({ country_locked_at: new Date().toISOString() })
+      .eq('id', candidateId)
+      .is('country_locked_at', null)
+
+    if (lockError) {
+      console.error(`[webhooks/stripe] country_locked_at update failed for candidate ${candidateId}`, lockError)
+    }
+
     // Structured event for the launch-required metrics (Spec 16 "Metrics
     // required from launch") — successful transactions, pack mix, fees/FX,
     // by country.
