@@ -68,9 +68,10 @@ export async function POST(request: Request) {
       )
     }
 
-    // 4. IP ADDRESS (for terms acceptance record)
+    // 4. IP ADDRESS + USER AGENT (for terms acceptance record)
     const forwarded = request.headers.get('x-forwarded-for')
     const ipAddress = forwarded ? forwarded.split(',')[0].trim() : null
+    const userAgent = request.headers.get('user-agent')
 
     // 5. CALL ATOMIC RPC
     const { data: result, error: rpcError } = await supabaseServer.rpc(
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
         p_cohort_id:         typeof cohort_id === 'string' ? cohort_id : null,
         p_ip_address:        ipAddress,
         p_immediate_consent: immediate_performance_consent === true,
+        p_user_agent:        userAgent,
       },
     )
 

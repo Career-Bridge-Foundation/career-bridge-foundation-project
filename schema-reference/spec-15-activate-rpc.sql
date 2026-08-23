@@ -9,9 +9,16 @@
 -- Security model:
 --   SECURITY DEFINER — the function runs as its owner (postgres),
 --   bypassing RLS to write to credit_ledger, simulation_activations,
---   and terms_acceptances. The caller (API route) is responsible for
---   verifying the authenticated user owns p_candidate_id before calling.
---   SET search_path = public prevents search-path injection.
+--   and candidate_terms_acceptances. The caller (API route) is
+--   responsible for verifying the authenticated user owns
+--   p_candidate_id before calling. SET search_path = public prevents
+--   search-path injection.
+--
+-- Terms acceptance table: writes to candidate_terms_acceptances
+-- (schema-reference/spec-19-terms-acceptance-shape.sql), not the
+-- older terms_acceptances table — see that file for why. document_type
+-- is always 'platform_terms' / partner_id always NULL here; this RPC
+-- only ever captures acceptance of Evidentize's platform terms.
 --
 -- Atomicity guarantee:
 --   All writes (terms_acceptances, credit_ledger, simulation_activations,
@@ -28,6 +35,11 @@
 -- the correct modal variant — do not map all failures to a generic error.
 -- ============================================================
 
+-- Adding p_user_agent changes the argument list, so CREATE OR REPLACE would
+-- create a second overload rather than replace the original 7-arg function.
+-- Drop the old signature first so only the 8-arg version exists.
+DROP FUNCTION IF EXISTS public.activate_simulation(UUID, UUID, UUID, TEXT, UUID, INET, BOOLEAN);
+
 CREATE OR REPLACE FUNCTION public.activate_simulation(
   p_candidate_id      UUID,
   p_simulation_id     UUID,
@@ -35,7 +47,8 @@ CREATE OR REPLACE FUNCTION public.activate_simulation(
   p_terms_version     TEXT,
   p_cohort_id         UUID    DEFAULT NULL,
   p_ip_address        INET    DEFAULT NULL,
-  p_immediate_consent BOOLEAN DEFAULT FALSE
+  p_immediate_consent BOOLEAN DEFAULT FALSE,
+  p_user_agent        TEXT    DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -79,16 +92,18 @@ BEGIN
   -- within this transaction so the legal record is atomic with the credit spend.
   SELECT EXISTS(
     SELECT 1
-    FROM   terms_acceptances
-    WHERE  candidate_id   = p_candidate_id
-      AND  terms_version  = p_terms_version
+    FROM   candidate_terms_acceptances
+    WHERE  candidate_id  = p_candidate_id
+      AND  document_type = 'platform_terms'
+      AND  partner_id IS NULL
+      AND  version        = p_terms_version
   ) INTO v_terms_exist;
 
   IF NOT v_terms_exist THEN
-    INSERT INTO terms_acceptances (
-      candidate_id, terms_version, ip_address, immediate_performance_consent
+    INSERT INTO candidate_terms_acceptances (
+      candidate_id, document_type, partner_id, version, ip_address, user_agent, immediate_performance_consent
     ) VALUES (
-      p_candidate_id, p_terms_version, p_ip_address, p_immediate_consent
+      p_candidate_id, 'platform_terms', NULL, p_terms_version, p_ip_address, p_user_agent, p_immediate_consent
     );
   END IF;
 
@@ -165,5 +180,5 @@ $$;
 -- ── Grant execute to authenticated role ──
 -- The API route calls this via the service-role client, which bypasses grants.
 -- This grant covers any future direct RPC call from an authenticated session.
-GRANT EXECUTE ON FUNCTION public.activate_simulation(UUID, UUID, UUID, TEXT, UUID, INET, BOOLEAN)
+GRANT EXECUTE ON FUNCTION public.activate_simulation(UUID, UUID, UUID, TEXT, UUID, INET, BOOLEAN, TEXT)
   TO authenticated;
