@@ -17,6 +17,7 @@
 --  Step 4  — enable RLS
 --  Step 5  — RLS policies
 --  Step 6  — practice-content read policies on simulations / simulation_prompts
+--  Step 7  — drop assistant_message_count (Spec 14 upgrade: assistant removed)
 -- ============================================================
 
 
@@ -48,7 +49,6 @@ CREATE TABLE IF NOT EXISTS public.practice_runs (
   id                       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   candidate_id             UUID        NOT NULL REFERENCES public.portfolio_profiles(id) ON DELETE CASCADE,
   simulation_id            UUID        NOT NULL REFERENCES public.simulations(id),
-  assistant_message_count  INTEGER     NOT NULL DEFAULT 0,
   submitted_at             TIMESTAMPTZ,
   feedback                 JSONB,
   created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -162,3 +162,17 @@ CREATE POLICY practice_trial_public_read_prompts ON public.simulation_prompts FO
       SELECT id FROM public.simulations WHERE simulation_type = 'practice'
     )
   );
+
+
+-- ============================================================
+-- STEP 7 — Drop assistant_message_count (Spec 14 upgrade: AI
+-- Simulation Assistant removed entirely from Practice Trials — see
+-- upgraded spec decision 4: "No AI Simulation Assistant on Practice
+-- Trials... at any message volume." There is no assistant and
+-- therefore no cap to enforce, so the counter column is dropped.
+-- Not executed automatically — run manually via Supabase Dashboard
+-- SQL Editor once the corresponding app code has been verified
+-- locally.
+-- ============================================================
+
+ALTER TABLE public.practice_runs DROP COLUMN assistant_message_count;

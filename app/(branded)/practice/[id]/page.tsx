@@ -8,18 +8,21 @@ import { useSimulationContent } from "@/hooks/useSimulationContent";
 import { usePracticeRun } from "@/hooks/usePracticeRun";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { useBranding } from "@/components/branding/BrandingProvider";
 import { LeftSidebar } from "@/components/simulation/LeftSidebar";
 import { RightSidebar } from "@/components/simulation/RightSidebar";
 import { TaskPrompt } from "@/components/simulation/TaskPrompt";
 import { ResponseForm } from "@/components/simulation/ResponseForm";
-import { PracticeChatWidget } from "@/components/simulation/PracticeChatWidget";
 import { PracticeFeedbackScreen } from "@/components/simulation/PracticeFeedbackScreen";
 import { createClient } from "@/lib/supabase/client";
 
 // ── Access gate states ────────────────────────────────────────
 // No entitlement check here at all (Spec 14 decision 2) — only auth and a
 // complete profile, same minimum bar as every other authenticated page.
+// TODO(Spec 19): once the acceptance-gate exists, check it here alongside
+// auth/profile — see upgraded Spec 14 decision 2 ("acceptance gate ... and
+// partner suspension" are the only gates). No acceptance-gate infrastructure
+// exists in this codebase yet; until then practice stays open to every
+// authenticated candidate with a complete profile, unchanged.
 type AccessStatus = "loading" | "granted" | "profile_incomplete";
 
 function ProfileIncompleteScreen() {
@@ -62,7 +65,6 @@ export default function PracticeExecutionPage() {
   const content = useSimulationContent(simulationId);
   const prompts = content.prompts;
   const timeRemaining = content.timeRemaining;
-  const branding = useBranding();
 
   const run = usePracticeRun(content.simulationUuid);
 
@@ -193,7 +195,9 @@ export default function PracticeExecutionPage() {
       {/* ── PRACTICE BANNER ─────────────────────────────────── */}
       <div className="fixed z-40 left-0 right-0 top-[73px] bg-[#E6F7F8] border-b border-teal/30 px-5 py-2 text-center">
         <span className="text-xs font-semibold text-navy">
-          Free Practice Trial — no score, no credential. Replay as many times as you like.
+          Free Practice Trial — no score, no credential, no AI Simulation Assistant. You
+          work this one unaided; assessed runs include a live assistant. Replay as many
+          times as you like.
         </span>
       </div>
 
@@ -307,12 +311,6 @@ export default function PracticeExecutionPage() {
           <RightSidebar prompt={prompt} currentStep={run.currentStep} timeRemaining={timeRemaining} />
         </div>
       </div>
-
-      <PracticeChatWidget
-        runId={run.runId}
-        prompt={prompt}
-        logoUrl={branding?.logo_url_icon ?? "/evidentize-icon.png"}
-      />
     </div>
   );
 }

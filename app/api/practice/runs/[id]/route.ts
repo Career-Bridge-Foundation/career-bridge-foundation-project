@@ -8,9 +8,8 @@ export const runtime = "nodejs";
  *
  * Fetches a practice run for the results screen. Ownership is verified via
  * portfolio_profiles.user_id — RLS also scopes practice_runs SELECT to the
- * candidate's own rows, but this route uses the service-role client (needed
- * for the assistant_message_count read used by the chat cap), so ownership
- * is re-checked explicitly here.
+ * candidate's own rows, but this route uses the service-role client, so
+ * ownership is re-checked explicitly here.
  */
 export async function GET(
   _request: Request,
@@ -36,7 +35,7 @@ export async function GET(
 
   const { data: run, error } = await supabaseServer
     .from("practice_runs")
-    .select("id, simulation_id, assistant_message_count, submitted_at, feedback, created_at")
+    .select("id, simulation_id, submitted_at, feedback, created_at")
     .eq("id", id)
     .eq("candidate_id", portfolio.id)
     .maybeSingle();
