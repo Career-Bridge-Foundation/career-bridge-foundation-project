@@ -7,7 +7,7 @@ export type AllocationState = {
   bufferPct: number
   hardCeiling: number      // committed + floor(committed × bufferPct / 100)
   consumed: number         // credits actually activated (negative deltas, reason='activation')
-  reserved: number         // sum(credits_per_redemption × max_redemptions) for active codes
+  reserved: number         // sum((max_redemptions - redemptions_used) × credits_per_redemption) for active, non-expired codes
   remaining: number        // hardCeiling - reserved (headroom for new code minting)
   bufferState: BufferState
 }
@@ -60,17 +60,31 @@ export async function getAllocationState(partnerId: string): Promise<AllocationS
 
   const consumed = (consumedRows ?? []).reduce((sum, r) => sum + Math.abs(r.delta as number), 0)
 
-  // Reserved = sum(credits_per_redemption × max_redemptions) for non-revoked codes
+  // Reserved = remaining UNREDEEMED reserve on active, non-expired,
+  // non-revoked codes — Spec 18's data model section: "SUM((max_redemptions
+  // - redemption_count) * credits_per_redemption) across status = 'active'
+  // codes". Previously summed the FULL credits_per_redemption × max_redemptions
+  // for every non-revoked code regardless of how much had already been
+  // redeemed, which double-counted already-consumed credits (once here,
+  // once in `consumed`) and never released reserve on expiry (edge case:
+  // "Code expires with redemptions remaining → Reserve released to ceiling
+  // on expiry, not left stranded" — the .gt('expires_at', now) filter below
+  // is what makes that true).
+  const nowIso = new Date().toISOString()
   const { data: codeRows, error: codeErr } = await supabaseServer
     .from('sponsor_codes')
-    .select('credits_per_redemption, max_redemptions')
+    .select('credits_per_redemption, max_redemptions, redemptions_used')
     .eq('partner_id', partnerId)
     .is('revoked_at', null)
+    .gt('expires_at', nowIso)
 
   if (codeErr) throw new CeilingError('db_error', codeErr.message)
 
   const reserved = (codeRows ?? []).reduce(
-    (sum, r) => sum + (r.credits_per_redemption as number) * (r.max_redemptions as number),
+    (sum, r) =>
+      sum +
+      ((r.max_redemptions as number) - (r.redemptions_used as number)) *
+        (r.credits_per_redemption as number),
     0,
   )
 

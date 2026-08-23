@@ -47,7 +47,7 @@ export async function POST(
 
     const { error: updateError } = await supabaseServer
       .from('sponsor_codes')
-      .update({ revoked_at: new Date().toISOString() })
+      .update({ revoked_at: new Date().toISOString(), revoked_by: ctx.userId, status: 'revoked' })
       .eq('id', id)
       .eq('partner_id', ctx.partnerId!)
 
