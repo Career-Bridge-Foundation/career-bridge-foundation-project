@@ -23,9 +23,10 @@
 -- only ever captures acceptance of Evidentize's platform terms.
 --
 -- Atomicity guarantee:
---   All writes (terms_acceptances, credit_ledger, simulation_activations,
---   and the source_activation_id backfill) happen in a single transaction.
---   Any failure rolls back everything — no partial state, no double-burn.
+--   All writes (candidate_terms_acceptances, credit_ledger,
+--   simulation_activations, and the source_activation_id backfill) happen
+--   in a single transaction. Any failure rolls back everything — no
+--   partial state, no double-burn.
 --
 -- Return shape (JSONB):
 --   success = true  → { success, activation_id, credit_ledger_id, attempt_number }
