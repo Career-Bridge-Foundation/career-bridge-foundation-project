@@ -25,3 +25,32 @@ export function getPricingRegion(country: string | null | undefined): PricingReg
   if (!country) return 'STANDARD'
   return AFRICA_ACCESS_COUNTRIES.has(country.toUpperCase()) ? 'AFRICA_ACCESS' : 'STANDARD'
 }
+
+// Country → presentment currency, per the country-and-pricing amendment.
+// Config, not code — adding a country here is a data change, no migration.
+// Unmapped countries fall back to the base currency (GBP — Career Bridge
+// Foundation's settlement currency). This is the display/target currency;
+// wiring it into Stripe Checkout as an explicit currency_options selection
+// happens once the underlying Price objects are configured for it (see
+// schema-reference/spec-16-candidate-purchase.sql and the Stripe setup guide).
+const COUNTRY_CURRENCY: Record<string, string> = {
+  GB: 'GBP',
+  US: 'USD',
+  CA: 'CAD',
+  NG: 'NGN',
+  GH: 'GHS',
+  RW: 'RWF',
+}
+
+const BASE_CURRENCY = 'GBP'
+
+/**
+ * Derives a candidate's presentment currency from their stored country code.
+ * Same prohibited-inputs rule as getPricingRegion — never derive from IP,
+ * locale, timezone or any request-derived value (Amendment: "this amendment
+ * extends the same rule to presentment").
+ */
+export function getPresentmentCurrency(country: string | null | undefined): string {
+  if (!country) return BASE_CURRENCY
+  return COUNTRY_CURRENCY[country.toUpperCase()] ?? BASE_CURRENCY
+}

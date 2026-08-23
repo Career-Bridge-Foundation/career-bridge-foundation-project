@@ -32,6 +32,9 @@ const BodySchema = z.object({
     .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
+  // ISO 3166-1 alpha-2. Required on every invite mint, sponsored or
+  // self-funding alike — see the country-and-pricing amendment.
+  country: z.string().length(2),
 })
 
 const INVALID_CREDENTIALS = { error: 'invalid credentials' } as const
@@ -109,6 +112,7 @@ export async function POST(request: Request) {
         candidateName: body.candidate_name ?? null,
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
+        country: body.country.toUpperCase(),
         appUrl,
       })
     } catch (err) {

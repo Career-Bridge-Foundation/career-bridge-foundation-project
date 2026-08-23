@@ -14,6 +14,11 @@ const BodySchema = z.object({
     .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
+  // ISO 3166-1 alpha-2. Required on every invite, no default — see the
+  // country-and-pricing amendment. Never accepted from a candidate-
+  // authenticated request; this route is partner-admin only (requirePartner
+  // below), which is the only mint path.
+  country: z.string().length(2),
 })
 
 export async function POST(request: Request) {
@@ -56,6 +61,7 @@ export async function POST(request: Request) {
         candidateName: body.candidate_name ?? null,
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
+        country: body.country.toUpperCase(),
         appUrl,
       })
     } catch (err) {
