@@ -51,6 +51,7 @@ export type PartnerCandidateDetail = {
   slug: string
   fullName: string | null
   email: string | null
+  country: string | null
   disciplines: string[]
   simulations: CandidateSimulationDetail[]
 }
@@ -76,7 +77,7 @@ export async function getPartnerCandidateDetail(
   // ── Resolve the validated candidate's profile -> user_id, slug. ──
   const { data: prof } = await supabaseServer
     .from('portfolio_profiles')
-    .select('id, user_id, slug')
+    .select('id, user_id, slug, country')
     .eq('id', candidateId)
     .maybeSingle()
   if (!prof) return null
@@ -92,6 +93,7 @@ export async function getPartnerCandidateDetail(
     slug: prof.slug as string,
     fullName: (person?.full_name as string | null) ?? null,
     email: au?.user?.email ?? null,
+    country: (prof.country as string | null) ?? null,
     disciplines: [...entitled],
   }
 

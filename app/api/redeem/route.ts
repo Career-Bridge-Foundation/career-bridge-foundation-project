@@ -124,6 +124,20 @@ export async function POST(request: Request) {
       )
     }
 
+    // Carry the partner-set country onto the candidate's profile (older
+    // tokens minted before this field existed have row.country === null —
+    // leave the profile's country untouched in that case rather than
+    // clobbering it with null).
+    if (row.country) {
+      const { error: countryError } = await supabaseServer
+        .from('portfolio_profiles')
+        .update({ country: row.country })
+        .eq('id', portfolioId)
+      if (countryError) {
+        console.error('[redeem] failed to set candidate country (non-fatal)', countryError)
+      }
+    }
+
     // 8. PROVISION ENTITLEMENTS (idempotent via the unique constraint)
     const rows = row.disciplines.map((discipline: string) => ({
       candidate_id: portfolioId,
