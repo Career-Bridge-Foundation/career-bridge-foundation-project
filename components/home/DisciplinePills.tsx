@@ -8,6 +8,7 @@ const DISCIPLINES = [
   "Data Analytics",
   "SEO Analysis",
   "Business Analysis",
+  "Virtual Assistant",
 ];
 
 export function DisciplinePills() {
