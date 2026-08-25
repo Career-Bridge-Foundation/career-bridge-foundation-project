@@ -78,12 +78,55 @@ export async function checkActivationAccess(
 
   if (!portfolio) return false;
 
-  const { data: activation } = await supabase
+  // .limit(1), not .maybeSingle() — a candidate can legitimately have more
+  // than one row here (a retake is a second activation on the same
+  // simulation), and .maybeSingle() errors out on >1 row instead of just
+  // picking one, which would silently deny access on any second attempt.
+  const { data: activations } = await supabase
     .from("simulation_activations")
     .select("id")
     .eq("simulation_id", simulationUuid)
     .eq("candidate_id", portfolio.id)
+    .limit(1);
+
+  return !!activations && activations.length > 0;
+}
+
+/**
+ * Returns true if the authenticated candidate already spent a credit on
+ * this simulation but never submitted it — a simulation_activations row
+ * exists with completed_at still null (Spec 15 credit model). SimulationCard
+ * uses this to resume that attempt for free instead of reopening the
+ * paywall; only a genuine retake, after completed_at is set on submission
+ * (see app/api/evaluate/route.ts), should charge another credit.
+ */
+export async function hasIncompleteActivation(
+  simulationUuid: string,
+): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: portfolio } = await supabase
+    .from("portfolio_profiles")
+    .select("id")
+    .eq("user_id", user.id)
     .maybeSingle();
 
-  return !!activation;
+  if (!portfolio) return false;
+
+  // .limit(1), not .maybeSingle() — a candidate can have more than one
+  // incomplete attempt on the same simulation (e.g. duplicate activations
+  // from a retry loop before this fix existed), and .maybeSingle() errors
+  // out on >1 row instead of just picking one, which silently defeats this
+  // whole check.
+  const { data: activations } = await supabase
+    .from("simulation_activations")
+    .select("id")
+    .eq("simulation_id", simulationUuid)
+    .eq("candidate_id", portfolio.id)
+    .is("completed_at", null)
+    .limit(1);
+
+  return !!activations && activations.length > 0;
 }

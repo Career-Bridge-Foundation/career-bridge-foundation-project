@@ -36,6 +36,16 @@
 --
 -- Caller (POST /api/candidate/activate) branches on `code` to render
 -- the correct modal variant — do not map all failures to a generic error.
+--
+-- Credit-funded Practice Trial upgrade:
+--   simulation_type = 'practice' no longer means an unconditional
+--   'practice_simulation' refusal. If the candidate has an available
+--   credit (cohort-scoped for p_cohort_id, or fungible), the guard falls
+--   through and the Practice Trial is activated exactly like an assessed
+--   simulation — same credit debit, same simulation_activations row, same
+--   AI evaluation/credential path. 'practice_simulation' is only returned
+--   when the candidate has no credit at all, meaning: proceed via the free,
+--   unassessed practice flow instead (this RPC is not called for that path).
 -- ============================================================
 
 -- Adding p_user_agent changes the argument list, so CREATE OR REPLACE would
@@ -74,7 +84,7 @@ DECLARE
   v_activation_id   UUID;
 BEGIN
 
-  -- ── 1. Guard: simulation must exist and must not be a Practice Trial ──
+  -- ── 1. Guard: simulation must exist ──
   SELECT simulation_type
   INTO   v_sim_type
   FROM   simulations
@@ -84,7 +94,30 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'code', 'simulation_not_found');
   END IF;
 
-  IF v_sim_type = 'practice' THEN
+  -- ── 1b. Balance check, moved ahead of the Practice-Trial gate below ──
+  -- A Practice Trial is free and unassessed by default (Spec 14 decision 2 —
+  -- no entitlement/credit check). But a candidate who already holds a
+  -- credit may choose to spend it to run this same simulation through the
+  -- full assessed path instead: real simulation_activations row, AI
+  -- evaluation, verdict band, counts toward a credential — same as any
+  -- paid simulation. A candidate with no credit still gets routed to the
+  -- free flow, which never calls this RPC at all.
+  IF p_cohort_id IS NOT NULL THEN
+    SELECT COALESCE(SUM(delta), 0)
+    INTO   v_cohort_balance
+    FROM   credit_ledger
+    WHERE  candidate_id = p_candidate_id
+      AND  cohort_id    = p_cohort_id;
+  END IF;
+
+  SELECT COALESCE(SUM(delta), 0)
+  INTO   v_fungible_balance
+  FROM   credit_ledger
+  WHERE  candidate_id = p_candidate_id
+    AND  cohort_id IS NULL;
+
+  IF v_sim_type = 'practice'
+     AND NOT ((p_cohort_id IS NOT NULL AND v_cohort_balance > 0) OR v_fungible_balance > 0) THEN
     RETURN jsonb_build_object('success', false, 'code', 'practice_simulation');
   END IF;
 
@@ -115,27 +148,13 @@ BEGIN
     );
   END IF;
 
-  -- ── 4. Balance check: cohort-scoped then fungible ──
-  -- Read within the transaction (FOR UPDATE not needed — SERIALIZABLE is
-  -- not set here, but the INSERT unique constraint on simulation_activations
-  -- acts as the idempotency guard against double-activation on same attempt).
-  -- The race condition this guards against is double-click: both reads would
+  -- ── 4. Balance already computed in Step 1b above (read within the
+  -- transaction; FOR UPDATE not needed — SERIALIZABLE is not set here, but
+  -- the INSERT unique constraint on simulation_activations acts as the
+  -- idempotency guard against double-activation on the same attempt). The
+  -- race condition this guards against is double-click: both reads would
   -- see balance > 0, but only one INSERT into simulation_activations will
-  -- succeed due to UNIQUE(candidate_id, simulation_id, attempt_number).
-
-  IF p_cohort_id IS NOT NULL THEN
-    SELECT COALESCE(SUM(delta), 0)
-    INTO   v_cohort_balance
-    FROM   credit_ledger
-    WHERE  candidate_id = p_candidate_id
-      AND  cohort_id    = p_cohort_id;
-  END IF;
-
-  SELECT COALESCE(SUM(delta), 0)
-  INTO   v_fungible_balance
-  FROM   credit_ledger
-  WHERE  candidate_id = p_candidate_id
-    AND  cohort_id IS NULL;
+  -- succeed due to UNIQUE(candidate_id, simulation_id, attempt_number). ──
 
   -- ── 5. Spend rule (Spec 15): cohort first, fall through to fungible ──
   IF p_cohort_id IS NOT NULL AND v_cohort_balance > 0 THEN

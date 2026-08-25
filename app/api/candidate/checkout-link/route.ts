@@ -135,7 +135,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const returnBase = partnerConfig.return_url as string
+    // Local dev only: bounce back to this machine's own origin instead of the
+    // partner's production return_url, so `npm run dev` can exercise the
+    // Stripe return flow without touching partner_stripe_config.
+    const returnBase = process.env.NODE_ENV === 'development'
+      ? `${request.nextUrl.origin}/purchase-return`
+      : (partnerConfig.return_url as string)
     const returnParams = new URLSearchParams({
       simulation_id: simulation_id,
       return_to: safeReturnTo,

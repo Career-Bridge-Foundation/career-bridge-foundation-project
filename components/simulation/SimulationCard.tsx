@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Simulation } from "@/types";
 import { AssessmentPackModal } from "@/components/simulation/AssessmentPackModal";
+import { hasIncompleteActivation } from "@/lib/access-control";
 
 interface SimulationCardProps {
   simulation: Simulation;
@@ -15,12 +16,25 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
   const [modalOpen, setModalOpen] = useState(false);
 
   const isAssessed = sim.simulation_type === "assessed";
+  const [checkingResume, setCheckingResume] = useState(false);
 
-  function handleStart() {
-    if (hasAccess === null) return; // still loading access state
+  async function handleStart() {
+    if (hasAccess === null || checkingResume) return; // still loading access state
 
     if (isAssessed && sim.simulation_uuid) {
-      // For assessed simulations: show the Assessment Pack modal.
+      // A credit already unlocked this simulation and it's still
+      // unsubmitted — resume it for free instead of reopening the paywall.
+      // Only a genuine retake (after the candidate submits) should charge
+      // another credit. See lib/access-control.ts hasIncompleteActivation.
+      setCheckingResume(true);
+      const resumable = await hasIncompleteActivation(sim.simulation_uuid);
+      setCheckingResume(false);
+      if (resumable) {
+        router.push(`/simulations/${sim.discipline}/${sim.slug}`);
+        return;
+      }
+
+      // Otherwise: show the Assessment Pack modal.
       // The modal handles all credit scenarios (balance_first, balance_repeat, no_balance).
       setModalOpen(true);
       return;
@@ -76,7 +90,7 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
           </span>
           <button
             onClick={handleStart}
-            disabled={hasAccess === null}
+            disabled={hasAccess === null || checkingResume}
             className="text-sm font-medium text-teal hover:underline disabled:opacity-40 cursor-pointer"
           >
             Start Simulation →

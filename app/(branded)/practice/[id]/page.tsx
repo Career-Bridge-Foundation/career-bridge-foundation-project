@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { useSimulationContent } from "@/hooks/useSimulationContent";
@@ -13,6 +13,7 @@ import { RightSidebar } from "@/components/simulation/RightSidebar";
 import { TaskPrompt } from "@/components/simulation/TaskPrompt";
 import { ResponseForm } from "@/components/simulation/ResponseForm";
 import { PracticeFeedbackScreen } from "@/components/simulation/PracticeFeedbackScreen";
+import { AssessmentPackModal } from "@/components/simulation/AssessmentPackModal";
 import { createClient } from "@/lib/supabase/client";
 
 // ── Access gate states ────────────────────────────────────────
@@ -65,11 +66,34 @@ export default function PracticeExecutionPage() {
   const content = useSimulationContent(simulationId);
   const prompts = content.prompts;
   const timeRemaining = content.timeRemaining;
+  const router = useRouter();
 
   const run = usePracticeRun(content.simulationUuid);
 
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // ── Credit-funded upgrade to a full assessed run (Spec 20) ─────
+  // Only offered when the candidate already holds a credit — checked
+  // separately from the access gate above, which intentionally never
+  // blocks on entitlement/credits for the free practice flow itself.
+  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchBalance() {
+      try {
+        const res = await fetch("/api/candidate/entitlement");
+        const data = await res.json();
+        if (!cancelled && res.ok) setCreditBalance(data.balance?.total ?? 0);
+      } catch {
+        // fail-quiet: no upgrade offer shown, free practice flow is unaffected
+      }
+    }
+    fetchBalance();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Auth + profile check only — no entitlement/credit check ────
   useEffect(() => {
@@ -193,13 +217,32 @@ export default function PracticeExecutionPage() {
       <Header variant="solid" />
 
       {/* ── PRACTICE BANNER ─────────────────────────────────── */}
-      <div className="fixed z-40 left-0 right-0 top-[73px] bg-[#E6F7F8] border-b border-teal/30 px-5 py-2 text-center">
+      <div className="fixed z-40 left-0 right-0 top-[73px] bg-[#E6F7F8] border-b border-teal/30 px-5 py-2 text-center flex items-center justify-center gap-3 flex-wrap">
         <span className="text-xs font-semibold text-navy">
           Free Practice Trial — no score, no credential, no AI Simulation Assistant. You
           work this one unaided; assessed runs include a live assistant. Replay as many
           times as you like.
         </span>
+        {creditBalance > 0 && (
+          <button
+            type="button"
+            onClick={() => setUpgradeModalOpen(true)}
+            className="text-xs font-semibold text-white px-3 py-1 rounded-md bg-navy hover:opacity-90 whitespace-nowrap"
+          >
+            Use 1 credit for full assessed access →
+          </button>
+        )}
       </div>
+
+      {content.simulationUuid && (
+        <AssessmentPackModal
+          open={upgradeModalOpen}
+          onClose={() => setUpgradeModalOpen(false)}
+          onActivated={() => router.push(`/simulate/${simulationId}`)}
+          simulationId={content.simulationUuid}
+          simulationTitle={content.sim?.title ?? "Practice Trial"}
+        />
+      )}
 
       {/* ── MOBILE PROGRESS BAR ─────────────────────────────── */}
       <div className="lg:hidden fixed z-40 left-0 right-0 top-[105px] bg-white px-5 py-3 border-b border-border-light">
