@@ -14,10 +14,10 @@ function csvEscape(value: string): string {
 /**
  * GET /api/partner/codes/export
  *
- * CSV for a batch or a filtered set (Spec 18: unique-batch mint result
- * offers this as "the only convenient moment to export" — but codes remain
- * exportable from the list at any time via the same filters as GET
- * /api/partner/codes).
+ * CSV for a batch or a filtered set. The unique-batch mint result screen
+ * offers this as a one-click way to grab the whole freshly-minted batch —
+ * codes are not one-time-reveal and remain exportable from the list at any
+ * time via the same filters as GET /api/partner/codes.
  *
  * Query: status?, cohort_id?, batch_id?
  */

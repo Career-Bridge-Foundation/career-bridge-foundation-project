@@ -51,7 +51,30 @@ const STATUS_STYLES: Record<EffectiveCodeStatus, string> = {
   revoked:   'bg-red-50 text-red-600',
 }
 
-const STATUS_FILTERS: (EffectiveCodeStatus | 'all')[] = ['active', 'exhausted', 'expired', 'revoked', 'all']
+// Display labels, distinct from the stored/filter values (EffectiveCodeStatus
+// itself stays 'exhausted' — only what's shown to partners changes). "Exhausted"
+// reads as "the credits are gone," but the status actually tracks redemption
+// slots (redemptions_used >= max_redemptions), which is unrelated to whether a
+// candidate has spent what the code granted — partners can't see that spend at
+// all (see app/api/partner/codes/[id]/redemptions/route.ts). "Fully claimed"
+// says what's actually true: no candidate can redeem this code again.
+const STATUS_LABELS: Record<EffectiveCodeStatus, string> = {
+  active:    'Active',
+  expired:   'Expired',
+  exhausted: 'Fully claimed',
+  revoked:   'Revoked',
+}
+
+const STATUS_FILTER_LABELS: Record<EffectiveCodeStatus | 'all', string> = {
+  all:       'All',
+  ...STATUS_LABELS,
+}
+
+const STATUS_TOOLTIPS: Partial<Record<EffectiveCodeStatus, string>> = {
+  exhausted: 'Every redemption slot on this code has been used — no candidate can redeem it again. This does not mean the credits it granted have been spent; partners cannot see candidate spend.',
+}
+
+const STATUS_FILTERS: (EffectiveCodeStatus | 'all')[] = ['all', 'active', 'exhausted', 'expired', 'revoked']
 
 export function CodesView({
   allocation: initialAllocation,
@@ -62,7 +85,11 @@ export function CodesView({
 }) {
   const [codes, setCodes] = useState<CodeRow[]>(initialCodes)
   const [alloc, setAlloc] = useState<AllocationState>(initialAllocation)
-  const [statusFilter, setStatusFilter] = useState<EffectiveCodeStatus | 'all'>('active')
+  // Defaults to 'all', not 'active' — this list is the partner's mint/
+  // redemption history. Filtering to active-only by default hid codes the
+  // moment they were exhausted or revoked, which read as data loss on
+  // refresh even though nothing was deleted (diagnosed 2026-08-25).
+  const [statusFilter, setStatusFilter] = useState<EffectiveCodeStatus | 'all'>('all')
 
   const [shape, setShape] = useState<'unique' | 'shared'>('unique')
   const [label, setLabel] = useState('')
@@ -481,7 +508,7 @@ export function CodesView({
                 {mintResult.codes.length} codes minted
               </h3>
               <p className="mb-3 text-xs text-amber-700">
-                This is the only convenient moment to export — codes remain retrievable from the list below, but it&apos;s easy to assume otherwise.
+                These codes are not one-time-reveal — they stay visible in the list below and can be exported anytime. Downloading now just grabs the whole batch in one click instead of filtering for it later.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -527,11 +554,11 @@ export function CodesView({
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
                   statusFilter === s ? 'bg-navy text-white' : 'bg-slate-100 text-slate-600'
                 }`}
               >
-                {s}
+                {STATUS_FILTER_LABELS[s]}
               </button>
             ))}
           </div>
@@ -539,7 +566,7 @@ export function CodesView({
 
         {filteredCodes.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-            No {statusFilter === 'all' ? '' : statusFilter} codes — mint one above.
+            No {statusFilter === 'all' ? '' : STATUS_FILTER_LABELS[statusFilter].toLowerCase()} codes — mint one above.
           </div>
         ) : (
           <div className="space-y-4">
@@ -646,8 +673,11 @@ function CodeTable({
                   </button>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_STYLES[c.status]}`}>
-                    {c.status}
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[c.status]}`}
+                    title={STATUS_TOOLTIPS[c.status]}
+                  >
+                    {STATUS_LABELS[c.status]}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right text-slate-700">{c.credits_per_redemption}</td>

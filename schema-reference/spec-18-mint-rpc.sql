@@ -50,7 +50,13 @@ CREATE OR REPLACE FUNCTION public.mint_sponsor_codes(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+-- `extensions` (not just `public`) is required here — Supabase installs
+-- pgcrypto into the `extensions` schema by default, and this function
+-- calls gen_random_bytes() for CSPRNG code generation. Omitting it made
+-- every mint fail at code-generation time with "function
+-- gen_random_bytes(integer) does not exist" (diagnosed 2026-08-25 by
+-- reproducing the RPC call directly against production).
+SET search_path = public, extensions
 AS $$
 DECLARE
   CHARS CONSTANT TEXT := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';  -- matches lib/entitlement/sponsorCode.ts
