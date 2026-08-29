@@ -3,6 +3,7 @@ import { disciplines } from '@/lib/disciplines-data'
 import { highestVerdictBand } from '@/lib/portfolio/highestVerdictBand'
 import type { PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
 import { partnerVerdictStyle } from '@/lib/verdict-bands'
+import { MarkProvisioned } from './_mark-provisioned'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
 
@@ -26,6 +27,19 @@ const STATUS_STYLE: Record<CandidateStatus, string> = {
   Evaluated: 'bg-teal/10 text-teal border-teal/30',
 }
 
+const PROVISIONING_STYLE: Record<string, string> = {
+  not_required: 'bg-slate-100 text-slate-500 border-slate-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  provisioned: 'bg-teal/10 text-teal border-teal/30',
+  failed: 'bg-red-50 text-red-700 border-red-200',
+}
+const PROVISIONING_LABEL: Record<string, string> = {
+  not_required: 'Not required',
+  pending: 'Pending',
+  provisioned: 'Provisioned',
+  failed: 'Failed',
+}
+
 function Th({ label, sortKey, sort, onSort }: { label: string; sortKey?: SortKey; sort?: SortState; onSort?: (k: SortKey) => void }) {
   if (!sortKey || !onSort) return <th className="px-4 py-3 font-medium">{label}</th>
   const active = sort?.key === sortKey
@@ -44,11 +58,15 @@ export function CandidatesTable({
   sort,
   onSort,
   linkDetail = true,
+  showAdminColumns = false,
+  communityEnabled = false,
 }: {
   candidates: PartnerCandidateWithProgress[]
   sort?: SortState
   onSort?: (k: SortKey) => void
   linkDetail?: boolean // false (mentor) → name is plain text, no link to the raw-submission detail
+  showAdminColumns?: boolean // Terms/Community columns — partner-only administrative concern, not shown to mentors
+  communityEnabled?: boolean // hides the Community column entirely for partners with no community configured
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -60,11 +78,14 @@ export function CandidatesTable({
             <Th label="Progress" sortKey="progress" sort={sort} onSort={onSort} />
             <Th label="Latest verdict" sortKey="verdict" sort={sort} onSort={onSort} />
             <Th label="Status" sortKey="status" sort={sort} onSort={onSort} />
+            {showAdminColumns && <th className="px-4 py-3 font-medium">Terms</th>}
+            {showAdminColumns && communityEnabled && <th className="px-4 py-3 font-medium">Community</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {candidates.map((c) => {
             const { started, evaluated, best, status } = candidateMeta(c)
+            const termsAccepted = c.platformTermsAccepted && c.programmeTermsAccepted
             return (
               <tr key={c.candidateId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 align-top">
@@ -106,6 +127,32 @@ export function CandidatesTable({
                     {status}
                   </span>
                 </td>
+                {showAdminColumns && (
+                  <td className="px-4 py-3 align-top">
+                    <span
+                      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        termsAccepted ? 'bg-teal/10 text-teal border-teal/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}
+                    >
+                      {termsAccepted ? 'Accepted' : 'Pending'}
+                    </span>
+                  </td>
+                )}
+                {showAdminColumns && communityEnabled && (
+                  <td className="px-4 py-3 align-top">
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${PROVISIONING_STYLE[c.provisioningStatus] ?? PROVISIONING_STYLE.not_required}`}>
+                      {PROVISIONING_LABEL[c.provisioningStatus] ?? c.provisioningStatus}
+                    </span>
+                    {(c.provisioningStatus === 'pending' || c.provisioningStatus === 'failed') && (
+                      <div className="mt-1">
+                        <MarkProvisioned candidateId={c.candidateId} />
+                      </div>
+                    )}
+                    {c.provisioningStatus === 'provisioned' && c.communityMemberId && (
+                      <p className="mt-1 text-[11px] text-slate-400">id: {c.communityMemberId}</p>
+                    )}
+                  </td>
+                )}
               </tr>
             )
           })}

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
 import { requireSuperAdmin } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/email/send'
+import { resolvePartnerSender } from '@/lib/email/sender'
+import { renderTermsVersionPublishedEmail } from '@/lib/email/templates/terms-version-published'
 
 export const runtime = 'nodejs'
 
@@ -55,6 +58,21 @@ export async function POST(request: NextRequest) {
 
   const documentHash = createHash('sha256').update(body.body).digest('hex')
 
+  // Capture the version being superseded (if any) BEFORE deactivating it —
+  // needed afterward to find candidates who accepted exactly that version,
+  // for the re-prompt notice.
+  let supersededVersion: string | null = null
+  {
+    let query = supabaseServer
+      .from('terms_documents')
+      .select('version')
+      .eq('document_type', body.document_type)
+      .eq('is_active', true)
+    query = partnerId ? query.eq('partner_id', partnerId) : query.is('partner_id', null)
+    const { data: previouslyActive } = await query.maybeSingle()
+    supersededVersion = (previouslyActive?.version as string | null) ?? null
+  }
+
   // Two-step, not atomic (per this repo's convention for multi-row writes
   // that aren't wrapped in an RPC — CLAUDE.md "Database-touching code"):
   // deactivate the currently-active version first, then insert the new one
@@ -95,5 +113,52 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
+  // Best-effort re-prompt notice to candidates who accepted the superseded
+  // version — never blocks or fails the publish response (Spec 19
+  // notifications table: advance notice, not a gate).
+  if (supersededVersion) {
+    notifySupersededAcceptors({
+      documentType: body.document_type,
+      partnerId: (partnerId as string | null) ?? null,
+      supersededVersion,
+    }).catch((err) => console.error('[admin/terms-documents] re-prompt notice failed (non-fatal)', err))
+  }
+
   return NextResponse.json({ success: true, document: created }, { status: 201 })
+}
+
+async function notifySupersededAcceptors(params: {
+  documentType: 'platform_terms' | 'partner_programme_terms'
+  partnerId: string | null
+  supersededVersion: string
+}) {
+  const { documentType, partnerId, supersededVersion } = params
+
+  let query = supabaseServer
+    .from('candidate_terms_acceptances')
+    .select('candidate_id')
+    .eq('document_type', documentType)
+    .eq('version', supersededVersion)
+  query = partnerId ? query.eq('partner_id', partnerId) : query.is('partner_id', null)
+  const { data: acceptors } = await query
+
+  const candidateIds = [...new Set((acceptors ?? []).map((a) => a.candidate_id as string))]
+  if (!candidateIds.length) return
+
+  const sender = await resolvePartnerSender(documentType === 'platform_terms' ? null : partnerId)
+  const documentLabel =
+    documentType === 'platform_terms' ? 'Evidentize Platform Terms of Service' : `${sender.partnerName} Programme Terms`
+  const html = renderTermsVersionPublishedEmail({ documentLabel, senderName: sender.partnerName })
+  const subject = `Updated: ${documentLabel}`
+
+  await Promise.all(
+    candidateIds.map(async (candidateId) => {
+      const { data } = await supabaseServer.auth.admin.getUserById(candidateId)
+      const email = data?.user?.email
+      if (!email) return
+      return sendEmail({ to: email, from: sender.from, subject, html }).catch((err) =>
+        console.error('[admin/terms-documents] re-prompt send failed', candidateId, err)
+      )
+    })
+  )
 }

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { requirePartner } from '@/lib/auth/permissions'
 import { getPartnerCandidateProgress, type PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
+import { getPartnerCandidateAcceptanceStatus } from '@/lib/partners/candidateAcceptanceStatus'
+import { supabaseServer } from '@/lib/supabase/server'
 import { SecureAccountBanner } from '@/components/ui/SecureAccountBanner'
 import { MintForm } from './_mint-form'
 import { CandidatesPanel } from './_candidates-panel'
@@ -22,9 +24,29 @@ export default async function PartnerCandidatesPage({
 
   let candidates: PartnerCandidateWithProgress[] = []
   let loadError = false
+  let communityEnabled = false
   try {
     // requirePartner guarantees a non-null partnerId.
     candidates = await getPartnerCandidateProgress(ctx.partnerId!)
+
+    const acceptance = await getPartnerCandidateAcceptanceStatus(
+      ctx.partnerId!,
+      candidates.map((c) => c.candidateId)
+    )
+    const acceptanceByCandidate = new Map(acceptance.map((a) => [a.candidateId, a]))
+    candidates = candidates.map((c) => {
+      const a = acceptanceByCandidate.get(c.candidateId)
+      return a
+        ? { ...c, platformTermsAccepted: a.platformTermsAccepted, programmeTermsAccepted: a.programmeTermsAccepted }
+        : c
+    })
+
+    const { data: partnerRow } = await supabaseServer
+      .from('partners')
+      .select('community_enabled')
+      .eq('id', ctx.partnerId!)
+      .maybeSingle()
+    communityEnabled = !!partnerRow?.community_enabled
   } catch {
     loadError = true
   }
@@ -54,7 +76,7 @@ export default async function PartnerCandidatesPage({
           </p>
         </div>
       ) : (
-        <CandidatesPanel candidates={candidates} />
+        <CandidatesPanel candidates={candidates} showAdminColumns communityEnabled={communityEnabled} />
       )}
 
       <MintForm />
