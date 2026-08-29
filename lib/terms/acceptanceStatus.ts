@@ -19,6 +19,7 @@ export type OutstandingDocument = {
   documentType: 'platform_terms' | 'partner_programme_terms'
   partnerId: string | null
   partnerName: string | null
+  partnerContactEmail: string | null
   version: string
   body: string
   documentHash: string
@@ -49,6 +50,7 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
         documentType: 'platform_terms',
         partnerId: null,
         partnerName: null,
+        partnerContactEmail: null,
         version: platform.version as string,
         body: platform.body as string,
         documentHash: platform.document_hash as string,
@@ -94,7 +96,7 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
 
       const { data: partner } = await supabaseServer
         .from('partners')
-        .select('name')
+        .select('name, contact_email')
         .eq('id', partnerId)
         .maybeSingle()
 
@@ -102,6 +104,7 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
         documentType: 'partner_programme_terms',
         partnerId,
         partnerName: (partner?.name as string | null) ?? null,
+        partnerContactEmail: (partner?.contact_email as string | null) ?? null,
         version: doc.version as string,
         body: doc.body as string,
         documentHash: doc.document_hash as string,

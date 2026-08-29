@@ -64,6 +64,9 @@ export async function POST(request: Request) {
       })
     } catch (err) {
       if (err instanceof MintError) {
+        if (err.code === 'terms_not_published') {
+          return NextResponse.json({ error: err.message }, { status: 400 })
+        }
         const status = err.code === 'persist_failed' ? 500 : 500
         console.error('[partner/tokens] mint failed', err.code, err.message)
         return NextResponse.json({ error: 'could not generate token' }, { status })

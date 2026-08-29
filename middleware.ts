@@ -137,6 +137,13 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/candidate/accept') ||
     pathname.startsWith('/api/candidate/acceptance-status')
   const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath
+  // Deliberately narrower than isSharedPath: /account is NOT exempt from the
+  // candidate acceptance gate below. Spec 19 requires "no catalogue, practice
+  // OR PROFILE data from any route" until both documents are accepted — the
+  // broader isSharedPath (built for the dashboard-isolation guard above,
+  // where /account legitimately needs to stay reachable for every role) would
+  // have let a gated candidate keep reading/editing /account/profile.
+  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath
 
   const DASHBOARD_ONLY_PATHS: Record<string, string> = {
     reviewer: '/reviewer',
@@ -164,7 +171,7 @@ export async function middleware(request: NextRequest) {
   // through, not left to individual pages. candidate_has_outstanding_terms()
   // does the real check in one round trip; see that function's definition in
   // supabase/migrations/20260824_001_candidate_acceptance.sql.
-  if (user && !isSharedPath) {
+  if (user && !isAcceptanceGateExempt) {
     const role = await getRole()
     if (role === 'candidate') {
       const { data: outstanding } = await supabase.rpc('candidate_has_outstanding_terms')

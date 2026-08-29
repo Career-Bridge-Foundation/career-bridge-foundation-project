@@ -117,6 +117,9 @@ export async function POST(request: Request) {
       })
     } catch (err) {
       if (err instanceof MintError) {
+        if (err.code === 'terms_not_published') {
+          return NextResponse.json({ error: err.message }, { status: 400 })
+        }
         console.error('[partners/tokens] mint failed', err.code, err.message)
         const msg = err.code === 'persist_failed' ? 'could not persist token' : 'internal error'
         return NextResponse.json({ error: msg }, { status: 500 })

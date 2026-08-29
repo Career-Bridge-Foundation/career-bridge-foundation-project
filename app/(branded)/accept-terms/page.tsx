@@ -8,6 +8,7 @@ type OutstandingDoc = {
   document_type: 'platform_terms' | 'partner_programme_terms'
   partner_id: string | null
   partner_name: string | null
+  partner_contact_email: string | null
   version: string
   body: string
 }
@@ -128,14 +129,34 @@ export default function AcceptTermsPage() {
   }
 
   if (declined) {
+    // Contact routes for any partner whose programme terms were outstanding
+    // — Spec 19: decline "ends the session with a plain explanation and the
+    // partner's contact route." Platform terms alone (no partner involved,
+    // e.g. an organic signup) has no partner contact to show.
+    const partnerContacts = (docs ?? [])
+      .filter((d) => d.document_type === 'partner_programme_terms')
+      .map((d) => ({ name: d.partner_name, email: d.partner_contact_email }))
+      .filter((p) => p.email)
+
     return (
       <main className="flex min-h-screen items-center justify-center px-6">
         <div className="max-w-md text-center">
           <h1 className="text-xl font-bold text-navy mb-3">You've declined</h1>
           <p className="text-sm text-slate-600 leading-relaxed">
             You need to accept both documents to use the platform. Nothing has been created for you.
-            If you have questions about the programme, contact the partner who invited you.
           </p>
+          {partnerContacts.length > 0 ? (
+            <div className="mt-4 text-sm text-slate-600">
+              <p>If you have questions, contact:</p>
+              {partnerContacts.map((p, i) => (
+                <p key={i} className="mt-1 font-medium text-navy">
+                  {p.name ?? 'Your partner'} — <a href={`mailto:${p.email}`} className="underline">{p.email}</a>
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-600">If you have questions about the programme, contact the partner who invited you.</p>
+          )}
         </div>
       </main>
     )

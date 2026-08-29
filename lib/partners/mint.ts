@@ -8,7 +8,7 @@ const DISCIPLINE_NAME_TO_SLUG = new Map(
 
 export class MintError extends Error {
   constructor(
-    public code: 'unknown_discipline' | 'persist_failed',
+    public code: 'unknown_discipline' | 'persist_failed' | 'terms_not_published',
     message: string
   ) {
     super(message)
@@ -39,6 +39,29 @@ export type MintResult = {
  */
 export async function mintRedemptionToken(params: MintParams): Promise<MintResult> {
   const { partnerId, candidateEmail, candidateName, disciplineNames, expiresInDays, appUrl } = params
+
+  // Spec 19 edge case: "Invite minted before the partner's document is
+  // published: Mint blocked with a clear message. A candidate must not
+  // reach a gate with nothing behind it." — the acceptance gate
+  // (candidate_has_outstanding_terms / getOutstandingDocuments) skips a
+  // partner entirely when it has no active programme terms, so without this
+  // check a candidate entitled by such a partner would never be asked to
+  // accept anything for them at all — silently bypassing the very
+  // commitment this partner invited them to make, not getting stuck.
+  const { data: activeTerms } = await supabaseServer
+    .from('terms_documents')
+    .select('id')
+    .eq('document_type', 'partner_programme_terms')
+    .eq('partner_id', partnerId)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (!activeTerms) {
+    throw new MintError(
+      'terms_not_published',
+      'This partner has no published programme terms yet — publish a version before provisioning candidates.'
+    )
+  }
 
   // Map discipline names to canonical slugs (matches simulations table +
   // candidate_entitlements).

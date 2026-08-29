@@ -23,6 +23,7 @@ export async function GET() {
       document_type: d.documentType,
       partner_id: d.partnerId,
       partner_name: d.partnerName,
+      partner_contact_email: d.partnerContactEmail,
       version: d.version,
       body: d.body,
     })),
