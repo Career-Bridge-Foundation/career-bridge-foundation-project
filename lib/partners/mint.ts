@@ -20,6 +20,8 @@ export type MintParams = {
   partnerId: string
   candidateEmail: string
   candidateName?: string | null
+  /** ISO 3166-1 alpha-2, set by the partner — see lib/countries.ts. */
+  country: string
   /** Discipline NAMES (e.g. "Cyber Security") — mapped to slugs internally. */
   disciplineNames: string[]
   expiresInDays: number
@@ -38,7 +40,7 @@ export type MintResult = {
  * responsibility — this function trusts the partnerId it is given.
  */
 export async function mintRedemptionToken(params: MintParams): Promise<MintResult> {
-  const { partnerId, candidateEmail, candidateName, disciplineNames, expiresInDays, appUrl } = params
+  const { partnerId, candidateEmail, candidateName, country, disciplineNames, expiresInDays, appUrl } = params
 
   // Spec 19 edge case: "Invite minted before the partner's document is
   // published: Mint blocked with a clear message. A candidate must not
@@ -91,6 +93,7 @@ export async function mintRedemptionToken(params: MintParams): Promise<MintResul
       token_hash: hashPartnerToken(token),
       candidate_email: candidateEmail.toLowerCase().trim(),
       candidate_name: candidateName?.trim() ?? null,
+      country,
       disciplines: disciplineSlugs,
       expires_at: expires_at.toISOString(),
     })

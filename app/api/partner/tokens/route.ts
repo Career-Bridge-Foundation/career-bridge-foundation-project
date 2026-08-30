@@ -4,6 +4,7 @@ import { requirePartner } from '@/lib/auth/permissions'
 import { disciplines } from '@/lib/disciplines-data'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
 import { sendInvitationEmail } from '@/lib/email/invitations'
+import { COUNTRIES } from '@/lib/countries'
 
 export const runtime = 'nodejs'
 
@@ -11,9 +12,15 @@ const AVAILABLE_DISCIPLINES = disciplines
   .filter((d) => d.status === 'available')
   .map((d) => d.name)
 
+const COUNTRY_CODES = COUNTRIES.map((c) => c.code)
+
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
+  // Set by the partner, who vetted the candidate at admission — never
+  // self-reported, never inferred from IP. See supabase/migrations/
+  // 20260809_001_candidate_country.sql.
+  country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z
     .array(z.enum(AVAILABLE_DISCIPLINES as [string, ...string[]]))
     .min(1),
@@ -58,6 +65,7 @@ export async function POST(request: Request) {
         partnerId,
         candidateEmail: body.candidate_email,
         candidateName: body.candidate_name ?? null,
+        country: body.country,
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
         appUrl,

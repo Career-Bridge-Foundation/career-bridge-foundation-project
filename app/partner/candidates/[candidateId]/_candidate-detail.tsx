@@ -3,6 +3,7 @@ import { disciplines } from '@/lib/disciplines-data'
 import type { PartnerCandidateDetail } from '@/lib/partners/candidateDetail'
 import { partnerVerdictStyle } from '@/lib/verdict-bands'
 import { TaskCriteria } from './_task-criteria'
+import { CountryEditor } from './_country-editor'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
 
@@ -54,6 +55,10 @@ export function CandidateDetail({ detail }: { detail: PartnerCandidateDetail }) 
               {DISCIPLINE_NAME.get(s) ?? s}
             </span>
           ))}
+        </div>
+        <div className="mt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Country</p>
+          <CountryEditor candidateId={detail.candidateId} initialCountry={detail.country} />
         </div>
       </div>
 
