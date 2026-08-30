@@ -80,6 +80,12 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // record_candidate_acceptance() now also enqueues provisioning (flips
+  // provisioning_status to 'pending' when applicable) IN THE SAME
+  // transaction as the acceptance inserts — see supabase/migrations/
+  // 20260830_001_atomic_provisioning_enqueue.sql. Previously that was a
+  // separate best-effort step here, which could leave an accepted candidate
+  // with provisioning silently never queued if it threw.
   const { error: rpcError } = await supabase.rpc('record_candidate_acceptance', {
     p_acceptances: verified,
     p_ip: ip,
@@ -91,7 +97,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Best-effort copy-of-acceptance emails (Spec 19 decision 6) — one per
-  // document, never blocking the recorded acceptance on delivery.
+  // document, never blocking the recorded acceptance on delivery. Emails are
+  // not part of the atomicity guarantee above by design (an email provider
+  // outage must never roll back a legally-meaningful acceptance).
   if (user.email) {
     const acceptedAt = new Date().toISOString()
     for (const v of verified) {
@@ -103,36 +111,6 @@ export async function POST(request: NextRequest) {
         acceptedAt,
       }).catch((err) => console.error('[candidate/accept] confirmation email failed', v.document_type, err))
     }
-  }
-
-  // Best-effort: if this completed the FULL outstanding set and the
-  // candidate's partner has community provisioning enabled, mark it pending.
-  // No Circle API call — Spec 19.3 integration is deliberately deferred; this
-  // only sets a flag a future worker would pick up.
-  try {
-    const { getOutstandingDocuments } = await import('@/lib/terms/acceptanceStatus')
-    const stillOutstanding = await getOutstandingDocuments(user.id)
-    if (stillOutstanding.length === 0) {
-      const acceptedPartnerIds = verified
-        .filter((v) => v.partner_id)
-        .map((v) => v.partner_id as string)
-      for (const partnerId of acceptedPartnerIds) {
-        const { data: partner } = await supabaseServer
-          .from('partners')
-          .select('community_enabled')
-          .eq('id', partnerId)
-          .maybeSingle()
-        if (partner?.community_enabled) {
-          await supabaseServer
-            .from('portfolio_profiles')
-            .update({ provisioning_status: 'pending' })
-            .eq('user_id', user.id)
-            .eq('provisioning_status', 'not_required')
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[candidate/accept] provisioning-status flag failed (non-fatal)', err)
   }
 
   return NextResponse.json({ success: true })
