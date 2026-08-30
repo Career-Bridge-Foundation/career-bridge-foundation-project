@@ -9,6 +9,7 @@ import {
   LogOut,
   Users,
   Building2,
+  ScrollText,
   ChevronRight,
   X,
 } from 'lucide-react'
@@ -43,6 +44,13 @@ const ALL_NAV = [
     href: '/admin/partners',
     label: 'Partners',
     icon: Building2,
+    exact: false,
+    roles: ['super_admin'],
+  },
+  {
+    href: '/admin/terms',
+    label: 'Terms',
+    icon: ScrollText,
     exact: false,
     roles: ['super_admin'],
   },
