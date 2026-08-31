@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 export default async function CommunityPage() {
   await requireSuperAdmin()
 
-  const { data: partners } = await supabaseServer
+  const { data: partners, error } = await supabaseServer
     .from('partners')
     .select('id, name, community_provider, community_url, community_space_id, community_enabled, community_credential_last4')
     .order('name', { ascending: true })
@@ -29,7 +29,16 @@ export default async function CommunityPage() {
           stores what a future automated worker (or the manual fallback already in the partner console) reads.
         </p>
       </div>
-      <CommunityManager partners={partners ?? []} />
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Couldn&apos;t load partners: <span className="font-mono">{error.message}</span>. If this mentions a
+          missing column, the migration for this page (
+          <span className="font-mono">20260831_001_community_provisioning_config.sql</span>) likely hasn&apos;t
+          been applied to the database yet.
+        </div>
+      ) : (
+        <CommunityManager partners={partners ?? []} />
+      )}
     </div>
   )
 }
