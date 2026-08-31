@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { encryptCredential, lastFour } from '@/lib/partners/communityCredential'
+import { isSupportedCommunityProvider, SUPPORTED_COMMUNITY_PROVIDERS } from '@/lib/partners/communityProviders'
 
 export const runtime = 'nodejs'
 
@@ -44,7 +45,16 @@ export async function PATCH(
     if (body.community_provider !== null && typeof body.community_provider !== 'string') {
       return NextResponse.json({ error: 'community_provider must be a string or null' }, { status: 400 })
     }
-    updates.community_provider = (body.community_provider as string | null) || null
+    const provider = (body.community_provider as string | null) || null
+    if (provider && !isSupportedCommunityProvider(provider)) {
+      return NextResponse.json(
+        {
+          error: `unsupported community_provider — must be one of: ${SUPPORTED_COMMUNITY_PROVIDERS.map((p) => p.value).join(', ')}`,
+        },
+        { status: 400 }
+      )
+    }
+    updates.community_provider = provider
   }
   if ('community_url' in body) {
     if (body.community_url !== null && typeof body.community_url !== 'string') {

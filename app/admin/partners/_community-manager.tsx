@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { SUPPORTED_COMMUNITY_PROVIDERS } from '@/lib/partners/communityProviders'
 
 type Partner = {
   id: string
@@ -110,13 +111,19 @@ function PartnerCommunityForm({ partner }: { partner: Partner }) {
         <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">
           Provider
         </label>
-        <input
-          type="text"
+        <select
           value={provider}
           onChange={(e) => setProvider(e.target.value)}
-          placeholder="circle"
-          className="w-48 rounded-md border border-slate-300 px-3 py-2 text-sm"
-        />
+          className="w-48 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+        >
+          <option value="">Not configured</option>
+          {SUPPORTED_COMMUNITY_PROVIDERS.map((p) => (
+            <option key={p.value} value={p.value}>{p.label}</option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-slate-400">
+          Only providers with a real integration path are listed — see lib/partners/communityProviders.ts.
+        </p>
       </div>
 
       <div>
