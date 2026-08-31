@@ -1,69 +1,52 @@
 import React from 'react'
 import { supabaseServer } from '@/lib/supabase/server'
 import { requireSuperAdmin } from '@/lib/auth/permissions'
-import { PartnerInviteForm } from './_partner-invite-form'
+import { PartnersTabs } from './_partners-tabs'
 
 export const dynamic = 'force-dynamic'
 
-const STATUS_STYLE: Record<string, string> = {
-  approved: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  pending: 'bg-amber-50 border-amber-200 text-amber-700',
-  suspended: 'bg-red-50 border-red-200 text-red-700',
-}
-
+/**
+ * Terms (Spec 19) and Community provisioning (Spec 19.3) config both live as
+ * tabs here rather than separate top-level admin sections — both are
+ * per-partner concerns (a partner's own programme terms, a partner's own
+ * community settings), so they belong under Partners, not beside it.
+ */
 export default async function PartnersPage() {
   // Super-admin only — partner-role grants access to an org's entire
   // candidate dataset, so bootstrapping a new org is a high-privilege op.
   await requireSuperAdmin()
 
-  const { data: partners } = await supabaseServer
+  const { data: partners, error: partnersError } = await supabaseServer
     .from('partners')
-    .select('id, name, slug, status, contact_email, created_at')
+    .select(
+      'id, name, slug, status, contact_email, created_at, community_provider, community_url, community_space_id, community_enabled, community_credential_last4'
+    )
     .order('created_at', { ascending: false })
+
+  const { data: termsDocs, error: termsError } = await supabaseServer
+    .from('terms_documents')
+    .select('id, document_type, partner_id, version, body, document_hash, published_at, is_active')
+    .order('published_at', { ascending: false })
+
+  const error = partnersError ?? termsError
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Partners</h1>
         <p className="text-sm mt-1 text-slate-600">
-          Create partner organisations and invite their first admin.
+          Organisations, their programme terms, and their community integration.
         </p>
       </div>
 
-      <PartnerInviteForm />
-
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Organisations ({partners?.length ?? 0})
-          </h2>
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Couldn&apos;t load this page: <span className="font-mono">{error.message}</span>. If this mentions a
+          missing column, a migration for Terms or Community config likely hasn&apos;t been applied yet.
         </div>
-        {!partners || partners.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-slate-500">
-            No partner organisations yet.
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {partners.map(partner => (
-              <div key={partner.id} className="px-6 py-4 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{partner.name}</div>
-                  <div className="text-xs text-slate-500 truncate">
-                    {partner.slug} · {partner.contact_email}
-                  </div>
-                </div>
-                <span
-                  className={`shrink-0 ml-4 text-xs font-medium px-2 py-1 rounded-full border ${
-                    STATUS_STYLE[partner.status] ?? 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}
-                >
-                  {partner.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <PartnersTabs partners={partners ?? []} termsDocs={termsDocs ?? []} />
+      )}
     </div>
   )
 }
