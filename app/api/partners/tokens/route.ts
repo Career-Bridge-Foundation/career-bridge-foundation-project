@@ -21,14 +21,10 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabase/server'
 import { getKeyPrefix, verifyApiKeyHash } from '@/lib/partners/apiKey'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
-import { disciplines } from '@/lib/disciplines-data'
+import { availableDisciplineNames } from '@/lib/disciplines-data'
 import { COUNTRIES } from '@/lib/countries'
 
 export const runtime = 'nodejs'
-
-const AVAILABLE_DISCIPLINES = disciplines
-  .filter((d) => d.status === 'available')
-  .map((d) => d.name)
 
 const COUNTRY_CODES = COUNTRIES.map((c) => c.code)
 
@@ -39,7 +35,7 @@ const BodySchema = z.object({
   // supabase/migrations/20260809_001_candidate_country.sql.
   country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z
-    .array(z.enum(AVAILABLE_DISCIPLINES as [string, ...string[]]))
+    .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
   requires_programme_terms: z.boolean().optional().default(true),

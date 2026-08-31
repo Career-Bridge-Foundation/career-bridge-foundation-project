@@ -1,9 +1,9 @@
 'use client'
 import React, { useState } from 'react'
-import { disciplines } from '@/lib/disciplines-data'
+import { grantableDisciplines } from '@/lib/disciplines-data'
 import { COUNTRIES } from '@/lib/countries'
 
-const AVAILABLE = disciplines.filter((d) => d.status === 'available')
+const AVAILABLE = grantableDisciplines
 
 type Result = {
   redemption_url: string
