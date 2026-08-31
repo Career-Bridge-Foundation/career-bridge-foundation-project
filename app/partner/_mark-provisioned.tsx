@@ -40,13 +40,16 @@ export function MarkProvisioned({ candidateId }: { candidateId: string }) {
 
   if (!editing) {
     return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="text-xs font-medium text-teal hover:underline"
-      >
-        Mark as provisioned
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="text-xs font-medium text-teal hover:underline"
+        >
+          Mark as provisioned
+        </button>
+        <MarkFailed candidateId={candidateId} />
+      </div>
     )
   }
 
@@ -79,5 +82,51 @@ export function MarkProvisioned({ candidateId }: { candidateId: string }) {
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
+  )
+}
+
+/**
+ * Records a terminal provisioning failure and fires the partner-admin alert
+ * to your own contact_email — the same notification a future automated
+ * worker's own failure path would trigger, see lib/partners/
+ * notifyProvisioningFailed.ts.
+ */
+function MarkFailed({ candidateId }: { candidateId: string }) {
+  const router = useRouter()
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleClick() {
+    if (!window.confirm('Mark this candidate\'s community provisioning as failed? This sends an alert to your own contact email.')) return
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/partner/candidates/${candidateId}/mark-failed`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(body.error ?? 'Failed to update')
+        return
+      }
+      router.refresh()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={saving}
+        className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+      >
+        Mark as failed
+      </button>
+      {error && <span className="text-xs text-red-600">{error}</span>}
+    </span>
   )
 }

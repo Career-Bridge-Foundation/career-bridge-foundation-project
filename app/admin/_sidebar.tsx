@@ -10,6 +10,7 @@ import {
   Users,
   Building2,
   ScrollText,
+  Users2,
   ChevronRight,
   X,
 } from 'lucide-react'
@@ -51,6 +52,13 @@ const ALL_NAV = [
     href: '/admin/terms',
     label: 'Terms',
     icon: ScrollText,
+    exact: false,
+    roles: ['super_admin'],
+  },
+  {
+    href: '/admin/community',
+    label: 'Community',
+    icon: Users2,
     exact: false,
     roles: ['super_admin'],
   },
