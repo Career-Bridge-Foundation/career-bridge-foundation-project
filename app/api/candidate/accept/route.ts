@@ -80,12 +80,6 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // record_candidate_acceptance() now also enqueues provisioning (flips
-  // provisioning_status to 'pending' when applicable) IN THE SAME
-  // transaction as the acceptance inserts — see supabase/migrations/
-  // 20260830_001_atomic_provisioning_enqueue.sql. Previously that was a
-  // separate best-effort step here, which could leave an accepted candidate
-  // with provisioning silently never queued if it threw.
   const { error: rpcError } = await supabase.rpc('record_candidate_acceptance', {
     p_acceptances: verified,
     p_ip: ip,

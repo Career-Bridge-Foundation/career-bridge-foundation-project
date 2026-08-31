@@ -26,6 +26,8 @@ export type MintParams = {
   disciplineNames: string[]
   expiresInDays: number
   appUrl: string
+  /** Per-invite choice, default true — whether THIS candidate must accept the partner's own programme terms. */
+  requiresProgrammeTerms: boolean
 }
 
 export type MintResult = {
@@ -40,29 +42,28 @@ export type MintResult = {
  * responsibility — this function trusts the partnerId it is given.
  */
 export async function mintRedemptionToken(params: MintParams): Promise<MintResult> {
-  const { partnerId, candidateEmail, candidateName, country, disciplineNames, expiresInDays, appUrl } = params
+  const { partnerId, candidateEmail, candidateName, country, disciplineNames, expiresInDays, appUrl, requiresProgrammeTerms } = params
 
-  // Spec 19 edge case: "Invite minted before the partner's document is
-  // published: Mint blocked with a clear message. A candidate must not
-  // reach a gate with nothing behind it." — the acceptance gate
-  // (candidate_has_outstanding_terms / getOutstandingDocuments) skips a
-  // partner entirely when it has no active programme terms, so without this
-  // check a candidate entitled by such a partner would never be asked to
-  // accept anything for them at all — silently bypassing the very
-  // commitment this partner invited them to make, not getting stuck.
-  const { data: activeTerms } = await supabaseServer
-    .from('terms_documents')
-    .select('id')
-    .eq('document_type', 'partner_programme_terms')
-    .eq('partner_id', partnerId)
-    .eq('is_active', true)
-    .maybeSingle()
+  // Programme terms are optional per partner now — a partner can simply not
+  // have any, in which case only Evidentize's platform terms ever apply.
+  // The only thing that's still invalid is requesting requiresProgrammeTerms
+  // for a partner who has nothing active to require — can't gate on a
+  // document that doesn't exist.
+  if (requiresProgrammeTerms) {
+    const { data: activeTerms } = await supabaseServer
+      .from('terms_documents')
+      .select('id')
+      .eq('document_type', 'partner_programme_terms')
+      .eq('partner_id', partnerId)
+      .eq('is_active', true)
+      .maybeSingle()
 
-  if (!activeTerms) {
-    throw new MintError(
-      'terms_not_published',
-      'This partner has no published programme terms yet — publish a version before provisioning candidates.'
-    )
+    if (!activeTerms) {
+      throw new MintError(
+        'terms_not_published',
+        'This partner has no published programme terms — publish a version first, or provision without requiring them.'
+      )
+    }
   }
 
   // Map discipline names to canonical slugs (matches simulations table +
@@ -95,6 +96,7 @@ export async function mintRedemptionToken(params: MintParams): Promise<MintResul
       candidate_name: candidateName?.trim() ?? null,
       country,
       disciplines: disciplineSlugs,
+      requires_programme_terms: requiresProgrammeTerms,
       expires_at: expires_at.toISOString(),
     })
 

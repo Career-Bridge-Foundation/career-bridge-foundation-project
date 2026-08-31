@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { PartnerInviteForm } from './_partner-invite-form'
 import { TermsManager } from './_terms-manager'
-import { CommunityManager } from './_community-manager'
 import type { TermsDoc } from './_version-history'
 
 type Partner = {
@@ -12,11 +11,6 @@ type Partner = {
   status: string
   contact_email: string
   created_at: string
-  community_provider: string | null
-  community_url: string | null
-  community_space_id: string | null
-  community_enabled: boolean
-  community_credential_last4: string | null
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -25,13 +19,14 @@ const STATUS_STYLE: Record<string, string> = {
   suspended: 'bg-red-50 border-red-200 text-red-700',
 }
 
-type TabKey = 'organisations' | 'terms' | 'community'
+type TabKey = 'organisations' | 'terms'
 
 /**
- * Terms and Community configuration are both partner-scoped concerns
- * (per-partner programme terms, per-partner community settings), so they
- * live as tabs under Partners rather than separate top-level admin sections.
- * Conditionally rendered — only the active tab's content mounts.
+ * Platform terms are a partner-adjacent super-admin concern (this IS
+ * partner-neutral, but it's the one document type only super-admin ever
+ * touches), so it stays a tab here. Programme terms and community config
+ * both moved to the partner's own dashboard — a partner authors and owns
+ * both now, not super-admin on their behalf.
  */
 export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; termsDocs: TermsDoc[] }) {
   const [tab, setTab] = useState<TabKey>('organisations')
@@ -50,9 +45,6 @@ export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; ter
         </button>
         <button type="button" onClick={() => setTab('terms')} className={tabClass('terms')}>
           Terms
-        </button>
-        <button type="button" onClick={() => setTab('community')} className={tabClass('community')}>
-          Community
         </button>
       </div>
 
@@ -93,11 +85,7 @@ export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; ter
         </div>
       )}
 
-      {tab === 'terms' && (
-        <TermsManager docs={termsDocs} partners={partners.map((p) => ({ id: p.id, name: p.name, slug: p.slug }))} />
-      )}
-
-      {tab === 'community' && <CommunityManager partners={partners} />}
+      {tab === 'terms' && <TermsManager docs={termsDocs} />}
     </div>
   )
 }

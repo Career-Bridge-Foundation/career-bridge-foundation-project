@@ -14,18 +14,16 @@ export default async function ProfilePage() {
   const [{ data: profile }, { data: portfolioProfile }] = await Promise.all([
     supabaseServer.from('profiles').select('full_name, avatar_url').eq('id', user.id).maybeSingle(),
     supabaseServer.from('portfolio_profiles')
-      .select('id, slug, headline, bio, location, linkedin_url, external_links, is_public, provisioning_status')
+      .select('id, slug, headline, bio, location, linkedin_url, external_links, is_public')
       .eq('user_id', user.id)
       .maybeSingle(),
   ])
 
-  // Spec 19.3: surface a persistent community link/status — nothing at all
-  // when provisioning_status is 'not_required' (no community configured for
-  // this candidate's partner), matching "a partner without it simply has no
-  // provisioning step."
-  let community: { status: 'pending' | 'provisioned' | 'failed'; partnerName: string | null; communityUrl: string | null } | null = null
-  const provisioningStatus = portfolioProfile?.provisioning_status as string | undefined
-  if (portfolioProfile?.id && (provisioningStatus === 'pending' || provisioningStatus === 'provisioned' || provisioningStatus === 'failed')) {
+  // Persistent community link — shown whenever any partner entitling this
+  // candidate has set one (partners.community_url), no status/provisioning
+  // concept involved. A partner without one simply produces no card.
+  let community: { partnerName: string | null; communityUrl: string } | null = null
+  if (portfolioProfile?.id) {
     const { data: ents } = await supabaseServer
       .from('candidate_entitlements')
       .select('granted_by_partner')
@@ -37,13 +35,12 @@ export default async function ProfilePage() {
         .from('partners')
         .select('name, community_url')
         .in('id', partnerIds)
-        .eq('community_enabled', true)
+        .not('community_url', 'is', null)
         .maybeSingle()
-      if (partner) {
+      if (partner?.community_url) {
         community = {
-          status: provisioningStatus as 'pending' | 'provisioned' | 'failed',
           partnerName: (partner.name as string | null) ?? null,
-          communityUrl: (partner.community_url as string | null) ?? null,
+          communityUrl: partner.community_url as string,
         }
       }
     }

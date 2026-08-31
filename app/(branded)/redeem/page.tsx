@@ -7,11 +7,20 @@ import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { useBranding } from '@/components/branding/BrandingProvider'
 import { createClient } from '@/lib/supabase/client'
+import { TermsChecklist, type ChecklistDoc } from '@/components/terms/TermsChecklist'
+
+type PreviewData = {
+  token: string
+  docs: ChecklistDoc[]
+  communityUrl: string | null
+  partnerName: string | null
+}
 
 type State =
   | { kind: 'loading' }
   | { kind: 'no_token' }
   | { kind: 'needs_auth'; token: string }
+  | { kind: 'preview'; data: PreviewData }
   | { kind: 'redeeming' }
   | { kind: 'success'; disciplines: string[] }
   | { kind: 'already' }
@@ -33,6 +42,7 @@ function RedeemInner() {
   const token = params.get('token')
   const branding = useBranding()
   const [state, setState] = useState<State>({ kind: 'loading' })
+  const [previewChecked, setPreviewChecked] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -47,7 +57,41 @@ function RedeemInner() {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        if (!cancelled) setState({ kind: 'needs_auth', token })
+        // Unauthenticated: show what this candidate is about to accept (and
+        // their partner's community link, if any) BEFORE they create an
+        // account — see GET /api/redeem/preview. The actual acceptance
+        // write still happens right after auth completes, in POST
+        // /api/redeem — this is a preview, not the record itself.
+        try {
+          const res = await fetch(`/api/redeem/preview?token=${encodeURIComponent(token)}`)
+          const data = await res.json().catch(() => ({}))
+          if (cancelled) return
+
+          if (res.ok && Array.isArray(data.docs) && data.docs.length > 0) {
+            setState({
+              kind: 'preview',
+              data: {
+                token,
+                docs: data.docs,
+                communityUrl: data.community_url ?? null,
+                partnerName: data.partner_name ?? null,
+              },
+            })
+          } else if (res.status === 409) {
+            setState({ kind: 'already' })
+          } else if (res.status === 410) {
+            setState({ kind: 'expired' })
+          } else if (res.status === 400 || res.status === 404) {
+            setState({ kind: 'invalid' })
+          } else {
+            // Nothing outstanding to preview (or preview failed) — fall back
+            // to the plain invite screen; POST /api/redeem still runs the
+            // full acceptance check server-side regardless.
+            setState({ kind: 'needs_auth', token })
+          }
+        } catch {
+          if (!cancelled) setState({ kind: 'needs_auth', token })
+        }
         return
       }
 
@@ -88,19 +132,19 @@ function RedeemInner() {
 
   // Token-preserving auth links. The redeem URL (with token) is the return
   // destination, URL-encoded so its own ?token= survives as part of `next`.
-  // NOTE (white-label seam): for partner-branded onboarding, resolve the
-  // inviting partner from the token here and brand this screen accordingly.
   const returnTo = token ? `/redeem?token=${encodeURIComponent(token)}` : '/redeem'
   const signupHref = `/auth/signup?next=${encodeURIComponent(returnTo)}`
   const loginHref = `/auth/login?next=${encodeURIComponent(returnTo)}`
+
+  const isPreview = state.kind === 'preview'
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header variant="solid" />
       <main className="flex-1 flex items-center justify-center px-6 py-16 pt-28">
-        <div className="w-full max-w-[460px]">
-          <div className="bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10 text-center">
-            <div className="flex justify-center mb-4">
+        <div className={`w-full ${isPreview ? 'max-w-2xl' : 'max-w-[460px]'}`}>
+          <div className={`bg-white rounded-2xl border border-border-light shadow-lg p-8 md:p-10 ${isPreview ? '' : 'text-center'}`}>
+            <div className={`flex ${isPreview ? '' : 'justify-center'} mb-4`}>
               <img
                 src={branding?.logo_url_on_light ?? "/evidentize-logo-colour.png"}
                 alt={branding?.name ?? "Evidentize"}
@@ -109,11 +153,59 @@ function RedeemInner() {
             </div>
 
             {state.kind === 'loading' && (
-              <p className="text-sm text-gray-500 py-6">Checking your invitation…</p>
+              <p className="text-sm text-gray-500 py-6 text-center">Checking your invitation…</p>
             )}
 
             {state.kind === 'redeeming' && (
-              <p className="text-sm text-gray-500 py-6">Activating your access…</p>
+              <p className="text-sm text-gray-500 py-6 text-center">Activating your access…</p>
+            )}
+
+            {state.kind === 'preview' && (
+              <>
+                <h1 className="text-2xl font-bold text-navy mb-2">Before you create your account</h1>
+                <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                  Review what you're accepting below — you'll create your account next.
+                </p>
+
+                <TermsChecklist docs={state.data.docs} onAllCheckedChange={setPreviewChecked} />
+
+                {state.data.communityUrl && (
+                  <div className="mt-6 rounded-lg border border-teal/30 bg-teal/5 p-4">
+                    <p className="text-sm font-semibold text-navy">Your community</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Once you're set up, {state.data.partnerName ? `${state.data.partnerName}'s` : 'your'} community is
+                      where induction, support and peer contact happen — you'll be able to join once your account is created.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-8 flex flex-col gap-3">
+                  <Link
+                    href={previewChecked ? signupHref : '#'}
+                    aria-disabled={!previewChecked}
+                    onClick={(e) => { if (!previewChecked) e.preventDefault() }}
+                    className={`block w-full rounded-lg text-sm font-semibold py-3 text-center ${
+                      previewChecked
+                        ? 'bg-navy text-white hover:opacity-90'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Create your account
+                  </Link>
+                  <Link
+                    href={previewChecked ? loginHref : '#'}
+                    aria-disabled={!previewChecked}
+                    onClick={(e) => { if (!previewChecked) e.preventDefault() }}
+                    className={`block w-full rounded-lg border text-sm font-semibold py-3 text-center ${
+                      previewChecked
+                        ? 'border-border-light text-navy hover:bg-gray-50'
+                        : 'border-slate-200 text-slate-300 cursor-not-allowed'
+                    }`}
+                  >
+                    I already have an account — sign in
+                  </Link>
+                </div>
+              </>
             )}
 
             {state.kind === 'needs_auth' && (

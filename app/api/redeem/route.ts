@@ -23,6 +23,7 @@ import {
   PartnerTokenVerificationError,
 } from '@/lib/partners/token'
 import { ensurePortfolioProfile } from '@/lib/portfolio/ensureProfile'
+import { recordAcceptanceForActiveVersions } from '@/lib/terms/recordAcceptanceForActiveVersions'
 
 export const runtime = 'nodejs'
 
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
       candidate_id: portfolioId,
       discipline,
       granted_by_partner: row.partner_id,
+      requires_programme_terms: row.requires_programme_terms ?? true,
     }))
 
     const { error: entError } = await supabaseServer
@@ -173,7 +175,21 @@ export async function POST(request: Request) {
       console.error('[redeem] failed to mark token redeemed', redeemError)
     }
 
-    // 10. SUCCESS
+    // 10. RECORD ACCEPTANCE inline — folds what used to be a separate
+    // /accept-terms visit into this same flow for a brand-new candidate who
+    // already previewed and confirmed these documents before signing up
+    // (see GET /api/redeem/preview). Best-effort: if this doesn't succeed,
+    // /accept-terms's middleware gate is still the authoritative backstop
+    // on the candidate's very next request — nothing is silently bypassed.
+    await recordAcceptanceForActiveVersions({
+      sessionClient: supabase,
+      partnerId: row.partner_id as string,
+      requiresProgrammeTerms: (row.requires_programme_terms as boolean | null) ?? true,
+      ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      userAgent: request.headers.get('user-agent'),
+    })
+
+    // 11. SUCCESS
     return NextResponse.json({
       ok: true,
       disciplines: row.disciplines,

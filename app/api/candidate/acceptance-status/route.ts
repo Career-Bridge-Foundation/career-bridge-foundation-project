@@ -26,6 +26,8 @@ export async function GET() {
       partner_contact_email: d.partnerContactEmail,
       version: d.version,
       body: d.body,
+      source_file_type: d.sourceFileType,
+      signed_url: d.signedUrl,
     })),
   })
 }

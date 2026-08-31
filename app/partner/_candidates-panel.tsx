@@ -15,12 +15,10 @@ export function CandidatesPanel({
   candidates,
   linkDetail = true,
   showAdminColumns = false,
-  communityEnabled = false,
 }: {
   candidates: PartnerCandidateWithProgress[]
   linkDetail?: boolean
   showAdminColumns?: boolean
-  communityEnabled?: boolean
 }) {
   const [search, setSearch] = useState('')
   const [discipline, setDiscipline] = useState('all')
@@ -114,7 +112,6 @@ export function CandidatesPanel({
           onSort={toggleSort}
           linkDetail={linkDetail}
           showAdminColumns={showAdminColumns}
-          communityEnabled={communityEnabled}
         />
       )}
 

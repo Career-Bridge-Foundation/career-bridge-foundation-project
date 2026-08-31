@@ -3,9 +3,8 @@ import { supabaseServer } from '@/lib/supabase/server'
 // ─────────────────────────────────────────────────────────────────────────
 // Outstanding-acceptance resolution (Spec 19). Two kinds of document apply
 // to a candidate: the platform terms (always) and, per partner that has
-// entitled them, that partner's programme terms (Spec 19 decision: a
-// candidate belonging to two partners accepts each partner's terms
-// separately — one platform acceptance, one per partner).
+// entitled them AND for whom at least one of those entitlements has
+// requires_programme_terms = true, that partner's programme terms.
 //
 // Reads portfolio_profiles by `user_id` — the column every shipping route in
 // this codebase (app/api/redeem/route.ts, etc.) already reads/writes
@@ -15,20 +14,25 @@ import { supabaseServer } from '@/lib/supabase/server'
 // column errors visibly, it doesn't fail silently).
 // ─────────────────────────────────────────────────────────────────────────
 
+const BUCKET = 'partner-terms-documents'
+const SIGNED_URL_TTL = 3600
+
 export type OutstandingDocument = {
   documentType: 'platform_terms' | 'partner_programme_terms'
   partnerId: string | null
   partnerName: string | null
   partnerContactEmail: string | null
   version: string
-  body: string
+  body: string | null // null when sourceFileType is set (PDF)
   documentHash: string
+  sourceFileType: string | null
+  signedUrl: string | null
 }
 
 export async function getOutstandingDocuments(userId: string): Promise<OutstandingDocument[]> {
   const outstanding: OutstandingDocument[] = []
 
-  // ── Platform terms — always applicable ──
+  // ── Platform terms — always applicable (always text-based) ──
   const { data: platform } = await supabaseServer
     .from('terms_documents')
     .select('version, body, document_hash')
@@ -54,11 +58,14 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
         version: platform.version as string,
         body: platform.body as string,
         documentHash: platform.document_hash as string,
+        sourceFileType: null,
+        signedUrl: null,
       })
     }
   }
 
-  // ── Partner programme terms — one per partner that has entitled this candidate ──
+  // ── Partner programme terms — one per partner that entitled this
+  // candidate WITH requires_programme_terms = true on at least one row ──
   const { data: profile } = await supabaseServer
     .from('portfolio_profiles')
     .select('id')
@@ -71,13 +78,14 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
       .select('granted_by_partner')
       .eq('candidate_id', profile.id as string)
       .is('revoked_at', null)
+      .eq('requires_programme_terms', true)
 
     const partnerIds = [...new Set((ents ?? []).map((e) => e.granted_by_partner as string))]
 
     for (const partnerId of partnerIds) {
       const { data: doc } = await supabaseServer
         .from('terms_documents')
-        .select('version, body, document_hash')
+        .select('version, body, document_hash, source_storage_path, source_file_type')
         .eq('document_type', 'partner_programme_terms')
         .eq('partner_id', partnerId)
         .eq('is_active', true)
@@ -100,14 +108,24 @@ export async function getOutstandingDocuments(userId: string): Promise<Outstandi
         .eq('id', partnerId)
         .maybeSingle()
 
+      let signedUrl: string | null = null
+      if (doc.source_storage_path) {
+        const { data: signed } = await supabaseServer.storage
+          .from(BUCKET)
+          .createSignedUrl(doc.source_storage_path as string, SIGNED_URL_TTL)
+        signedUrl = signed?.signedUrl ?? null
+      }
+
       outstanding.push({
         documentType: 'partner_programme_terms',
         partnerId,
         partnerName: (partner?.name as string | null) ?? null,
         partnerContactEmail: (partner?.contact_email as string | null) ?? null,
         version: doc.version as string,
-        body: doc.body as string,
+        body: (doc.body as string | null) ?? null,
         documentHash: doc.document_hash as string,
+        sourceFileType: (doc.source_file_type as string | null) ?? null,
+        signedUrl,
       })
     }
   }

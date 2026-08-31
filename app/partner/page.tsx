@@ -23,7 +23,7 @@ export default async function PartnerCandidatesPage({
 
   let candidates: PartnerCandidateWithProgress[] = []
   let loadError = false
-  let communityEnabled = false
+  let hasActiveProgrammeTerms = false
   try {
     // requirePartner guarantees a non-null partnerId.
     candidates = await getPartnerCandidateProgress(ctx.partnerId!)
@@ -40,12 +40,14 @@ export default async function PartnerCandidatesPage({
         : c
     })
 
-    const { data: partnerRow } = await supabaseServer
-      .from('partners')
-      .select('community_enabled')
-      .eq('id', ctx.partnerId!)
+    const { data: activeDoc } = await supabaseServer
+      .from('terms_documents')
+      .select('id')
+      .eq('document_type', 'partner_programme_terms')
+      .eq('partner_id', ctx.partnerId!)
+      .eq('is_active', true)
       .maybeSingle()
-    communityEnabled = !!partnerRow?.community_enabled
+    hasActiveProgrammeTerms = !!activeDoc
   } catch {
     loadError = true
   }
@@ -61,7 +63,7 @@ export default async function PartnerCandidatesPage({
         </p>
       </header>
 
-      <CandidatesTabs candidates={candidates} loadError={loadError} communityEnabled={communityEnabled} />
+      <CandidatesTabs candidates={candidates} loadError={loadError} hasActiveProgrammeTerms={hasActiveProgrammeTerms} />
     </div>
   )
 }

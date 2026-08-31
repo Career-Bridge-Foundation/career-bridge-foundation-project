@@ -23,9 +23,8 @@ type InitialData = {
   linkedin_url: string
   external_links: ExternalLink[]
   community: {
-    status: 'pending' | 'provisioned' | 'failed'
     partnerName: string | null
-    communityUrl: string | null
+    communityUrl: string
   } | null
 }
 
@@ -99,7 +98,6 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
         {initial.community && (
           <div className="mb-8">
             <CommunityStatusCard
-              status={initial.community.status}
               partnerName={initial.community.partnerName}
               communityUrl={initial.community.communityUrl}
             />

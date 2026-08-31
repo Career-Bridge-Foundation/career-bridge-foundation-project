@@ -25,6 +25,7 @@ const BodySchema = z.object({
     .array(z.enum(AVAILABLE_DISCIPLINES as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
+  requires_programme_terms: z.boolean().optional().default(true),
 })
 
 export async function POST(request: Request) {
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
         appUrl,
+        requiresProgrammeTerms: body.requires_programme_terms,
       })
     } catch (err) {
       if (err instanceof MintError) {

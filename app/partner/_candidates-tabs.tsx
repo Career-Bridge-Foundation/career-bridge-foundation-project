@@ -16,11 +16,11 @@ type TabKey = 'candidates' | 'provision'
 export function CandidatesTabs({
   candidates,
   loadError,
-  communityEnabled,
+  hasActiveProgrammeTerms,
 }: {
   candidates: PartnerCandidateWithProgress[]
   loadError: boolean
-  communityEnabled: boolean
+  hasActiveProgrammeTerms: boolean
 }) {
   const [tab, setTab] = useState<TabKey>('candidates')
 
@@ -61,11 +61,11 @@ export function CandidatesTabs({
             </button>
           </div>
         ) : (
-          <CandidatesPanel candidates={candidates} showAdminColumns communityEnabled={communityEnabled} />
+          <CandidatesPanel candidates={candidates} showAdminColumns />
         )
       )}
 
-      {tab === 'provision' && <MintForm />}
+      {tab === 'provision' && <MintForm hasActiveProgrammeTerms={hasActiveProgrammeTerms} />}
     </div>
   )
 }

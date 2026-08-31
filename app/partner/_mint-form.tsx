@@ -10,11 +10,12 @@ type Result = {
   expires_at: string
 }
 
-export function MintForm() {
+export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms: boolean }) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [country, setCountry] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [includeProgrammeTerms, setIncludeProgrammeTerms] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
@@ -50,6 +51,7 @@ export function MintForm() {
           candidate_name: name.trim() || undefined,
           country,
           disciplines: selected,
+          requires_programme_terms: hasActiveProgrammeTerms ? includeProgrammeTerms : false,
         }),
       })
       const data = await res.json()
@@ -82,6 +84,7 @@ export function MintForm() {
     setName('')
     setCountry('')
     setSelected([])
+    setIncludeProgrammeTerms(true)
     setResult(null)
     setError(null)
     setCopied(false)
@@ -184,6 +187,27 @@ export function MintForm() {
           </label>
         ))}
       </div>
+
+      {hasActiveProgrammeTerms ? (
+        <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeProgrammeTerms}
+              onChange={(e) => setIncludeProgrammeTerms(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Include your programme terms for this candidate
+              <span className="block text-xs text-slate-500">We recommend keeping this checked.</span>
+            </span>
+          </label>
+        </div>
+      ) : (
+        <p className="mb-4 text-xs text-slate-400">
+          You haven&apos;t published programme terms yet — this candidate will only see Evidentize&apos;s platform terms.
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 mb-4">{error}</p>
