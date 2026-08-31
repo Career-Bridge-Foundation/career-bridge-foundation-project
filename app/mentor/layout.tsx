@@ -1,4 +1,3 @@
-import { headers } from 'next/headers'
 import type { CSSProperties } from 'react'
 import { redirect } from 'next/navigation'
 import type { PartnerBranding } from '@/lib/partners/branding'
@@ -18,26 +17,25 @@ export default async function MentorConsoleLayout({ children }: { children: Reac
     redirect('/auth/login?next=/mentor')
   }
 
-  // The mentor's partner name for the header.
+  // Branding by authenticated partnerId — reliable regardless of which host
+  // the mentor logs in through. Previously this read the x-partner-* headers,
+  // which only resolve on the partner's own subdomain host (see the identical
+  // fix and rationale in app/partner/layout.tsx).
   const { data: partner } = await supabaseServer
     .from('partners')
-    .select('name')
+    .select('name, primary_color, secondary_color, logo_url_icon, logo_url_on_light, logo_url_on_dark')
     .eq('id', ctx.partnerId)
     .maybeSingle()
 
-  // Branding CSS vars from the Phase-1 middleware headers (subdomain-resolved),
-  // mirroring app/partner/layout.tsx. Neutral CB defaults when absent.
-  const h = await headers()
-  const partnerId = h.get('x-partner-id')
-  const branding: PartnerBranding | null = partnerId
+  const branding: PartnerBranding | null = partner
     ? {
-        id: partnerId,
-        name: h.get('x-partner-name') ?? '',
-        logo_url_icon: h.get('x-partner-logo-icon'),
-        logo_url_on_light: h.get('x-partner-logo-light'),
-        logo_url_on_dark: h.get('x-partner-logo-dark'),
-        primary_color: h.get('x-partner-primary'),
-        secondary_color: h.get('x-partner-secondary'),
+        id: ctx.partnerId!,
+        name: partner.name ?? '',
+        logo_url_icon: partner.logo_url_icon,
+        logo_url_on_light: partner.logo_url_on_light,
+        logo_url_on_dark: partner.logo_url_on_dark,
+        primary_color: partner.primary_color,
+        secondary_color: partner.secondary_color,
       }
     : null
   const brandVars: Record<string, string> = {}
@@ -49,6 +47,14 @@ export default async function MentorConsoleLayout({ children }: { children: Reac
       <div style={brandVars as CSSProperties} className="min-h-screen bg-slate-50">
         <div className="mx-auto flex max-w-6xl gap-8 px-6 py-8">
           <aside className="w-64 shrink-0">
+            {branding?.logo_url_icon && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.logo_url_icon}
+                alt={branding.name}
+                className="mb-4 h-8 w-8 rounded object-contain"
+              />
+            )}
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Mentor Console</p>
             <h2 className="mb-6 text-lg font-bold leading-snug text-navy break-words">{partner?.name ?? 'Mentor'}</h2>
             <MentorNav />

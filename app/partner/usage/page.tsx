@@ -26,7 +26,7 @@ export default async function PartnerUsagePage() {
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-teal">Usage</p>
         <h1 className="text-2xl font-bold text-navy">Seat usage</h1>
         <p className="mt-1 text-sm text-slate-600">
-          A seat is one unique candidate — counted once, regardless of how many disciplines they take.
+          A seat is one unique candidate, counted once, regardless of how many disciplines they take.
         </p>
       </header>
 
@@ -36,7 +36,7 @@ export default async function PartnerUsagePage() {
         </div>
       ) : usage.seatsConsumed === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          No seats used yet — provision a candidate to get started.
+          No seats used yet, provision a candidate to get started.
         </div>
       ) : (
         <UsageCard usage={usage} />

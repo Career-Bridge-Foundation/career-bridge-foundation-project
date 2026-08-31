@@ -1,39 +1,16 @@
 import { ImageResponse } from 'next/og';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
+import { ROOT_DOMAIN } from '@/lib/partners/branding';
+import { NAVY, TEAL } from '@/constants/colors';
+import { loadGoogleFont } from '@/lib/og/loadGoogleFont';
 
 export const alt = 'Evidentize Portfolio';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-/**
- * Fetches a TTF font from Google Fonts for use in ImageResponse.
- * Sends an old Safari User-Agent so Google returns TTF instead of woff2.
- * Returns null on any failure — ImageResponse falls back to a built-in font.
- */
-async function loadGoogleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
-  try {
-    const css = await fetch(
-      `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`,
-      {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; de-at) ' +
-            'AppleWebKit/533.21.1 (KHTML, like Gecko) Version/5.0.5 Safari/533.21.1',
-        },
-      }
-    ).then(r => r.text());
-
-    const url = css.match(/url\(([^)]+)\)/)?.[1];
-    if (!url) return null;
-    return fetch(url).then(r => r.arrayBuffer());
-  } catch {
-    return null;
-  }
-}
-
 const CHIP_STYLES: Record<string, { bg: string; text: string; border: string }> = {
   'Distinction':  { bg: '#1C1917', text: '#FBBF24', border: '#FBBF24' },
-  'Merit':        { bg: '#003359', text: '#ffffff', border: 'rgba(255,255,255,0.4)' },
+  'Merit':        { bg: NAVY, text: '#ffffff', border: 'rgba(255,255,255,0.4)' },
   'Pass':         { bg: '#006FAD', text: '#ffffff', border: '#006FAD' },
   'Borderline':   { bg: '#6B7280', text: '#ffffff', border: '#6B7280' },
   'Did Not Pass': { bg: 'transparent', text: '#9CA3AF', border: '#9CA3AF' },
@@ -76,7 +53,7 @@ export default async function OgImage({
           flexDirection:  'column',
           justifyContent: 'space-between',
           padding:        '64px 72px',
-          background:     'linear-gradient(150deg, #004060 0%, #003359 45%, #001e36 100%)',
+          background:     `linear-gradient(150deg, #22345c 0%, ${NAVY} 45%, #0d1730 100%)`,
         }}
       >
         {/* ── Name + headline ── */}
@@ -150,7 +127,7 @@ export default async function OgImage({
               fontFamily:    inter ? 'Inter' : 'sans-serif',
               fontSize:      16,
               fontWeight:    400,
-              color:         '#4DC5D2',
+              color:         TEAL,
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
             }}
@@ -166,7 +143,7 @@ export default async function OgImage({
               letterSpacing: '0.02em',
             }}
           >
-            evidentize.io/portfolio/{slug}
+            {ROOT_DOMAIN}/portfolio/{slug}
           </div>
         </div>
       </div>

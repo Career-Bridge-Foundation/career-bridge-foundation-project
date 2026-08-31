@@ -8,13 +8,13 @@ export const Table = ({ children, className }: { children: React.ReactNode; clas
 )
 
 export const THead = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <thead className={cn('text-[#003359]/70 text-xs uppercase tracking-wider', className)}>
+  <thead className={cn('text-navy/70 text-xs uppercase tracking-wider', className)}>
     <tr>{children}</tr>
   </thead>
 )
 
 export const TBody = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <tbody className={cn('text-[#003359]', className)}>{children}</tbody>
+  <tbody className={cn('text-navy', className)}>{children}</tbody>
 )
 
 export const TR = React.forwardRef<

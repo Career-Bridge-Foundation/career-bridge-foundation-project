@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { isValidHexColor } from '@/lib/validation/hexColor'
 
-const DEFAULT_PRIMARY = '#003359'
+const DEFAULT_PRIMARY = '#18284e'
 const DEFAULT_SECONDARY = '#0d9488'
 
 export function BrandingForm({
@@ -82,7 +82,7 @@ export function BrandingForm({
           value={primary}
           onChange={(v) => { setPrimary(v); setSaved(false) }}
           invalid={!primaryValid}
-          invalidMsg="Enter a valid hex colour, e.g. #003359"
+          invalidMsg="Enter a valid hex colour, e.g. #18284e"
         />
         <div>
           <ColorField
@@ -156,7 +156,7 @@ function ColorField({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? '#003359'}
+          placeholder={placeholder ?? '#18284e'}
           className={`w-40 rounded-md border px-3 py-2 font-mono text-sm ${invalid ? 'border-red-300' : 'border-slate-300'}`}
         />
       </div>

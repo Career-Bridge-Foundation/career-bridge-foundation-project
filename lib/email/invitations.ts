@@ -16,10 +16,23 @@ export async function sendInvitationEmail(params: SendInvitationParams) {
   const sender = await resolvePartnerSender(partnerId);
   const displayName = partnerName?.trim() || sender.partnerName || 'Evidentize';
 
-  const html = renderInvitationEmail({ inviteUrl, senderName: displayName, expiresInDays, roleLabel });
+  const html = renderInvitationEmail({
+    inviteUrl,
+    senderName: displayName,
+    expiresInDays,
+    roleLabel,
+    logoUrl: sender.logoUrl,
+    accentColor: sender.accentColor,
+  });
   const subject = roleLabel
     ? `You're invited to ${displayName} as a ${roleLabel}`
     : `You're invited to ${displayName}`;
 
-  return sendEmail({ to, from: sender.from, subject, html });
+  return sendEmail({
+    to,
+    from: sender.from,
+    subject,
+    html,
+    ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
+  });
 }

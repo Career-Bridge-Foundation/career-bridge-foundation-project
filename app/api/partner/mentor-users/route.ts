@@ -4,6 +4,7 @@ import { elevateUser } from '@/lib/auth/elevateUser'
 import { isCrossOrgHijack } from '@/lib/auth/assertNoCrossOrgHijack'
 import { supabaseServer } from '@/lib/supabase/server'
 import { sendMentorAddedEmail } from '@/lib/email/mentor-notifications'
+import { partnerAppUrl } from '@/lib/partners/branding'
 
 export const runtime = 'nodejs'
 
@@ -82,10 +83,17 @@ export async function POST(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (appUrl && target.email) {
     try {
+      const { data: partnerRow } = await supabaseServer
+        .from('partners')
+        .select('subdomain')
+        .eq('id', ctx.partnerId)
+        .maybeSingle()
+      const baseUrl = partnerAppUrl(partnerRow?.subdomain as string | null | undefined, appUrl)
+
       await sendMentorAddedEmail({
         to: target.email,
         partnerId: ctx.partnerId,
-        consoleUrl: `${appUrl}/mentor`,
+        consoleUrl: `${baseUrl}/mentor`,
       })
     } catch (e) {
       console.error('[mentor-added email]', e)

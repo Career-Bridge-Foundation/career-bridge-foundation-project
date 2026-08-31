@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
 import { SimulationMetadataSchema } from '@/lib/schemas/simulation'
 import { logActivity } from '@/lib/supabase/log-activity'
+import { requireStaff } from '@/lib/auth/permissions'
 
 async function getCallerEmail(request: NextRequest): Promise<string> {
   try {
@@ -18,6 +19,12 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
   const { data, error } = await supabaseServer
     .from('simulations')
@@ -33,6 +40,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
 
   let body: unknown
@@ -91,6 +104,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
 
   const { data: sim } = await supabaseServer

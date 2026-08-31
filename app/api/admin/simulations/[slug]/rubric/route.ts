@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer, createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/log-activity'
+import { requireStaff } from '@/lib/auth/permissions'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,6 +141,12 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
 
   const { data, error } = await supabaseServer
@@ -163,6 +170,12 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { slug } = await params
 
   let raw: unknown

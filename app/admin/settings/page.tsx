@@ -2,6 +2,8 @@ import React from 'react'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import packageJson from '@/package.json'
+import { redirect } from 'next/navigation'
+import { requireAdmin } from '@/lib/auth/permissions'
 
 const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? `${process.env.NEXT_PUBLIC_SUPABASE_URL.replace('.supabase.co', '')}.supabase.co`.replace(
@@ -10,7 +12,13 @@ const SUPABASE_PROJECT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
     )
   : null
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  try {
+    await requireAdmin()
+  } catch {
+    redirect('/auth/login')
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>

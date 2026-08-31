@@ -3,6 +3,7 @@ import { SimulationContentSchema } from '@/lib/schemas/simulation'
 import { supabaseServer } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/supabase/log-activity'
+import { requireStaff } from '@/lib/auth/permissions'
 
 async function getCallerEmail(request: NextRequest): Promise<string> {
   try {
@@ -18,6 +19,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const { slug } = await params
     const body = await request.json()

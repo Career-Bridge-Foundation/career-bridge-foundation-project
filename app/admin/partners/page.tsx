@@ -17,7 +17,7 @@ export default async function PartnersPage() {
 
   const { data: partners, error: partnersError } = await supabaseServer
     .from('partners')
-    .select('id, name, slug, status, contact_email, created_at')
+    .select('id, name, slug, status, contact_email, subdomain, email_sender_name, email_sender_domain, created_at')
     .order('created_at', { ascending: false })
 
   const { data: termsDocs, error: termsError } = await supabaseServer

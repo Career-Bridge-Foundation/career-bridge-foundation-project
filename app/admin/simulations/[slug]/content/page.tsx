@@ -1,6 +1,7 @@
 import React from 'react'
 import { getSimBySlug } from '@/lib/data'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { requireStaff } from '@/lib/auth/permissions'
 import { ContentEditor } from './_editor'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -15,6 +16,12 @@ export default async function SimulationContentPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
+  try {
+    await requireStaff()
+  } catch {
+    redirect('/auth/login')
+  }
+
   const { slug } = await params
   const sim = await getSimBySlug(slug)
   if (!sim) notFound()
