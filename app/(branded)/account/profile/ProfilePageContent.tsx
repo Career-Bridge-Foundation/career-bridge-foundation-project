@@ -10,6 +10,12 @@ import { CommunityStatusCard } from './_community-status-card'
 const NAVY = '#003359'
 const TEAL = '#4DC5D2'
 
+// A portfolio is the candidate's own permanent, verified artefact — never
+// tied to whichever partner subdomain they happen to be browsing from (that
+// subdomain can disappear if the partner leaves). Same pattern as
+// app/portfolio/[slug]/ShareButton.tsx and app/partner/_candidates-table.tsx.
+const PORTFOLIO_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
+
 type ExternalLink = { label: string; url: string }
 
 type InitialData = {
@@ -314,7 +320,7 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
                 </p>
               </div>
               <Link
-                href={`/portfolio/${initial.portfolio_slug}`}
+                href={`${PORTFOLIO_BASE_URL}/portfolio/${initial.portfolio_slug}`}
                 target="_blank"
                 className="text-xs font-semibold uppercase tracking-widest px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
               >
