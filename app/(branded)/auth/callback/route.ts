@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
   const code       = searchParams.get('code')
   const token_hash = searchParams.get('token_hash')
-  const type       = searchParams.get('type') as 'email' | 'recovery' | 'signup' | null
+  const type       = searchParams.get('type') as 'email' | 'recovery' | 'signup' | 'magiclink' | 'email_change' | null
   const next       = sanitizeNextPath(searchParams.get('next'))
 
   const supabase = await createClient()
