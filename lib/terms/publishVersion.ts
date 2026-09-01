@@ -116,8 +116,19 @@ async function notifySupersededAcceptors(params: {
   query = partnerId ? query.eq('partner_id', partnerId) : query.is('partner_id', null)
   const { data: acceptors } = await query
 
-  const candidateIds = [...new Set((acceptors ?? []).map((a) => a.candidate_id as string))]
-  if (!candidateIds.length) return
+  // candidate_terms_acceptances.candidate_id is a portfolio_profiles.id, not
+  // an auth.users.id (confirmed against the live FK) — resolve to user_id
+  // before calling the admin API, or getUserById silently returns nothing
+  // for every candidate and no re-prompt email ever sends.
+  const profileIds = [...new Set((acceptors ?? []).map((a) => a.candidate_id as string))]
+  if (!profileIds.length) return
+
+  const { data: profiles } = await supabaseServer
+    .from('portfolio_profiles')
+    .select('id, user_id')
+    .in('id', profileIds)
+  const userIds = (profiles ?? []).map((p) => p.user_id as string)
+  if (!userIds.length) return
 
   const sender = await resolvePartnerSender(documentType === 'platform_terms' ? null : partnerId)
   const documentLabel =
@@ -126,12 +137,12 @@ async function notifySupersededAcceptors(params: {
   const subject = `Updated: ${documentLabel}`
 
   await Promise.all(
-    candidateIds.map(async (candidateId) => {
-      const { data } = await supabaseServer.auth.admin.getUserById(candidateId)
+    userIds.map(async (userId) => {
+      const { data } = await supabaseServer.auth.admin.getUserById(userId)
       const email = data?.user?.email
       if (!email) return
       return sendEmail({ to: email, from: sender.from, subject, html }).catch((err) =>
-        console.error('[publishTermsVersion] re-prompt send failed', candidateId, err)
+        console.error('[publishTermsVersion] re-prompt send failed', userId, err)
       )
     })
   )
