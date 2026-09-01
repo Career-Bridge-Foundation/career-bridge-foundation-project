@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { grantableDisciplines } from '@/lib/disciplines-data'
+import { COUNTRIES } from '@/lib/countries'
 
 const AVAILABLE = grantableDisciplines
 
@@ -9,10 +10,12 @@ type Result = {
   expires_at: string
 }
 
-export function MintForm() {
+export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms: boolean }) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [country, setCountry] = useState('')
   const [selected, setSelected] = useState<string[]>([])
+  const [includeProgrammeTerms, setIncludeProgrammeTerms] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
@@ -34,6 +37,10 @@ export function MintForm() {
       setError('Select at least one discipline.')
       return
     }
+    if (!country) {
+      setError("Candidate's country is required.")
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/partner/tokens', {
@@ -42,7 +49,9 @@ export function MintForm() {
         body: JSON.stringify({
           candidate_email: email.trim(),
           candidate_name: name.trim() || undefined,
+          country,
           disciplines: selected,
+          requires_programme_terms: hasActiveProgrammeTerms ? includeProgrammeTerms : false,
         }),
       })
       const data = await res.json()
@@ -73,7 +82,9 @@ export function MintForm() {
   function reset() {
     setEmail('')
     setName('')
+    setCountry('')
     setSelected([])
+    setIncludeProgrammeTerms(true)
     setResult(null)
     setError(null)
     setCopied(false)
@@ -144,6 +155,23 @@ export function MintForm() {
         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4"
       />
 
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Candidate&apos;s country
+      </label>
+      <p className="text-xs text-slate-400 mb-1.5">
+        Used to determine pricing shown to this candidate. Set from what you know of them at admission — not self-reported.
+      </p>
+      <select
+        value={country}
+        onChange={(e) => setCountry(e.target.value)}
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4 bg-white"
+      >
+        <option value="">Select a country…</option>
+        {COUNTRIES.map((c) => (
+          <option key={c.code} value={c.code}>{c.name}</option>
+        ))}
+      </select>
+
       <label className="block text-sm font-medium text-slate-700 mb-2">
         Disciplines
       </label>
@@ -159,6 +187,27 @@ export function MintForm() {
           </label>
         ))}
       </div>
+
+      {hasActiveProgrammeTerms ? (
+        <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeProgrammeTerms}
+              onChange={(e) => setIncludeProgrammeTerms(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Include your programme terms for this candidate
+              <span className="block text-xs text-slate-500">We recommend keeping this checked.</span>
+            </span>
+          </label>
+        </div>
+      ) : (
+        <p className="mb-4 text-xs text-slate-400">
+          You haven&apos;t published programme terms yet — this candidate will only see Evidentize&apos;s platform terms.
+        </p>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 mb-4">{error}</p>

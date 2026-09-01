@@ -44,11 +44,13 @@ export function CandidatesTable({
   sort,
   onSort,
   linkDetail = true,
+  showAdminColumns = false,
 }: {
   candidates: PartnerCandidateWithProgress[]
   sort?: SortState
   onSort?: (k: SortKey) => void
   linkDetail?: boolean // false (mentor) → name is plain text, no link to the raw-submission detail
+  showAdminColumns?: boolean // Terms column — partner-only administrative concern, not shown to mentors
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -60,11 +62,13 @@ export function CandidatesTable({
             <Th label="Progress" sortKey="progress" sort={sort} onSort={onSort} />
             <Th label="Latest verdict" sortKey="verdict" sort={sort} onSort={onSort} />
             <Th label="Status" sortKey="status" sort={sort} onSort={onSort} />
+            {showAdminColumns && <th className="px-4 py-3 font-medium">Terms</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {candidates.map((c) => {
             const { started, evaluated, best, status } = candidateMeta(c)
+            const termsAccepted = c.platformTermsAccepted && c.programmeTermsAccepted
             return (
               <tr key={c.candidateId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 align-top">
@@ -106,6 +110,17 @@ export function CandidatesTable({
                     {status}
                   </span>
                 </td>
+                {showAdminColumns && (
+                  <td className="px-4 py-3 align-top">
+                    <span
+                      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        termsAccepted ? 'bg-teal/10 text-teal border-teal/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}
+                    >
+                      {termsAccepted ? 'Accepted' : 'Pending'}
+                    </span>
+                  </td>
+                )}
               </tr>
             )
           })}

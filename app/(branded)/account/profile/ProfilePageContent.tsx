@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { CommunityStatusCard } from './_community-status-card'
 
 const NAVY = '#003359'
 const TEAL = '#4DC5D2'
@@ -21,6 +22,10 @@ type InitialData = {
   location: string
   linkedin_url: string
   external_links: ExternalLink[]
+  community: {
+    partnerName: string | null
+    communityUrl: string
+  } | null
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -90,6 +95,15 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
       <Header variant="solid" />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+        {initial.community && (
+          <div className="mb-8">
+            <CommunityStatusCard
+              partnerName={initial.community.partnerName}
+              communityUrl={initial.community.communityUrl}
+            />
+          </div>
+        )}
+
         {/* Onboarding welcome banner */}
         {isOnboarding && (
           <div

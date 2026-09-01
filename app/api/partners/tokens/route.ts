@@ -22,16 +22,23 @@ import { supabaseServer } from '@/lib/supabase/server'
 import { getKeyPrefix, verifyApiKeyHash } from '@/lib/partners/apiKey'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
 import { availableDisciplineNames } from '@/lib/disciplines-data'
+import { COUNTRIES } from '@/lib/countries'
 
 export const runtime = 'nodejs'
+
+const COUNTRY_CODES = COUNTRIES.map((c) => c.code)
 
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
+  // Set by the partner's own integration, not the candidate — see
+  // supabase/migrations/20260809_001_candidate_country.sql.
+  country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z
     .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
+  requires_programme_terms: z.boolean().optional().default(true),
 })
 
 const INVALID_CREDENTIALS = { error: 'invalid credentials' } as const
@@ -107,12 +114,17 @@ export async function POST(request: Request) {
         partnerId,
         candidateEmail: body.candidate_email,
         candidateName: body.candidate_name ?? null,
+        country: body.country,
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
         appUrl,
+        requiresProgrammeTerms: body.requires_programme_terms,
       })
     } catch (err) {
       if (err instanceof MintError) {
+        if (err.code === 'terms_not_published') {
+          return NextResponse.json({ error: err.message }, { status: 400 })
+        }
         console.error('[partners/tokens] mint failed', err.code, err.message)
         const msg = err.code === 'persist_failed' ? 'could not persist token' : 'internal error'
         return NextResponse.json({ error: msg }, { status: 500 })

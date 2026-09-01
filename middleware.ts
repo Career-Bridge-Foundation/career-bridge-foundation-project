@@ -132,7 +132,18 @@ export async function middleware(request: NextRequest) {
   const isAccountPath = pathname.startsWith('/account') || pathname.startsWith('/api/account')
   const isAcceptInvitePath =
     pathname.startsWith('/accept-invite') || pathname.startsWith('/api/partner/invites/accept')
-  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath
+  const isAcceptTermsPath =
+    pathname.startsWith('/accept-terms') ||
+    pathname.startsWith('/api/candidate/accept') ||
+    pathname.startsWith('/api/candidate/acceptance-status')
+  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath
+  // Deliberately narrower than isSharedPath: /account is NOT exempt from the
+  // candidate acceptance gate below. Spec 19 requires "no catalogue, practice
+  // OR PROFILE data from any route" until both documents are accepted — the
+  // broader isSharedPath (built for the dashboard-isolation guard above,
+  // where /account legitimately needs to stay reachable for every role) would
+  // have let a gated candidate keep reading/editing /account/profile.
+  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath
 
   const DASHBOARD_ONLY_PATHS: Record<string, string> = {
     reviewer: '/reviewer',
@@ -149,6 +160,33 @@ export async function middleware(request: NextRequest) {
       url.pathname = ownDashboard
       url.search = ''
       return NextResponse.redirect(url)
+    }
+  }
+
+  // ── Candidate acceptance gate (Spec 19) ──────────────────────────────────
+  // An authenticated candidate with any outstanding document (platform terms,
+  // or any partner's programme terms for a partner that has entitled them)
+  // gets no catalogue, practice or profile data from any route until they
+  // accept — enforced here, at the single choke point every request passes
+  // through, not left to individual pages. candidate_has_outstanding_terms()
+  // does the real check in one round trip; see that function's definition in
+  // supabase/migrations/20260824_001_candidate_acceptance.sql.
+  if (user && !isAcceptanceGateExempt) {
+    const role = await getRole()
+    if (role === 'candidate') {
+      const { data: outstanding } = await supabase.rpc('candidate_has_outstanding_terms')
+      if (outstanding) {
+        if (pathname.startsWith('/api/')) {
+          return new NextResponse(JSON.stringify({ error: 'terms_not_accepted' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+        const url = request.nextUrl.clone()
+        url.pathname = '/accept-terms'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
     }
   }
 
