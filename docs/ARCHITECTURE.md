@@ -37,12 +37,9 @@ Career Bridge Foundation runs scenario-based professional simulations. Candidate
 │   │   ├── certifier/      # Digital credential issuance
 │   │   ├── chat/           # In-simulation AI assistant
 │   │   ├── evaluate/       # Simulation evaluation via Claude
-│   │   ├── purchases/      # Credit consumption
-│   │   └── stripe/         # Checkout creation and webhook handling
+│   │   ├── candidate/checkout-link/  # Partner-pack Stripe Checkout session creation
+│   │   └── webhooks/stripe/[partnerId]/  # Per-partner Stripe webhook handling
 │   ├── auth/               # Login, signup, reset-password, OAuth callback
-│   ├── for-coaches/        # Coach landing page
-│   ├── payment/            # Post-payment success page
-│   ├── pricing/            # Pricing and plan selection
 │   ├── simulate/           # Simulation execution ([id]) and results ([id]/results)
 │   └── simulations/        # Simulation catalogue and discipline browse
 ├── components/
@@ -59,7 +56,6 @@ Career Bridge Foundation runs scenario-based professional simulations. Candidate
 │   ├── certifier.ts        # Client-side fetch wrapper for credential issuance
 │   ├── cn.ts               # Tailwind class merging utility
 │   ├── disciplines-data.ts # Discipline metadata for catalogue
-│   ├── pricing.ts          # Pricing plan definitions
 │   ├── rate-limit.ts       # In-memory rate limiter for API routes
 │   ├── simulation-prompts.ts # Task prompts, simulation brief, evaluation criteria
 │   └── simulations-data.ts # Simulation catalogue data
@@ -82,7 +78,7 @@ Career Bridge Foundation runs scenario-based professional simulations. Candidate
 |---|---|
 | **Supabase** | PostgreSQL database, authentication (email/password + OAuth), row-level security, file storage |
 | **Anthropic Claude** | Powers the simulation chat assistant and evaluation engine |
-| **Stripe** | Handles payment checkout sessions and webhook-based credit provisioning |
+| **Stripe** | Handles partner-pack checkout sessions and per-partner webhook-based credit provisioning (every candidate is provisioned by a partner — no self-serve purchase path) |
 | **Certifier.io** | Issues verifiable digital credentials after a qualifying evaluation result |
 | **Vercel** | Hosting, edge middleware, environment variables, preview deployments |
 | **Google Fonts** | Inter font loaded via `<link>` in root layout |
@@ -101,11 +97,10 @@ Career Bridge Foundation runs scenario-based professional simulations. Candidate
 
 ```mermaid
 flowchart TD
-    A[Candidate signs up] --> B[Supabase Auth\ncreates user]
+    A[Candidate invited by a partner\nredemption token] --> B[Supabase Auth\ncreates user]
     B --> C[Browses simulation catalogue\n/simulations]
-    C --> D[Purchases credits\nStripe Checkout]
-    D --> E[Stripe webhook\nwrites to purchases table]
-    E --> F[Accesses simulation\nCredit check via purchases table]
+    C --> D[Entitlement check\ncandidate_entitlements / credit_ledger]
+    D --> F[Accesses simulation\nvia checkSimulationAccess]
     F --> G[Completes 5 tasks\nResponses saved to simulation_responses]
     G --> H[Submits simulation\nPOST /api/evaluate]
     H --> I[Claude API\nevaluates responses]
@@ -129,7 +124,7 @@ flowchart TD
 - Two Supabase clients in use:
   - `lib/supabase/client.ts` — browser client (used in client components and hooks)
   - `lib/supabase/server.ts` — server client (used in API routes and server components)
-- API routes that touch sensitive data (evaluation results, credential issuances, purchases) use a **Supabase admin client** constructed with `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS where needed
+- API routes that touch sensitive data (evaluation results, credential issuances, credit ledger) use a **Supabase admin client** constructed with `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS where needed
 
 ---
 

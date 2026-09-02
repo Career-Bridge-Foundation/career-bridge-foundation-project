@@ -257,39 +257,6 @@ export interface CredentialIssuanceUpdate {
   status?: CredentialStatus
 }
 
-// ── purchases ─────────────────────────────────────────────────
-
-export type PriceType = 'single' | 'bundle' | 'portfolio' | 'coach'
-export type PurchaseStatus = 'active' | 'expired' | 'refunded'
-
-export interface Purchase {
-  id: string
-  user_id: string
-  stripe_checkout_session_id: string
-  stripe_customer_id: string | null
-  price_type: PriceType
-  amount_paid: number
-  currency: string
-  simulation_credits: number
-  simulations_used: number
-  status: PurchaseStatus
-  purchased_at: string
-  expires_at: string | null
-}
-
-export interface PurchaseInsert {
-  user_id: string
-  stripe_checkout_session_id: string
-  stripe_customer_id?: string | null
-  price_type: PriceType
-  amount_paid: number
-  currency?: string
-  simulation_credits: number
-  simulations_used?: number
-  status?: PurchaseStatus
-  expires_at?: string | null
-}
-
 // ── RBAC ─────────────────────────────────────────────────────
 
 export type UserRole = 'candidate' | 'admin' | 'super_admin' | 'reviewer' | 'content_developer' | 'partner' | 'mentor'
@@ -403,11 +370,6 @@ export interface Database {
         Row: CredentialIssuance
         Insert: CredentialIssuanceInsert
         Update: CredentialIssuanceUpdate
-      }
-      purchases: {
-        Row: Purchase
-        Insert: PurchaseInsert
-        Update: Partial<PurchaseInsert>
       }
       debriefs: {
         Row: Debrief
