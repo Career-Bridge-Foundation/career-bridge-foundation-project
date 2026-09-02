@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
 import { createClient } from '@/lib/supabase/server';
+import { getCandidateHomeSubdomain } from '@/lib/partners/candidateHomeSubdomain';
+import { ROOT_DOMAIN } from '@/lib/partners/branding';
 import { EditPortfolioButton } from './EditPortfolioButton';
 import { ShareButton } from './ShareButton';
 import { TemplateRenderer } from './templates/TemplateRenderer';
@@ -56,6 +58,11 @@ export default async function PortfolioPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   let isOwner = false;
+  // Whichever partner subdomain the VIEWER (if logged in) belongs to — not
+  // whoever owns this portfolio. A candidate looking at someone else's
+  // portfolio should still land back on their OWN partner's subdomain, not
+  // the portfolio owner's.
+  let homeSubdomain: string | null = null;
   if (user) {
     const { data: ownerRow } = await supabase
       .from('portfolio_profiles')
@@ -65,7 +72,9 @@ export default async function PortfolioPage({
       .limit(1)
       .maybeSingle();
     isOwner = !!ownerRow;
+    homeSubdomain = await getCandidateHomeSubdomain(user.id);
   }
+  const backToHomeHref = homeSubdomain ? `https://${homeSubdomain}.${ROOT_DOMAIN}/` : '/';
 
   return (
     <div
@@ -108,7 +117,7 @@ export default async function PortfolioPage({
           }}
         >
           <Link
-            href="/"
+            href={backToHomeHref}
             className="portfolio-back-link"
             style={{
               display:        'inline-flex',
