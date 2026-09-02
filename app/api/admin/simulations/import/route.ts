@@ -40,9 +40,10 @@ export async function POST(request: NextRequest) {
 
   const { data: existing } = await supabaseServer
     .from('simulations')
-    .select('slug')
+    .select('slug, published_at')
 
   const existingSlugs = new Set((existing ?? []).map(r => r.slug))
+  const existingPublishedAt = new Map((existing ?? []).map(r => [r.slug, r.published_at as string | null]))
 
   const created: string[] = []
   const updated: string[] = []
@@ -63,7 +64,13 @@ export async function POST(request: NextRequest) {
         discipline: s.discipline ?? null,
         video_url: s.video_url ?? null,
         status: s.status ?? 'draft',
-        published_at: s.published_at ?? null,
+        // Mirror the auto-stamp behaviour of the edit ([slug]/route.ts) and
+        // approve routes: a row transitioning to 'published' always gets a
+        // published_at, even if the import payload omits it. Previously this
+        // route wrote published_at straight from the payload with no
+        // fallback, leaving 144 rows published with published_at = null.
+        published_at: s.published_at
+          ?? (s.status === 'published' ? existingPublishedAt.get(s.slug) ?? new Date().toISOString() : null),
         display_order: s.display_order ?? 0,
         sim_role: s.sim_role ?? null,
         brief_short: s.brief_short ?? null,

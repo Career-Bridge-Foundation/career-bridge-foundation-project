@@ -42,6 +42,8 @@ export type PartnerCandidate = {
   fullName: string | null      // profiles.full_name
   email: string | null         // auth.users.email (service-role)
   disciplines: string[]        // ACTIVE entitlement disciplines for THIS partner
+  country: string | null       // portfolio_profiles.country — Amendment §Console UI
+  countryLockedAt: string | null // portfolio_profiles.country_locked_at
 }
 
 // Acceptance status (Spec 19) is a SEPARATE, optional overlay — fetched only by
@@ -92,7 +94,7 @@ async function resolvePartnerRoster(
   // (ids derived exclusively from Step 1 — no external id list reaches a query)
   const { data: profs, error: profErr } = await supabaseServer
     .from('portfolio_profiles')
-    .select('id, user_id, slug')
+    .select('id, user_id, slug, country, country_locked_at')
     .in('id', scopedCandidateIds)
   if (profErr) throw profErr
 
@@ -103,6 +105,8 @@ async function resolvePartnerRoster(
     fullName: null,
     email: null,
     disciplines: [...(discByCandidate.get(p.id as string) ?? [])],
+    country: (p.country as string | null) ?? null,
+    countryLockedAt: (p.country_locked_at as string | null) ?? null,
   }))
 
   // ── SUBSET COMPOSE — applied AFTER partner scope; can only NARROW ──

@@ -14,8 +14,11 @@ const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
   // Set by the partner, who vetted the candidate at admission — never
-  // self-reported, never inferred from IP. See supabase/migrations/
-  // 20260809_001_candidate_country.sql.
+  // self-reported, never inferred from IP, never accepted from a candidate-
+  // authenticated request (this route is partner-admin only, via
+  // requirePartner below, which is the only mint path). Required on every
+  // invite, no default — see the country-and-pricing amendment and
+  // supabase/migrations/20260809_001_candidate_country.sql.
   country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z
     .array(z.enum(availableDisciplineNames as [string, ...string[]]))

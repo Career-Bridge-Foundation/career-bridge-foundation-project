@@ -21,7 +21,7 @@ export type MintParams = {
   partnerId: string
   candidateEmail: string
   candidateName?: string | null
-  /** ISO 3166-1 alpha-2, set by the partner — see lib/countries.ts. */
+  /** ISO 3166-1 alpha-2, uppercase, set by the partner — see the country-and-pricing amendment and lib/countries.ts. */
   country: string
   /** Discipline NAMES (e.g. "Cyber Security") — mapped to slugs internally. */
   disciplineNames: string[]

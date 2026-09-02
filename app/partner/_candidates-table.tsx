@@ -1,10 +1,79 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import { disciplines } from '@/lib/disciplines-data'
 import { highestVerdictBand } from '@/lib/portfolio/highestVerdictBand'
 import type { PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
 import { partnerVerdictStyle } from '@/lib/verdict-bands'
+import { COUNTRIES } from '@/lib/countries'
+import { getPricingRegion } from '@/lib/entitlement/pricingRegion'
+import { PRICING_REGION_LABEL } from '@/lib/entitlement/foundingCohortPricing'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
+
+function CountryCell({ candidate }: { candidate: PartnerCandidateWithProgress }) {
+  const [country, setCountry] = useState(candidate.country)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const locked = !!candidate.countryLockedAt
+
+  if (locked) {
+    const name = COUNTRIES.find((c) => c.code === country)?.name ?? country ?? '—'
+    return (
+      <div className="text-xs text-slate-500" title="Locked after first purchase — super-admin only">
+        {name} <span className="text-slate-400">🔒</span>
+      </div>
+    )
+  }
+
+  async function handleChange(next: string) {
+    const prev = country
+    setCountry(next)
+    setSaving(true)
+    setErr(null)
+    try {
+      const res = await fetch(`/api/partner/candidates/${candidate.candidateId}/country`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country: next }),
+      })
+      if (!res.ok) {
+        setCountry(prev)
+        const data = await res.json().catch(() => ({}))
+        setErr(data?.error ?? 'Could not update country')
+      }
+    } catch {
+      setCountry(prev)
+      setErr('Network error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <select
+        value={country ?? ''}
+        onChange={(e) => handleChange(e.target.value)}
+        disabled={saving}
+        className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-700 disabled:opacity-50"
+      >
+        <option value="">Not set</option>
+        {COUNTRIES.map((c) => (
+          <option key={c.code} value={c.code}>{c.name}</option>
+        ))}
+      </select>
+      {err && <p className="mt-0.5 text-[11px] text-red-600">{err}</p>}
+    </div>
+  )
+}
+
+function TierCell({ country }: { country: string | null }) {
+  if (!country) return <span className="text-xs text-slate-400">—</span>
+  const region = getPricingRegion(country)
+  return <span className="text-xs text-slate-600">{PRICING_REGION_LABEL[region]}</span>
+}
 
 // A portfolio is the candidate's own permanent, verified artefact — it must
 // never be tied to a partner's subdomain. If a partner later leaves and
@@ -66,6 +135,8 @@ export function CandidatesTable({
           <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
             <Th label="Candidate" sortKey="name" sort={sort} onSort={onSort} />
             <th className="px-4 py-3 font-medium">Disciplines</th>
+            <th className="px-4 py-3 font-medium">Country</th>
+            <th className="px-4 py-3 font-medium">Tier</th>
             <Th label="Progress" sortKey="progress" sort={sort} onSort={onSort} />
             <Th label="Latest verdict" sortKey="verdict" sort={sort} onSort={onSort} />
             <Th label="Status" sortKey="status" sort={sort} onSort={onSort} />
@@ -99,6 +170,12 @@ export function CandidatesTable({
                       </span>
                     ))}
                   </div>
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <CountryCell candidate={c} />
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <TierCell country={c.country} />
                 </td>
                 <td className="px-4 py-3 align-top text-slate-600">
                   {started === 0 ? <span className="text-slate-400">—</span> : <span>{evaluated}/{started} evaluated</span>}

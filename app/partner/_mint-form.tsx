@@ -2,6 +2,8 @@
 import React, { useState } from 'react'
 import { grantableDisciplines } from '@/lib/disciplines-data'
 import { COUNTRIES } from '@/lib/countries'
+import { getPricingRegion, getPresentmentCurrency } from '@/lib/entitlement/pricingRegion'
+import { FOUNDING_COHORT_PER_CREDIT, PRICING_REGION_LABEL } from '@/lib/entitlement/foundingCohortPricing'
 
 const AVAILABLE = grantableDisciplines
 
@@ -21,6 +23,18 @@ export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms:
   const [result, setResult] = useState<Result | null>(null)
   const [copied, setCopied] = useState(false)
 
+  // Inline pricing consequence — Amendment §Console UI: a bare dropdown gives
+  // no signal that a pricing decision was just made on someone's behalf.
+  const pricingPreview = country
+    ? (() => {
+        const region = getPricingRegion(country)
+        const currency = getPresentmentCurrency(country)
+        const perCredit = FOUNDING_COHORT_PER_CREDIT[region]
+        const countryName = COUNTRIES.find((c) => c.code === country)?.name ?? country
+        return `${countryName} — ${PRICING_REGION_LABEL[region]} pricing, $${perCredit.toFixed(2)} per credit, shown in ${currency}.`
+      })()
+    : null
+
   function toggleDiscipline(name: string) {
     setSelected((prev) =>
       prev.includes(name) ? prev.filter((d) => d !== name) : [...prev, name]
@@ -38,7 +52,7 @@ export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms:
       return
     }
     if (!country) {
-      setError("Candidate's country is required.")
+      setError('Select the candidate\'s country — this sets their pricing and cannot default.')
       return
     }
     setSubmitting(true)
@@ -164,13 +178,21 @@ export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms:
       <select
         value={country}
         onChange={(e) => setCountry(e.target.value)}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4 bg-white"
+        required
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-1 bg-white"
       >
         <option value="">Select a country…</option>
         {COUNTRIES.map((c) => (
           <option key={c.code} value={c.code}>{c.name}</option>
         ))}
       </select>
+      {pricingPreview ? (
+        <p className="text-xs text-[#006FAD] mb-4">{pricingPreview}</p>
+      ) : (
+        <p className="text-xs text-slate-400 mb-4">
+          Sets the candidate&apos;s pricing tier and currency. No default — required before this invite can be sent.
+        </p>
+      )}
 
       <label className="block text-sm font-medium text-slate-700 mb-2">
         Disciplines
@@ -215,7 +237,7 @@ export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms:
 
       <button
         onClick={handleSubmit}
-        disabled={submitting}
+        disabled={submitting || !country}
         className="rounded-md bg-[#003359] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#00253f] disabled:opacity-50"
       >
         {submitting ? 'Generating…' : 'Generate redemption link'}

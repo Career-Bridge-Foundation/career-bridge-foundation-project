@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
     const { data: portfolio } = await supabaseServer
       .from('portfolio_profiles')
-      .select('id')
+      .select('id, country')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -125,17 +125,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Carry the partner-set country onto the candidate's profile (older
-    // tokens minted before this field existed have row.country === null —
-    // leave the profile's country untouched in that case rather than
-    // clobbering it with null).
-    if (row.country) {
+    // Carry the country captured at invite onto the portfolio. Only if not
+    // already set — a candidate redeeming a second token must not have their
+    // country silently overwritten (country-and-pricing amendment). Older
+    // tokens minted before this field existed have row.country === null, so
+    // the outer check already leaves the profile untouched in that case.
+    if (!portfolio?.country && row.country) {
       const { error: countryError } = await supabaseServer
         .from('portfolio_profiles')
         .update({ country: row.country })
         .eq('id', portfolioId)
+        .is('country', null)
+
       if (countryError) {
-        console.error('[redeem] failed to set candidate country (non-fatal)', countryError)
+        console.error('[redeem] failed to set country from token (non-fatal)', countryError)
       }
     }
 

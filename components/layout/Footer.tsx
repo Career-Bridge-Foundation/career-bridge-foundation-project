@@ -20,11 +20,6 @@ const NAV_LINKS = [
   },
   {
     id: 4,
-    name: "For Coaches",
-    url: "/for-coaches"
-  },
-  {
-    id: 5,
     name: "Contact",
     url: "https://evidentize.io/contact"
   },

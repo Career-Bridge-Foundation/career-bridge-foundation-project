@@ -71,6 +71,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAdminPath    = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
   const isReviewerPath = pathname.startsWith('/reviewer') || pathname.startsWith('/api/reviewer')
+  const isPartnerPath  = pathname.startsWith('/partner') || pathname.startsWith('/api/partner')
 
   // Redirect legacy admin/login to the unified auth login
   if (pathname === '/admin/login') {
@@ -246,6 +247,38 @@ export async function middleware(request: NextRequest) {
     const userRole = await getRole()
 
     if (userRole !== 'reviewer') {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+  }
+
+  // ── Partner routes ───────────────────────────────────────────────────────
+  // Spec 18 acceptance criterion 7: /partner/* must be gated in middleware,
+  // not only by the page-level requirePartner() check.
+  if (isPartnerPath) {
+    if (!user) {
+      if (pathname.startsWith('/api/')) {
+        return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      url.searchParams.set('next', '/partner')
+      return NextResponse.redirect(url)
+    }
+
+    const userRole = await getRole()
+
+    if (userRole !== 'partner') {
       if (pathname.startsWith('/api/')) {
         return new NextResponse(JSON.stringify({ error: 'Forbidden' }), {
           status: 403,

@@ -20,7 +20,7 @@ import { ChatWidget } from "@/components/simulation/ChatWidget";
 import { collectSubmitWarnings } from "@/lib/simulation/submitWarnings";
 import type { SubmitWarning } from "@/lib/simulation/submitWarnings";
 import { createClient } from "@/lib/supabase/client";
-import { checkSimulationAccess } from "@/lib/access-control";
+import { checkSimulationAccess, checkActivationAccess } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
 
 // ── Access gate states ────────────────────────────────────────
@@ -104,7 +104,6 @@ export default function SimulationExecutionPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<AccessStatus>("loading");
-  const [viaEntitlement, setViaEntitlement] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [evalMsgIndex, setEvalMsgIndex] = useState(0);
   const [evalVisible, setEvalVisible] = useState(true);
@@ -145,9 +144,15 @@ export default function SimulationExecutionPage() {
       // unauthenticated user has already been redirected by this point.
       if (content.loading) return;
 
-      const { hasAccess, viaEntitlement: ve } = await checkSimulationAccess(data.user.id, content.discipline ?? undefined);
-      setViaEntitlement(ve);
-      if (!hasAccess) {
+      const { hasAccess } = await checkSimulationAccess(data.user.id, content.discipline ?? undefined);
+
+      // Spec 15: also accept a valid simulation_activations row (credit already burned at activation time)
+      let viaActivation = false;
+      if (!hasAccess && content.simulationUuid) {
+        viaActivation = await checkActivationAccess(data.user.id, content.simulationUuid);
+      }
+
+      if (!hasAccess && !viaActivation) {
         window.location.replace("/no-access");
         return;
       }
@@ -158,7 +163,7 @@ export default function SimulationExecutionPage() {
       const redirect = encodeURIComponent(window.location.pathname);
       window.location.replace(`/auth/login?redirect=${redirect}`);
     });
-  }, [content.loading, content.discipline]);
+  }, [content.loading, content.discipline, content.simulationUuid]);
 
   // ── Evaluation message cycling ────────────────────────────────
   useEffect(() => {
@@ -200,15 +205,6 @@ export default function SimulationExecutionPage() {
 
     // Save all responses and flip session status to 'submitted' before calling the API
     await sim.markSubmitted();
-
-    // Consume one simulation credit — but NOT for entitlement-based access,
-    // which grants unmetered discipline access (no credit cost).
-    if (!viaEntitlement) {
-      const consumeRes = await fetch("/api/purchases/consume", { method: "POST" });
-      if (!consumeRes.ok && consumeRes.status !== 403) {
-        console.warn("[simulate] Credit consume returned", consumeRes.status);
-      }
-    }
 
     const responses = prompts.map((p, i) => {
       const stepResp = sim.responses[i] ?? {};

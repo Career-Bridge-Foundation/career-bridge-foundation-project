@@ -15,6 +15,10 @@ export const SimulationMetadataSchema = z.object({
   discipline: z.string().max(80).optional(),
   video_url: z.string().url('Enter a valid URL').or(z.literal('')).optional(),
   status: z.enum(['draft', 'pending_review', 'published', 'archived']).default('draft'),
+  // Spec 14: distinguishes a free, unlimited-replay Practice Trial from a
+  // paid, credit-gated assessed simulation. Defaults to 'assessed' to match
+  // the DB column default (schema-reference/spec-15-assessment-credits.sql).
+  simulation_type: z.enum(['assessed', 'practice']).default('assessed'),
   slug: z
     .string()
     .min(2, 'At least 2 characters')

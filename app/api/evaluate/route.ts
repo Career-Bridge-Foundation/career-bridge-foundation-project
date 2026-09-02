@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
-import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseServerClient, supabaseServer } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensurePortfolioProfile } from "@/lib/portfolio/ensureProfile";
 import { getActiveRubric } from "@/lib/portfolio/getActiveRubric";
+import { getSimulationBySlug } from "@/lib/practice/getPracticeSimulation";
 import type { VerdictBand } from "@/types/database";
 
 // Vercel/Next.js function timeout — Claude evaluation calls can take 30–90s
@@ -391,6 +392,17 @@ export async function POST(request: NextRequest) {
   }
   // ──────────────────────────────────────────────────────────────────────────
 
+  // ─── Spec 14 decision 7: explicit rejection at the top of the handler — ───
+  // ─── Practice Trials are never evaluated by this endpoint. ────────────────
+  const evaluatedSim = await getSimulationBySlug(simulation_slug);
+  if (evaluatedSim?.simulation_type === "practice") {
+    return new Response(
+      JSON.stringify({ error: "practice_simulation" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (!responses || !Array.isArray(responses) || responses.length === 0) {
     return new Response(
       JSON.stringify({ error: "Missing or empty 'responses' array" }),
@@ -637,6 +649,43 @@ export async function POST(request: NextRequest) {
       warnings.push({
         message: "Your portfolio profile could not be auto-created.",
         details: portfolioErr instanceof Error ? portfolioErr.message : String(portfolioErr),
+      });
+    }
+
+    // ── Mark the activation attempt complete (Spec 15 credit model) ──
+    // Lets SimulationCard treat a later click as a genuine retake (charge
+    // again) instead of a resume (free) — see hasIncompleteActivation() in
+    // lib/access-control.ts. Uses supabaseServer since candidates have no
+    // UPDATE policy on simulation_activations (writes to it are otherwise
+    // SECURITY DEFINER-only, via the activate_simulation RPC).
+    try {
+      const { data: portfolioForActivation } = await supabaseServer
+        .from("portfolio_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (portfolioForActivation && evaluatedSim?.id) {
+        const { error: activationCompleteError } = await supabaseServer
+          .from("simulation_activations")
+          .update({ completed_at: new Date().toISOString() })
+          .eq("candidate_id", portfolioForActivation.id)
+          .eq("simulation_id", evaluatedSim.id)
+          .is("completed_at", null);
+
+        if (activationCompleteError) {
+          console.error("[evaluate] simulation_activations completion update failed:", {
+            simulation_slug,
+            user_id: user.id,
+            error: activationCompleteError.message,
+          });
+        }
+      }
+    } catch (activationErr) {
+      console.error("[evaluate] simulation_activations completion update threw:", {
+        simulation_slug,
+        user_id: user.id,
+        error: activationErr instanceof Error ? activationErr.message : String(activationErr),
       });
     }
   }

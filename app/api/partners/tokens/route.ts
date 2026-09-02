@@ -31,7 +31,9 @@ const COUNTRY_CODES = COUNTRIES.map((c) => c.code)
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
-  // Set by the partner's own integration, not the candidate — see
+  // Set by the partner's own integration, not the candidate. Required on
+  // every invite mint, sponsored or self-funding alike — see the
+  // country-and-pricing amendment and
   // supabase/migrations/20260809_001_candidate_country.sql.
   country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z

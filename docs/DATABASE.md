@@ -12,7 +12,9 @@ Schema source of truth: `supabase/migrations/`. Migration files:
 
 All tables are in the `public` schema. RLS is enabled on every table. All write operations in API routes that need to bypass RLS use a Supabase admin client constructed with `SUPABASE_SERVICE_ROLE_KEY`.
 
-> **Coach tables note:** `coaches`, `coach_candidates`, `simulation_assignments`, and `coach_notes` are defined in the migration and have full RLS policies, but no API routes or pages currently read from or write to them (except `coaches` which is written by the Stripe webhook on a coach-plan purchase). The coach feature is schema-ready but the application layer is unbuilt.
+> **Coach tables note:** `coaches`, `coach_candidates`, `simulation_assignments`, and `coach_notes` are defined in the migration and have full RLS policies, but no API routes or pages currently read from or write to them. The self-serve coach-plan purchase flow that used to write `coaches` (`app/api/stripe/webhook/route.ts`) was removed — every candidate is now provisioned by a partner (Spec 15/16). The coach feature is schema-ready but the application layer is unbuilt.
+>
+> **`purchases` table note:** the self-serve purchase flow (`app/api/stripe/checkout`, `app/api/stripe/webhook`, `app/api/purchases/consume`, `lib/pricing.ts`, `app/pricing`, `app/for-coaches`) has been removed from the application. The `purchases` table and its RLS policies/indexes are left in place in the database (not dropped), but no app code reads or writes it anymore — access is entitlement-only via `candidate_entitlements` (see `lib/access-control.ts`).
 
 ---
 
@@ -20,8 +22,7 @@ All tables are in the `public` schema. RLS is enabled on every table. All write 
 
 The following API routes construct a Supabase admin client using `SUPABASE_SERVICE_ROLE_KEY`, bypassing RLS entirely for the listed operations:
 
-- **`app/api/stripe/webhook/route.ts`** — INSERT `purchases`; UPDATE `profiles` (user_type); INSERT/UPDATE `coaches`
-- **`app/api/purchases/consume/route.ts`** — SELECT + UPDATE `purchases` (incrementing `simulations_used`)
+- **`app/api/webhooks/stripe/[partnerId]/route.ts`** — verifies per-partner signature; INSERT `pack_transactions`; INSERT `credit_ledger`
 - **`app/api/certifier/issue/route.ts`** — SELECT `evaluation_results`; SELECT `profiles` (full_name); `auth.admin.getUserById` (email lookup); SELECT + upsert `credential_issuances`
 - **`app/api/admin/simulations/**/route.ts`** (all admin CMS routes) — full read/write on `simulations` and `simulation_activity`. Authorisation is enforced one layer above the DB by `middleware.ts`, which gates every `/admin` and `/api/admin` request against the `ADMIN_EMAILS` env var. The `is_admin()` SQL function and admin RLS policies on `simulations` / `simulation_activity` are defence-in-depth — they would matter only if a non-admin code path ever used a user-scoped client to write to these tables.
 
@@ -482,9 +483,9 @@ idx_credential_issuances_coach     ON (coach_id)
 
 ---
 
-### 10. `purchases`
+### 10. `purchases` (unused — self-serve flow removed)
 
-One row per completed Stripe payment. Written by the webhook handler; read by the credit-check and credit-consumption logic.
+One row per completed Stripe payment from the old self-serve purchase flow. That flow (checkout, webhook, consume routes, `lib/pricing.ts`, `/pricing`, `/for-coaches`) has been removed from the application — every candidate is now provisioned by a partner (Spec 15/16), and access is entitlement-only via `candidate_entitlements`. The table, its RLS policies, and its indexes are left in place in the database but no app code reads or writes it anymore.
 
 ```sql
 CREATE TABLE public.purchases (
@@ -532,11 +533,7 @@ idx_purchases_stripe_session ON (stripe_checkout_session_id)
 idx_purchases_status         ON (status)
 ```
 
-**Used by:**
-- `app/api/stripe/webhook/route.ts` — INSERT on `checkout.session.completed` (admin client)
-- `app/api/purchases/consume/route.ts` — SELECT oldest active purchase with remaining credits; UPDATE `simulations_used + 1` (admin client)
-- `lib/access-control.ts` — SELECT all active purchases to compute `remainingCredits` (browser client, RLS-protected)
-- `app/simulate/[id]/page.tsx` — via `checkSimulationAccess()` from `lib/access-control.ts`
+**Used by:** nothing — no app code reads or writes this table anymore.
 
 ---
 

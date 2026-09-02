@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 
 type SimulationListItem = {
-  id: number;
+  id: string | number;
   slug: string;
   title: string;
   company: string;
@@ -18,6 +18,8 @@ type SimulationListItem = {
   difficulty: "Foundation" | "Practitioner" | "Advanced";
   time: string;
   description: string;
+  simulation_uuid?: string;
+  simulation_type?: string;
 };
 
 export default function CyberSecurityPage() {
@@ -56,7 +58,17 @@ export default function CyberSecurityPage() {
         console.error("Error message:", error.message);
       }
 
-      setSimsList(data ?? []);
+      // simulations_catalog is a straight SELECT off simulations (same id,
+      // same slug), so no second lookup is needed — reading simulation_type
+      // and the UUID directly off this row avoids a fragile second
+      // slug-matching query that silently no-ops on any error.
+      const list: SimulationListItem[] = (data ?? []).map((s) => ({
+        ...s,
+        simulation_uuid: s.id,
+        simulation_type: s.simulation_type ?? 'assessed',
+      }));
+
+      setSimsList(list);
       setIsLoading(false);
     }
     load();

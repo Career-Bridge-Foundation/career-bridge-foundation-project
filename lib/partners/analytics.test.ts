@@ -35,7 +35,7 @@ function sim(discipline: string, verdictBand: string | null): CandidateSimulatio
   };
 }
 function cand(id: string, disciplines: string[], sims: CandidateSimulationProgress[]): PartnerCandidateWithProgress {
-  return { candidateId: id, userId: `u-${id}`, slug: id, fullName: id, email: null, disciplines, simulations: sims };
+  return { candidateId: id, userId: `u-${id}`, slug: id, fullName: id, email: null, disciplines, country: null, countryLockedAt: null, simulations: sims };
 }
 
 // Fixture: 4 candidates with known progress.
