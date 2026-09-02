@@ -28,6 +28,22 @@ export async function middleware(request: NextRequest) {
 
   if (!skipBranding) {
     const subdomain = subdomainFromHost(request.headers.get('host'))
+
+    // Portfolios are the candidate's own permanent, verified artefact —
+    // never tied to a partner's subdomain, which can disappear if that
+    // partner leaves. Redirect unconditionally on ANY detected subdomain,
+    // even one that no longer resolves to an active partner below (an
+    // orphaned subdomain must still redirect, not 404 or serve a stale
+    // page) — this is the guarantee itself, not just a link-generation
+    // convention; it holds regardless of how the request arrived (an old
+    // bookmark, a shared link, a search result). subdomainFromHost() already
+    // returns null for "app" itself (RESERVED_SUBDOMAINS), so this can't loop.
+    if (subdomain && _p.startsWith('/portfolio')) {
+      const canonicalBase = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
+      const canonicalUrl = new URL(_p + request.nextUrl.search, canonicalBase)
+      return NextResponse.redirect(canonicalUrl, 308)
+    }
+
     if (subdomain) {
       const partner = await resolvePartnerBranding(subdomain) // null-safe, never throws
       if (partner) {
