@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
     const { data: portfolio } = await supabaseServer
       .from('portfolio_profiles')
-      .select('id, country')
+      .select('id, country, provisioned_by_partner')
       .eq('user_id', user.id)
       .maybeSingle()
 
@@ -139,6 +139,26 @@ export async function POST(request: Request) {
 
       if (countryError) {
         console.error('[redeem] failed to set country from token (non-fatal)', countryError)
+      }
+    }
+
+    // Stamp the legacy single-partner link column. candidate_entitlements.
+    // granted_by_partner (set below) is the real source of truth for
+    // multi-partner invites, but portfolio_profiles.provisioned_by_partner
+    // is still what /api/candidate/{checkout-link,packs,activate} gate
+    // purchases on — leaving it null strands every candidate invited
+    // through this route with "not provisioned by a partner". Only set if
+    // unset, same guard as country above, so a second token from a
+    // different partner doesn't silently reassign it.
+    if (!portfolio?.provisioned_by_partner) {
+      const { error: provisionedByError } = await supabaseServer
+        .from('portfolio_profiles')
+        .update({ provisioned_by_partner: row.partner_id })
+        .eq('id', portfolioId)
+        .is('provisioned_by_partner', null)
+
+      if (provisionedByError) {
+        console.error('[redeem] failed to set provisioned_by_partner from token (non-fatal)', provisionedByError)
       }
     }
 
