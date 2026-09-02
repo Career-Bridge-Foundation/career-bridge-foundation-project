@@ -2,11 +2,14 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { useBranding } from "@/components/branding/BrandingProvider";
 import type { User } from "@supabase/supabase-js";
+
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "evidentize.io";
 
 interface HeaderProps {
   /** "transparent" fades in as white when scrolled (default).
@@ -49,11 +52,19 @@ export function Header({
   const scrolled = useScrolled();
   const isSolid = variant === "solid" || scrolled;
   const branding = useBranding();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Only set on /portfolio/* — the one place middleware forces the browser
+  // onto the canonical app.evidentize.io host regardless of which partner
+  // subdomain the candidate started on (portfolios must survive a partner
+  // leaving; see middleware.ts). Everywhere else this stays null and every
+  // nav link below is the plain relative href it always was, since the
+  // browser is already on the correct host by virtue of normal navigation.
+  const [homeSubdomain, setHomeSubdomain] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -69,6 +80,34 @@ export function Header({
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user || !pathname?.startsWith("/portfolio")) {
+      setHomeSubdomain(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/account/home-subdomain")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setHomeSubdomain(data?.subdomain ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setHomeSubdomain(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pathname]);
+
+  // Sends the candidate back to their own partner subdomain instead of
+  // staying on app.evidentize.io once they navigate away from their
+  // portfolio — otherwise every nav link below would silently strand them
+  // on the canonical host after the forced portfolio redirect.
+  function resolveHref(href: string): string {
+    if (!homeSubdomain || href.startsWith("http") || href.startsWith("/portfolio")) return href;
+    return `https://${homeSubdomain}.${ROOT_DOMAIN}${href}`;
+  }
 
   useEffect(() => {
     const onResize = () => {
@@ -92,7 +131,7 @@ export function Header({
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.href = resolveHref("/");
   }
 
   function closeMobileMenu() {
@@ -111,7 +150,7 @@ export function Header({
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-4 flex items-center justify-between relative">
         {/* Logo */}
-        <Link href="/">
+        <Link href={resolveHref("/")}>
           <img
             src={
               isSolid
@@ -144,7 +183,7 @@ export function Header({
             ) : (
               <Link
                 key={label}
-                href={to}
+                href={resolveHref(to)}
                 className={cn(
                   "text-[10px] lg:text-xs font-medium uppercase tracking-brand-sm hover:opacity-60 transition-opacity whitespace-nowrap",
                   isSolid ? "text-navy" : "text-white",
@@ -211,7 +250,7 @@ export function Header({
                   style={{ borderRadius: "4px" }}
                 >
                   <Link
-                    href="/account/profile"
+                    href={resolveHref("/account/profile")}
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-navy uppercase tracking-brand-sm hover:bg-slate-50 transition-colors"
                   >
@@ -222,7 +261,7 @@ export function Header({
                     My Profile
                   </Link>
                   <Link
-                    href="/account/settings"
+                    href={resolveHref("/account/settings")}
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-navy uppercase tracking-brand-sm hover:bg-slate-50 transition-colors"
                   >
@@ -339,7 +378,7 @@ export function Header({
               ) : (
                 <Link
                   key={label}
-                  href={to}
+                  href={resolveHref(to)}
                   onClick={closeMobileMenu}
                   className="px-2 py-3 text-xs font-medium uppercase tracking-brand-sm text-navy"
                 >
@@ -355,14 +394,14 @@ export function Header({
                 {firstName}
               </div>
               <Link
-                href="/account/profile"
+                href={resolveHref("/account/profile")}
                 onClick={closeMobileMenu}
                 className="px-2 py-3 text-xs font-medium uppercase tracking-brand-sm text-navy"
               >
                 My Profile
               </Link>
               <Link
-                href="/account/settings"
+                href={resolveHref("/account/settings")}
                 onClick={closeMobileMenu}
                 className="px-2 py-3 text-xs font-medium uppercase tracking-brand-sm text-navy"
               >
