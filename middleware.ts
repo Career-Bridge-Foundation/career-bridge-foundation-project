@@ -38,7 +38,17 @@ export async function middleware(request: NextRequest) {
     // convention; it holds regardless of how the request arrived (an old
     // bookmark, a shared link, a search result). subdomainFromHost() already
     // returns null for "app" itself (RESERVED_SUBDOMAINS), so this can't loop.
-    if (subdomain && _p.startsWith('/portfolio')) {
+    //
+    // Deliberately '/portfolio/' (trailing slash), NOT the bare '/portfolio'
+    // index — that page has nothing to protect yet: for a candidate who
+    // already has a portfolio it just internally redirects to /portfolio/
+    // [slug] (which DOES hit this check on that follow-up request), and for
+    // one who doesn't, it's an empty "you don't have one yet" state with a
+    // plain relative "Go to Simulations" link. Forcing that page onto the
+    // canonical host protected nothing and only stranded candidates with no
+    // portfolio yet on app.evidentize.io with no way back to their own
+    // subdomain.
+    if (subdomain && _p.startsWith('/portfolio/')) {
       const canonicalBase = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
       const canonicalUrl = new URL(_p + request.nextUrl.search, canonicalBase)
       return NextResponse.redirect(canonicalUrl, 308)
