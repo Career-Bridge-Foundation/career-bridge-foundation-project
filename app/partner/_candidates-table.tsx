@@ -75,6 +75,13 @@ function TierCell({ country }: { country: string | null }) {
   return <span className="text-xs text-slate-600">{PRICING_REGION_LABEL[region]}</span>
 }
 
+// A portfolio is the candidate's own permanent, verified artefact — it must
+// never be tied to a partner's subdomain. If a partner later leaves and
+// their subdomain is unassigned, a link a partner copied from their own
+// console must still resolve. This mirrors app/portfolio/[slug]/ShareButton
+// .tsx's own pattern, not a fresh decision.
+const PORTFOLIO_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
+
 export type CandidateStatus = 'Not started' | 'In progress' | 'Evaluated'
 export type CandidateMeta = { started: number; evaluated: number; best: string | null; status: CandidateStatus }
 export type SortKey = 'name' | 'progress' | 'verdict' | 'status'
@@ -113,11 +120,13 @@ export function CandidatesTable({
   sort,
   onSort,
   linkDetail = true,
+  showAdminColumns = false,
 }: {
   candidates: PartnerCandidateWithProgress[]
   sort?: SortState
   onSort?: (k: SortKey) => void
   linkDetail?: boolean // false (mentor) → name is plain text, no link to the raw-submission detail
+  showAdminColumns?: boolean // Terms column — partner-only administrative concern, not shown to mentors
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -131,11 +140,13 @@ export function CandidatesTable({
             <Th label="Progress" sortKey="progress" sort={sort} onSort={onSort} />
             <Th label="Latest verdict" sortKey="verdict" sort={sort} onSort={onSort} />
             <Th label="Status" sortKey="status" sort={sort} onSort={onSort} />
+            {showAdminColumns && <th className="px-4 py-3 font-medium">Terms</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {candidates.map((c) => {
             const { started, evaluated, best, status } = candidateMeta(c)
+            const termsAccepted = c.platformTermsAccepted && c.programmeTermsAccepted
             return (
               <tr key={c.candidateId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 align-top">
@@ -147,7 +158,7 @@ export function CandidatesTable({
                     <div className="font-medium text-slate-900">{c.fullName ?? 'Unnamed candidate'}</div>
                   )}
                   <div className="text-xs text-slate-500">{c.email ?? '—'}</div>
-                  <Link href={`/portfolio/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-teal hover:underline">
+                  <Link href={`${PORTFOLIO_BASE_URL}/portfolio/${c.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-teal hover:underline">
                     Public portfolio ↗
                   </Link>
                 </td>
@@ -183,6 +194,17 @@ export function CandidatesTable({
                     {status}
                   </span>
                 </td>
+                {showAdminColumns && (
+                  <td className="px-4 py-3 align-top">
+                    <span
+                      className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                        termsAccepted ? 'bg-teal/10 text-teal border-teal/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}
+                    >
+                      {termsAccepted ? 'Accepted' : 'Pending'}
+                    </span>
+                  </td>
+                )}
               </tr>
             )
           })}

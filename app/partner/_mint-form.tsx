@@ -12,11 +12,12 @@ type Result = {
   expires_at: string
 }
 
-export function MintForm() {
+export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms: boolean }) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [selected, setSelected] = useState<string[]>([])
   const [country, setCountry] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [includeProgrammeTerms, setIncludeProgrammeTerms] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
@@ -62,8 +63,9 @@ export function MintForm() {
         body: JSON.stringify({
           candidate_email: email.trim(),
           candidate_name: name.trim() || undefined,
-          disciplines: selected,
           country,
+          disciplines: selected,
+          requires_programme_terms: hasActiveProgrammeTerms ? includeProgrammeTerms : false,
         }),
       })
       const data = await res.json()
@@ -94,8 +96,9 @@ export function MintForm() {
   function reset() {
     setEmail('')
     setName('')
-    setSelected([])
     setCountry('')
+    setSelected([])
+    setIncludeProgrammeTerms(true)
     setResult(null)
     setError(null)
     setCopied(false)
@@ -166,6 +169,31 @@ export function MintForm() {
         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-4"
       />
 
+      <label className="block text-sm font-medium text-slate-700 mb-1">
+        Candidate&apos;s country
+      </label>
+      <p className="text-xs text-slate-400 mb-1.5">
+        Used to determine pricing shown to this candidate. Set from what you know of them at admission — not self-reported.
+      </p>
+      <select
+        value={country}
+        onChange={(e) => setCountry(e.target.value)}
+        required
+        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-1 bg-white"
+      >
+        <option value="">Select a country…</option>
+        {COUNTRIES.map((c) => (
+          <option key={c.code} value={c.code}>{c.name}</option>
+        ))}
+      </select>
+      {pricingPreview ? (
+        <p className="text-xs text-[#006FAD] mb-4">{pricingPreview}</p>
+      ) : (
+        <p className="text-xs text-slate-400 mb-4">
+          Sets the candidate&apos;s pricing tier and currency. No default — required before this invite can be sent.
+        </p>
+      )}
+
       <label className="block text-sm font-medium text-slate-700 mb-2">
         Disciplines
       </label>
@@ -182,25 +210,24 @@ export function MintForm() {
         ))}
       </div>
 
-      <label className="block text-sm font-medium text-slate-700 mb-1">
-        Candidate country
-      </label>
-      <select
-        value={country}
-        onChange={(e) => setCountry(e.target.value)}
-        required
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-1 bg-white"
-      >
-        <option value="">Select country…</option>
-        {COUNTRIES.map((c) => (
-          <option key={c.code} value={c.code}>{c.name}</option>
-        ))}
-      </select>
-      {pricingPreview ? (
-        <p className="text-xs text-[#006FAD] mb-4">{pricingPreview}</p>
+      {hasActiveProgrammeTerms ? (
+        <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-3">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={includeProgrammeTerms}
+              onChange={(e) => setIncludeProgrammeTerms(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Include your programme terms for this candidate
+              <span className="block text-xs text-slate-500">We recommend keeping this checked.</span>
+            </span>
+          </label>
+        </div>
       ) : (
-        <p className="text-xs text-slate-400 mb-4">
-          Sets the candidate&apos;s pricing tier and currency. No default — required before this invite can be sent.
+        <p className="mb-4 text-xs text-slate-400">
+          You haven&apos;t published programme terms yet — this candidate will only see Evidentize&apos;s platform terms.
         </p>
       )}
 

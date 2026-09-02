@@ -46,8 +46,14 @@ export type PartnerCandidate = {
   countryLockedAt: string | null // portfolio_profiles.country_locked_at
 }
 
+// Acceptance status (Spec 19) is a SEPARATE, optional overlay — fetched only by
+// the partner roster page (lib/partners/candidateAcceptanceStatus.ts), never by
+// the mentor view. Left undefined rather than fetched-but-hidden so there's no
+// query cost for a column mentors never see.
 export type PartnerCandidateWithProgress = PartnerCandidate & {
   simulations: CandidateSimulationProgress[]
+  platformTermsAccepted?: boolean
+  programmeTermsAccepted?: boolean
 }
 
 /**

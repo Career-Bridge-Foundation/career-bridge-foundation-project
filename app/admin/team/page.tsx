@@ -56,6 +56,14 @@ export default async function TeamPage() {
     .order('title', { ascending: true })
   const simOptions = (simRows ?? []).map(r => ({ slug: r.slug as string, title: r.title as string | null }))
 
+  // Fetch distinct disciplines from simulations for the assignment/invite UI
+  // (real slug values, e.g. "cyber-security" — not the old hardcoded list).
+  const { data: disciplineRows } = await supabaseServer
+    .from('simulations')
+    .select('discipline')
+    .not('discipline', 'is', null)
+  const disciplineOptions = [...new Set((disciplineRows ?? []).map(r => r.discipline).filter(Boolean))] as string[]
+
   const members: (UserRoleRecord & { disciplines: string[]; assignments: Assignment[] })[] = (roles ?? []).map(r => {
     const disc = disciplines
       .filter(d => d.reviewer_id === r.user_id)
@@ -84,6 +92,7 @@ export default async function TeamPage() {
         canManage={canManage}
         industries={industries}
         simOptions={simOptions}
+        disciplines={disciplineOptions}
       />
     </div>
   )

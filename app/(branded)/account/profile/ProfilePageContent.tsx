@@ -5,9 +5,16 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
+import { CommunityStatusCard } from './_community-status-card'
 
 const NAVY = '#003359'
 const TEAL = '#4DC5D2'
+
+// A portfolio is the candidate's own permanent, verified artefact — never
+// tied to whichever partner subdomain they happen to be browsing from (that
+// subdomain can disappear if the partner leaves). Same pattern as
+// app/portfolio/[slug]/ShareButton.tsx and app/partner/_candidates-table.tsx.
+const PORTFOLIO_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
 
 type ExternalLink = { label: string; url: string }
 
@@ -21,6 +28,10 @@ type InitialData = {
   location: string
   linkedin_url: string
   external_links: ExternalLink[]
+  community: {
+    partnerName: string | null
+    communityUrl: string
+  } | null
 }
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -90,6 +101,15 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
       <Header variant="solid" />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+        {initial.community && (
+          <div className="mb-8">
+            <CommunityStatusCard
+              partnerName={initial.community.partnerName}
+              communityUrl={initial.community.communityUrl}
+            />
+          </div>
+        )}
+
         {/* Onboarding welcome banner */}
         {isOnboarding && (
           <div
@@ -300,7 +320,7 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
                 </p>
               </div>
               <Link
-                href={`/portfolio/${initial.portfolio_slug}`}
+                href={`${PORTFOLIO_BASE_URL}/portfolio/${initial.portfolio_slug}`}
                 target="_blank"
                 className="text-xs font-semibold uppercase tracking-widest px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
               >

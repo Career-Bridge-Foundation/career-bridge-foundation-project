@@ -4,21 +4,27 @@ import { requirePartner } from '@/lib/auth/permissions'
 import { availableDisciplineNames } from '@/lib/disciplines-data'
 import { mintRedemptionToken, MintError } from '@/lib/partners/mint'
 import { sendInvitationEmail } from '@/lib/email/invitations'
+import { COUNTRIES } from '@/lib/countries'
 
 export const runtime = 'nodejs'
+
+const COUNTRY_CODES = COUNTRIES.map((c) => c.code)
 
 const BodySchema = z.object({
   candidate_email: z.string().email(),
   candidate_name: z.string().min(1).optional(),
+  // Set by the partner, who vetted the candidate at admission — never
+  // self-reported, never inferred from IP, never accepted from a candidate-
+  // authenticated request (this route is partner-admin only, via
+  // requirePartner below, which is the only mint path). Required on every
+  // invite, no default — see the country-and-pricing amendment and
+  // supabase/migrations/20260809_001_candidate_country.sql.
+  country: z.enum(COUNTRY_CODES as [string, ...string[]]),
   disciplines: z
     .array(z.enum(availableDisciplineNames as [string, ...string[]]))
     .min(1),
   expires_in_days: z.number().int().positive().max(90).optional().default(7),
-  // ISO 3166-1 alpha-2. Required on every invite, no default — see the
-  // country-and-pricing amendment. Never accepted from a candidate-
-  // authenticated request; this route is partner-admin only (requirePartner
-  // below), which is the only mint path.
-  country: z.string().length(2),
+  requires_programme_terms: z.boolean().optional().default(true),
 })
 
 export async function POST(request: Request) {
@@ -59,13 +65,17 @@ export async function POST(request: Request) {
         partnerId,
         candidateEmail: body.candidate_email,
         candidateName: body.candidate_name ?? null,
+        country: body.country,
         disciplineNames: body.disciplines,
         expiresInDays: body.expires_in_days,
-        country: body.country.toUpperCase(),
         appUrl,
+        requiresProgrammeTerms: body.requires_programme_terms,
       })
     } catch (err) {
       if (err instanceof MintError) {
+        if (err.code === 'terms_not_published') {
+          return NextResponse.json({ error: err.message }, { status: 400 })
+        }
         const status = err.code === 'persist_failed' ? 500 : 500
         console.error('[partner/tokens] mint failed', err.code, err.message)
         return NextResponse.json({ error: 'could not generate token' }, { status })

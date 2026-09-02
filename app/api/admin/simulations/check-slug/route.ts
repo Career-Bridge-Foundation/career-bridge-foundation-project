@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
+import { requireStaff } from '@/lib/auth/permissions'
 
 export async function GET(request: NextRequest) {
+  try {
+    await requireStaff()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const slug = request.nextUrl.searchParams.get('slug') ?? ''
   const except = request.nextUrl.searchParams.get('except') ?? ''
 

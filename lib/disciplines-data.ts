@@ -102,6 +102,20 @@ export const disciplines: Discipline[] = [
     status: "coming-soon",
     grantable: true,
   },
+  {
+    id: 10,
+    name: "Virtual Assistant",
+    slug: "virtual-assistant",
+    description:
+      "Prove you can be trusted with someone else's diary, inbox and reputation. Real client engagements, assessed on judgement rather than task completion.",
+    status: "available",
+    // HARDCODED TIER LABEL — not derived from published sims. Update by hand
+    // when a new difficulty tier ships, together with the hero badge in
+    // app/(branded)/simulations/virtual-assistant/page.tsx ("Difficulty: ...").
+    count: "Foundation to Advanced",
+    href: "/simulations/virtual-assistant",
+    grantable: true,
+  },
 ];
 
 /** Disciplines partners may mint or grant (grantable === true). Deliberately

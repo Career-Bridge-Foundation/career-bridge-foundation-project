@@ -466,6 +466,8 @@ export default function SimulationExecutionPage() {
               briefFull={content.briefFull}
               transcript={content.transcript}
               videoUrl={content.videoUrl}
+              videoProvider={content.videoProvider}
+              videoId={content.videoId}
             />
 
             <ResponseForm

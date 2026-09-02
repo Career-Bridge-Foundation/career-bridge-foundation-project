@@ -39,11 +39,15 @@ function SignupForm() {
     const callbackUrl = nextParam
       ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextParam)}`
       : `${window.location.origin}/auth/callback`
+    // partner_id (when this signup happens on a partner's own subdomain) rides
+    // along in user_metadata so the send-email-hook can brand the confirmation
+    // email — and every later auth email for this account, since metadata
+    // persists on the auth.users row (see app/api/auth/send-email-hook/route.ts).
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, user_type: 'candidate' },
+        data: { full_name: fullName, user_type: 'candidate', partner_id: branding?.id ?? null },
         emailRedirectTo: callbackUrl,
       },
     })

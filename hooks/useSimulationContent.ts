@@ -23,6 +23,8 @@ interface UseSimulationContentReturn {
   discipline: string | null;
   status: string | null;
   videoUrl: string | null;
+  videoProvider: string | null;
+  videoId: string | null;
   simulationUuid: string | null;
   simulationType: string | null;
 }
@@ -39,6 +41,8 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
   const [discipline, setDiscipline] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoProvider, setVideoProvider] = useState<string | null>(null);
+  const [videoId, setVideoId] = useState<string | null>(null);
   const [simulationUuid, setSimulationUuid] = useState<string | null>(null);
   const [simulationType, setSimulationType] = useState<string | null>(null);
 
@@ -53,7 +57,7 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
       const { data: simRow, error: simError } = await supabase
         .from("simulations")
         .select(
-          "id, slug, title, company, industry, sim_role, brief_short, brief_full, video_transcript, video_url, discipline, difficulty, time, status, simulation_type"
+          "id, slug, title, company, industry, sim_role, brief_short, brief_full, video_transcript, video_url, video_provider, video_id, discipline, difficulty, time, status, simulation_type"
         )
         .eq("slug", slug)
         .eq("status", "published")
@@ -106,6 +110,8 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
       setDiscipline(simRow.discipline ?? null);
       setStatus(simRow.status ?? null);
       setVideoUrl(simRow.video_url ?? null);
+      setVideoProvider(simRow.video_provider ?? null);
+      setVideoId(simRow.video_id ?? null);
       setSimulationUuid(simRow.id ?? null);
       setSimulationType((simRow as { simulation_type?: string }).simulation_type ?? null);
       setLoading(false);
@@ -134,6 +140,8 @@ export function useSimulationContent(slug: string): UseSimulationContentReturn {
     discipline,
     status,
     videoUrl,
+    videoProvider,
+    videoId,
     simulationUuid,
     simulationType,
   };
