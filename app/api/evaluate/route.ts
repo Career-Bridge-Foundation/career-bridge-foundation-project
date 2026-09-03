@@ -29,8 +29,11 @@ LANGUAGE (required):
 - Keep JSON property names unchanged. Keep these fields exactly in English as specified by the rubric: verdict (e.g. "Pass", "Distinction"), and each criterion level ("Weak", "Competent", "Strong"). Criterion names may stay in English if the rubric defines them in English.
 `.trim();
 
-function buildEvaluationSystemPrompt(rubricSystemPrompt: string): string {
-  return `${rubricSystemPrompt.trim()}\n\n${LANGUAGE_MATCHING_INSTRUCTION}`;
+function buildEvaluationSystemPrompt(rubricSystemPrompt: string, outputInstructions: string | null): string {
+  const parts = [rubricSystemPrompt.trim()];
+  if (outputInstructions?.trim()) parts.push(outputInstructions.trim());
+  parts.push(LANGUAGE_MATCHING_INSTRUCTION);
+  return parts.join("\n\n");
 }
 
 interface TaskAttachment {
@@ -472,7 +475,7 @@ export async function POST(request: NextRequest) {
       // model: "claude-sonnet-4-6",
       // system: SYSTEM_PROMPT,
       model: rubric.model,
-      system: buildEvaluationSystemPrompt(rubric.system_prompt),
+      system: buildEvaluationSystemPrompt(rubric.system_prompt, rubric.output_instructions),
       // ───────────────────────────────────────────────────────────
       max_tokens: 8192,
       messages: [
