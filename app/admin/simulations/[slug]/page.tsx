@@ -387,6 +387,7 @@ export default function EditSimulationPage() {
       time: '',
       description: '',
       discipline: '',
+      scenario_context: '',
       video_url: '',
       status: 'draft' as const,
       simulation_type: 'assessed' as const,
@@ -421,6 +422,7 @@ export default function EditSimulationPage() {
           time: data.time ?? '',
           description: data.description ?? '',
           discipline: data.discipline ?? '',
+          scenario_context: data.scenario_context ?? '',
           video_url: data.video_url ?? '',
           status: data.status ?? 'draft',
           simulation_type: data.simulation_type ?? 'assessed',
@@ -926,6 +928,34 @@ export default function EditSimulationPage() {
                       error={errors.video_url?.message}
                       {...register('video_url')}
                     />
+                  </div>
+
+                  {/* Scenario context (Spec 17) */}
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="scenario_context" className="text-slate-900 text-sm font-medium">
+                      Scenario context
+                    </label>
+                    <textarea
+                      id="scenario_context"
+                      rows={2}
+                      maxLength={300}
+                      placeholder="e.g. a simulated retail-banking environment"
+                      className={cn(
+                        'bg-white text-slate-900 rounded-md px-3 py-2 border border-slate-300',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-teal/20',
+                        'resize-none text-sm placeholder:text-slate-400',
+                        errors.scenario_context && 'border-red-500'
+                      )}
+                      {...register('scenario_context')}
+                    />
+                    {errors.scenario_context && (
+                      <p className="text-red-600 text-sm">{errors.scenario_context.message}</p>
+                    )}
+                    <p className="text-xs text-slate-400">
+                      Neutral, employer-free description of the setting, used to generate candidates&apos;
+                      CV/LinkedIn text. Never name the client organisation from the brief here — write the
+                      setting instead, e.g. &quot;a simulated retail-banking environment&quot;.
+                    </p>
                   </div>
 
                   {/* Slug */}

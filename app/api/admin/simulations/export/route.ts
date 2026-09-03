@@ -5,6 +5,7 @@ import { supabaseServer } from '@/lib/supabase/server'
 const META_COLUMNS = [
   'slug', 'title', 'company', 'industry', 'discipline',
   'type', 'difficulty', 'time', 'description', 'display_order',
+  'scenario_context',
 ]
 
 function csvEscape(val: unknown): string {

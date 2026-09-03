@@ -13,6 +13,11 @@ export const SimulationMetadataSchema = z.object({
   time: z.string().min(1, 'Required').max(40),
   description: z.string().max(280).optional(),
   discipline: z.string().max(80).optional(),
+  // Spec 17: neutral, employer-free description of the simulation's setting
+  // (e.g. "a simulated retail-banking environment"), used to generate CV/
+  // LinkedIn text without leaking the fictional client/employer from the
+  // brief. Deliberately authored, never derived from `company`/`brief_*`.
+  scenario_context: z.string().max(300).optional(),
   video_url: z.string().url('Enter a valid URL').or(z.literal('')).optional(),
   status: z.enum(['draft', 'pending_review', 'published', 'archived']).default('draft'),
   // Spec 14: distinguishes a free, unlimited-replay Practice Trial from a
@@ -113,6 +118,7 @@ const SimulationImportRowSchema = SimulationExportRowSchema.extend({
   type:        z.string().max(60).nullable().optional(),
   description: z.string().max(280).nullable().optional(),
   discipline:  z.string().max(80).nullable().optional(),
+  scenario_context: z.string().max(300).nullable().optional(),
   video_url:   z.string().url('Enter a valid URL').or(z.literal('')).nullable().optional(),
   prompts:     z.array(PromptImportSchema).optional(),
   rubric:      RubricImportSchema.optional(),
