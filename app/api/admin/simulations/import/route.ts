@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
         time: s.time,
         description: s.description ?? null,
         discipline: s.discipline ?? null,
+        scenario_context: s.scenario_context ?? null,
         video_url: s.video_url ?? null,
         status: s.status ?? 'draft',
         // Mirror the auto-stamp behaviour of the edit ([slug]/route.ts) and

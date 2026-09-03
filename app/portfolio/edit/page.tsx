@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient as createSessionClient } from '@/lib/supabase/server';
 import { supabaseServer as adminSupabase } from '@/lib/supabase/server';
 import { achievingResult } from '@/lib/portfolio/highestVerdictBand';
+import type { CvScriptRow } from '@/components/cv-scripts/CvLinkedInPanel';
 import { PortfolioEditPageContent } from './PortfolioEditPageContent';
 
 const NAVY = '#003359';
@@ -149,6 +150,17 @@ async function loadEditableSimulations(userId: string): Promise<EditableSimulati
   return out;
 }
 
+async function loadCvScripts(userId: string): Promise<CvScriptRow[]> {
+  const { data } = await adminSupabase
+    .from('candidate_cv_scripts')
+    .select('id, scope, simulation_slug, discipline, verdict_band, completed_count, formats')
+    .eq('candidate_user_id', userId)
+    .eq('is_current', true)
+    .order('generated_at', { ascending: false });
+
+  return (data ?? []) as CvScriptRow[];
+}
+
 export default async function PortfolioEditPage() {
   const supabase = await createSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -163,7 +175,8 @@ export default async function PortfolioEditPage() {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const editableSimulations = profile ? await loadEditableSimulations(user.id) : [];
+  const editableSimulations: EditableSimulation[] = profile ? await loadEditableSimulations(user.id) : [];
+  const cvScripts: CvScriptRow[] = profile ? await loadCvScripts(user.id) : [];
 
   if (!profile) {
     return (
@@ -290,6 +303,8 @@ export default async function PortfolioEditPage() {
             linkedin_url:   profile.linkedin_url ?? '',
             external_links: Array.isArray(profile.external_links) ? profile.external_links : [],
             simulations:    editableSimulations,
+            cvScripts,
+            simulationTitles: Object.fromEntries(editableSimulations.map((s) => [s.simulationSlug, s.title])),
           }}
         />
       </main>

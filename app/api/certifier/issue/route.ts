@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { runCvScriptGeneration } from "@/lib/cv-scripts/orchestrate";
 
 const QUALIFYING_BANDS = new Set(["Distinction", "Merit", "Pass"]);
 const CERTIFIER_API_URL = "https://api.certifier.io/v1/credentials";
@@ -343,6 +344,29 @@ export async function POST(request: NextRequest) {
     },
     { onConflict: "candidate_user_id,simulation_id" }
   );
+
+  // ── 8. Generate CV/LinkedIn scripts (best-effort, Spec 17) ─────
+  // Never blocks or fails the issuance response — matches the soft-fail
+  // idiom already used for portfolio auto-create and activation stamping
+  // in app/api/evaluate/route.ts. Runs in-process (no queue/waitUntil
+  // infra in this repo, so a fire-and-forget HTTP call would have no
+  // guaranteed completion on serverless).
+  //
+  // Known gap: on a retake of an already-issued simulation, step 4's
+  // idempotency check above returns early and this step never runs, so a
+  // band-improving retake won't refresh the CV script unless the candidate's
+  // credential wasn't already "issued" for that slug — a pre-existing
+  // limitation of this route's idempotency design, not something Spec 17
+  // introduces or is scoped to fix.
+  try {
+    await runCvScriptGeneration(sessionId);
+  } catch (err) {
+    console.error("[certifier/issue] cv-script generation failed", {
+      userId: user.id,
+      sessionId,
+      err,
+    });
+  }
 
   return Response.json({ credentialUrl: certifierCredentialUrl, imageUrl: certifierImageUrl });
 }
