@@ -68,6 +68,27 @@ const POLICY_LINKS = [
 
 export function Footer() {
   const branding = useBranding();
+  const logoSrc = branding?.logo_url_on_dark ?? "/evidentize-logo-white.png";
+  const logoAlt = branding?.name ?? "Evidentize";
+
+  // On a partner subdomain, useBranding() resolves to that partner's data
+  // (null only on the neutral app.evidentize.io / apex host — see
+  // BrandingProvider.tsx). The full footer below is Evidentize's own
+  // navigation, policies and contact info, which doesn't belong on a
+  // partner-branded experience — a plain "Powered by Evidentize" line is
+  // all that's shown there instead.
+  if (branding) {
+    return (
+      <footer className="bg-navy">
+        <div className="px-6 md:px-12 py-6 flex items-center justify-center">
+          <p className="text-xs text-white/40">
+            Powered by <span className="text-white/70">Evidentize</span>
+          </p>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="bg-navy">
       <div className="max-w-6xl mx-auto px-6 md:px-12 py-16 md:py-20 overflow-x-hidden">
@@ -76,8 +97,8 @@ export function Footer() {
           {/* Col 1: Brand */}
           <div className="flex flex-col gap-4">
             <img
-              src={branding?.logo_url_on_dark ?? "/evidentize-logo-white.png"}
-              alt={branding?.name ?? "Evidentize"}
+              src={logoSrc}
+              alt={logoAlt}
               className="h-12 w-auto object-contain"
             />
           </div>
