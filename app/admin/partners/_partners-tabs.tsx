@@ -1,9 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { ROOT_DOMAIN } from '@/lib/partners/branding'
 import { PartnerInviteForm } from './_partner-invite-form'
-import { SubdomainEditor } from './_subdomain-editor'
-import { SenderEditor } from './_sender-editor'
+import { PartnerRow } from './_partner-row'
 import { TermsManager } from './_terms-manager'
 import type { TermsDoc } from './_version-history'
 
@@ -17,12 +15,6 @@ type Partner = {
   email_sender_name: string | null
   email_sender_domain: string | null
   created_at: string
-}
-
-const STATUS_STYLE: Record<string, string> = {
-  approved: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  pending: 'bg-amber-50 border-amber-200 text-amber-700',
-  suspended: 'bg-red-50 border-red-200 text-red-700',
 }
 
 type TabKey = 'organisations' | 'terms'
@@ -69,33 +61,7 @@ export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; ter
             ) : (
               <div className="divide-y divide-slate-100">
                 {partners.map((partner) => (
-                  <div key={partner.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-slate-900 truncate">{partner.name}</div>
-                      <div className="text-xs text-slate-500 truncate">
-                        {partner.slug} · {partner.contact_email}
-                      </div>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-4">
-                      <SenderEditor
-                        partnerId={partner.id}
-                        initialSenderName={partner.email_sender_name}
-                        initialSenderDomain={partner.email_sender_domain}
-                      />
-                      <SubdomainEditor
-                        partnerId={partner.id}
-                        initialSubdomain={partner.subdomain}
-                        rootDomain={ROOT_DOMAIN}
-                      />
-                      <span
-                        className={`text-xs font-medium px-2 py-1 rounded-full border ${
-                          STATUS_STYLE[partner.status] ?? 'bg-slate-50 border-slate-200 text-slate-600'
-                        }`}
-                      >
-                        {partner.status}
-                      </span>
-                    </div>
-                  </div>
+                  <PartnerRow key={partner.id} partner={partner} />
                 ))}
               </div>
             )}
