@@ -19,6 +19,7 @@ import {
   TabList,
   Tab,
   TabPanel,
+  tabClassName,
 } from '@/components/ui'
 import { SimulationMetadataSchema as SimulationMetaSchema, type SimulationMetadata as SimulationMeta } from '@/lib/schemas/simulation'
 import { slugify } from '@/lib/slugify'
@@ -646,7 +647,7 @@ export default function EditSimulationPage() {
             </Tab>
             <Link
               href={`/admin/simulations/${slug}/content`}
-              className="px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
+              className={tabClassName(false)}
             >
               Content
             </Link>
@@ -655,9 +656,7 @@ export default function EditSimulationPage() {
               active={activeTab === 'video'}
               onClick={() => setActiveTab('video')}
             >
-              <span className="flex items-center gap-1.5">
-                Video
-              </span>
+              Video
             </Tab>
             <Tab
               id="activity"
@@ -669,7 +668,7 @@ export default function EditSimulationPage() {
             {userRole && ['admin', 'super_admin', 'reviewer'].includes(userRole) && (
               <Link
                 href={`/admin/simulations/${slug}/reviews`}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
+                className={tabClassName(false)}
               >
                 Reviews
               </Link>
