@@ -163,14 +163,17 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/accept-terms') ||
     pathname.startsWith('/api/candidate/accept') ||
     pathname.startsWith('/api/candidate/acceptance-status')
-  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath
+  // Public legal pages (e.g. /legal/terms) must be readable by every role and
+  // by a candidate who has not yet accepted — they are the text being accepted.
+  const isLegalPath = pathname.startsWith('/legal')
+  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath || isLegalPath
   // Deliberately narrower than isSharedPath: /account is NOT exempt from the
   // candidate acceptance gate below. Spec 19 requires "no catalogue, practice
   // OR PROFILE data from any route" until both documents are accepted — the
   // broader isSharedPath (built for the dashboard-isolation guard above,
   // where /account legitimately needs to stay reachable for every role) would
   // have let a gated candidate keep reading/editing /account/profile.
-  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath
+  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath || isLegalPath
 
   const DASHBOARD_ONLY_PATHS: Record<string, string> = {
     reviewer: '/reviewer',

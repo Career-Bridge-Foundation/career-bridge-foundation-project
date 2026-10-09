@@ -364,7 +364,7 @@ export function AssessmentPackModal({
                       <span className="text-sm text-slate-700">
                         I have read and accept the{' '}
                         <a
-                          href="/legal/terms/v1"
+                          href="/legal/terms"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-medium text-navy underline underline-offset-2"
@@ -415,7 +415,7 @@ export function AssessmentPackModal({
                   <span className="text-sm text-slate-700">
                     I have read and accept the{' '}
                     <a
-                      href="/legal/terms/v1"
+                      href="/legal/terms"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-navy underline underline-offset-2"
