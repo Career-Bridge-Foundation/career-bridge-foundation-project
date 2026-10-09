@@ -107,6 +107,8 @@ function csvRowsToSimulations(rows: Record<string, string>[]) {
       display_order: row.display_order ? parseInt(row.display_order, 10) : undefined,
       discipline: row.discipline?.trim() || undefined,
       video_url: row.video_url?.trim() || undefined,
+      video_provider: (row.video_provider?.trim() || undefined) as 'mux' | 'native' | undefined,
+      video_id: row.video_id?.trim() || undefined,
       status: (row.status?.trim() as SimStatus) || 'draft',
       sim_role: row.sim_role?.trim() || null,
       brief_short: row.brief_short?.trim() || null,

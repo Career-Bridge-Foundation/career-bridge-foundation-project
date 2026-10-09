@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
-import { SimulationMetadataSchema } from '@/lib/schemas/simulation'
+import { SimulationMetadataSchema, normaliseVideoFields, videoFieldsError } from '@/lib/schemas/simulation'
 import { logActivity } from '@/lib/supabase/log-activity'
 import { requireStaff } from '@/lib/auth/permissions'
 
@@ -60,6 +60,11 @@ export async function PATCH(
     const { fieldErrors, formErrors } = result.error.flatten()
     return NextResponse.json({ fieldErrors, formErrors }, { status: 400 })
   }
+  const videoError = videoFieldsError(result.data)
+  if (videoError) {
+    return NextResponse.json({ fieldErrors: { video_id: [videoError] }, formErrors: [] }, { status: 400 })
+  }
+  const meta = normaliseVideoFields(result.data)
 
   const { data: before } = await supabaseServer
     .from('simulations')
@@ -67,8 +72,8 @@ export async function PATCH(
     .eq('slug', slug)
     .single()
 
-  const updatePayload: Record<string, unknown> = { ...result.data }
-  if (result.data.status === 'published' && !before?.published_at) {
+  const updatePayload: Record<string, unknown> = { ...meta }
+  if (meta.status === 'published' && !before?.published_at) {
     updatePayload.published_at = new Date().toISOString()
   }
 
@@ -94,7 +99,7 @@ export async function PATCH(
     simulationId: data.id,
     userEmail: email,
     action: 'updated_metadata',
-    diff: { before, after: result.data },
+    diff: { before, after: meta },
   })
 
   return NextResponse.json(data)

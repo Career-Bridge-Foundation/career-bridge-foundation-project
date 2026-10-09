@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireStaff } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
-import { SimulationImportSchema } from '@/lib/schemas/simulation'
+import { SimulationImportSchema, normaliseVideoFields, videoFieldsError } from '@/lib/schemas/simulation'
 
 // NOTE: Multi-table writes (simulations + simulation_prompts + rubrics) are
 // NOT atomic. Each Supabase call is separate. A failure mid-import for one
@@ -15,6 +15,12 @@ import { SimulationImportSchema } from '@/lib/schemas/simulation'
 //
 // For true atomicity, this should be wrapped in a Postgres RPC / function
 // that performs all writes in a single transaction. Deferred until needed.
+//
+// video_provider / video_id are only written when the payload carries a
+// non-empty value. An omitted or blank value leaves whatever is already in the
+// DB untouched, so re-importing older JSON/CSV can't wipe a Mux briefing.
+// Clearing them is done in the admin editor, not by import. video_url keeps
+// its original overwrite behaviour.
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +57,20 @@ export async function POST(request: NextRequest) {
 
   for (const s of simulations) {
     try {
+      const videoError = videoFieldsError(s)
+      if (videoError) {
+        failed.push({ slug: s.slug, error: videoError })
+        continue
+      }
+      const video = normaliseVideoFields(s)
+      const videoFields: Record<string, string | null> = {}
+      if (video.video_provider) {
+        videoFields.video_provider = video.video_provider
+        videoFields.video_id = video.video_id ?? null
+      } else if (video.video_id) {
+        videoFields.video_id = video.video_id
+      }
+
       // 1. Upsert simulation metadata
       const simRow = {
         slug: s.slug,
@@ -64,6 +84,7 @@ export async function POST(request: NextRequest) {
         discipline: s.discipline ?? null,
         scenario_context: s.scenario_context ?? null,
         video_url: s.video_url ?? null,
+        ...videoFields,
         status: s.status ?? 'draft',
         // Mirror the auto-stamp behaviour of the edit ([slug]/route.ts) and
         // approve routes: a row transitioning to 'published' always gets a

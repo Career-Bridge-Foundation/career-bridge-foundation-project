@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabase/server'
 import { createClient } from '@/lib/supabase/server'
-import { SimulationMetadataSchema } from '@/lib/schemas/simulation'
+import { SimulationMetadataSchema, normaliseVideoFields, videoFieldsError } from '@/lib/schemas/simulation'
 import { logActivity } from '@/lib/supabase/log-activity'
 import { requireStaff } from '@/lib/auth/permissions'
 
@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
     const { fieldErrors, formErrors } = result.error.flatten()
     return NextResponse.json({ fieldErrors, formErrors }, { status: 400 })
   }
+  const videoError = videoFieldsError(result.data)
+  if (videoError) {
+    return NextResponse.json({ fieldErrors: { video_id: [videoError] }, formErrors: [] }, { status: 400 })
+  }
+  const meta = normaliseVideoFields(result.data)
 
   const { data: top } = await supabaseServer
     .from('simulations')
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabaseServer
     .from('simulations')
-    .insert({ ...result.data, display_order })
+    .insert({ ...meta, display_order })
     .select()
     .single()
 
