@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { Button, Input, SegmentedControl, Badge } from '@/components/ui'
 import { SimulationMetaSchema, type SimulationMeta } from '@/lib/validations/simulation'
 import { slugify } from '@/lib/slugify'
+import { VideoProviderFields } from '../_video-fields'
 import { cn } from '@/lib/cn'
 
 const DIFFICULTY_OPTIONS = [
@@ -110,6 +111,8 @@ export default function NewSimulationPage() {
       description: '',
       discipline: '',
       video_url: '',
+      video_provider: null,
+      video_id: '',
       status: 'draft' as const,
       simulation_type: 'assessed' as const,
       slug: '',
@@ -348,6 +351,16 @@ export default function NewSimulationPage() {
                   {...register('video_url')}
                 />
               </div>
+
+              <VideoProviderFields
+                provider={watchedAll.video_provider}
+                videoId={watchedAll.video_id}
+                onProviderChange={v =>
+                  setValue('video_provider', v, { shouldValidate: true, shouldDirty: true })
+                }
+                videoIdInputProps={register('video_id')}
+                error={errors.video_id?.message}
+              />
 
               {/* Slug */}
               <div className="flex flex-col gap-1.5">

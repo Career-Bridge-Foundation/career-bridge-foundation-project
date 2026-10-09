@@ -19,6 +19,13 @@ export const SimulationMetadataSchema = z.object({
   // brief. Deliberately authored, never derived from `company`/`brief_*`.
   scenario_context: z.string().max(300).optional(),
   video_url: z.string().url('Enter a valid URL').or(z.literal('')).optional(),
+  // Briefing video provider. Values must match the DB check constraint in
+  // supabase/migrations/20260823_001_add_video_provider_to_simulations.sql.
+  // null and 'native' both fall through to video_url in the runner.
+  video_provider: z.enum(['mux', 'native']).nullable().optional(),
+  // Provider-native identifier. For 'mux' this is the public playback ID,
+  // not the asset ID. Not a URL, so deliberately no .url() rule.
+  video_id: z.string().trim().max(200).nullable().optional(),
   status: z.enum(['draft', 'pending_review', 'published', 'archived']).default('draft'),
   // Spec 14: distinguishes a free, unlimited-replay Practice Trial from a
   // paid, credit-gated assessed simulation. Defaults to 'assessed' to match
@@ -32,6 +39,32 @@ export const SimulationMetadataSchema = z.object({
 })
 
 export type SimulationMetadata = z.infer<typeof SimulationMetadataSchema>
+
+// Applied by the routes rather than as a schema .transform(), because a
+// transform would stop SimulationMetadataSchema from being .extend()-ed below.
+// - video_id is only meaningful for 'mux'; any other provider stores null so
+//   no stale playback ID is left behind.
+// - Blank (post-trim) video_id is stored as null.
+export function normaliseVideoFields<
+  T extends { video_provider?: 'mux' | 'native' | null; video_id?: string | null },
+>(data: T): T {
+  if (data.video_provider === undefined) {
+    // Provider not being set in this payload — only tidy the ID if present.
+    if (data.video_id === undefined) return data
+    return { ...data, video_id: data.video_id?.trim() || null }
+  }
+  const videoId = data.video_id?.trim() || null
+  return { ...data, video_id: data.video_provider === 'mux' ? videoId : null }
+}
+
+export function videoFieldsError(
+  data: { video_provider?: 'mux' | 'native' | null; video_id?: string | null },
+): string | null {
+  if (data.video_provider === 'mux' && !data.video_id?.trim()) {
+    return 'Playback ID is required when the provider is Mux'
+  }
+  return null
+}
 
 export const ReorderSchema = z.array(
   z.object({

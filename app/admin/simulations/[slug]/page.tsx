@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { ArrowLeft, Check, X, Loader2, ExternalLink, Clock, Building2, Send, MessageSquare, Video } from 'lucide-react'
 import Link from 'next/link'
+import MuxPlayer from '@mux/mux-player-react/lazy'
 import {
   Button,
   Input,
@@ -18,9 +19,11 @@ import {
   TabList,
   Tab,
   TabPanel,
+  tabClassName,
 } from '@/components/ui'
 import { SimulationMetadataSchema as SimulationMetaSchema, type SimulationMetadata as SimulationMeta } from '@/lib/schemas/simulation'
 import { slugify } from '@/lib/slugify'
+import { VideoProviderFields } from '../_video-fields'
 import { cn } from '@/lib/cn'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -275,15 +278,43 @@ function getEmbedUrl(url: string): string | null {
   return null
 }
 
-function VideoPreviewPanel({ videoUrl }: { videoUrl: string | null }) {
+function VideoPreviewPanel({
+  videoUrl,
+  videoProvider,
+  videoId,
+}: {
+  videoUrl: string | null
+  videoProvider: string | null
+  videoId: string | null
+}) {
+  // Mirrors the runner (components/simulation/SimulationVideo.tsx): a Mux
+  // playback ID takes priority; anything else falls through to video_url.
+  if (videoProvider === 'mux' && videoId) {
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+          <Video size={14} className="text-teal" />
+          <h3 className="text-sm font-semibold text-slate-900">Video Preview</h3>
+          <span className="text-xs text-slate-400">· Mux</span>
+        </div>
+        <MuxPlayer
+          playbackId={videoId}
+          streamType="on-demand"
+          accentColor="var(--color-teal)"
+          className="w-full aspect-video bg-[#001a2e]"
+        />
+      </div>
+    )
+  }
+
   if (!videoUrl) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
           <Video size={20} className="text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-slate-600">No video URL set</p>
-        <p className="text-xs text-slate-400">Add a video URL in the Metadata tab to enable preview.</p>
+        <p className="text-sm font-medium text-slate-600">No video set</p>
+        <p className="text-xs text-slate-400">Add a Mux playback ID or a video URL in the Metadata tab to enable preview.</p>
       </div>
     )
   }
@@ -389,6 +420,8 @@ export default function EditSimulationPage() {
       discipline: '',
       scenario_context: '',
       video_url: '',
+      video_provider: null,
+      video_id: '',
       status: 'draft' as const,
       simulation_type: 'assessed' as const,
       slug: '',
@@ -424,6 +457,8 @@ export default function EditSimulationPage() {
           discipline: data.discipline ?? '',
           scenario_context: data.scenario_context ?? '',
           video_url: data.video_url ?? '',
+          video_provider: data.video_provider ?? null,
+          video_id: data.video_id ?? '',
           status: data.status ?? 'draft',
           simulation_type: data.simulation_type ?? 'assessed',
           slug: data.slug ?? slug,
@@ -612,7 +647,7 @@ export default function EditSimulationPage() {
             </Tab>
             <Link
               href={`/admin/simulations/${slug}/content`}
-              className="px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
+              className={tabClassName(false)}
             >
               Content
             </Link>
@@ -621,10 +656,7 @@ export default function EditSimulationPage() {
               active={activeTab === 'video'}
               onClick={() => setActiveTab('video')}
             >
-              <span className="flex items-center gap-1.5">
-                <Video size={13} />
-                Video
-              </span>
+              Video
             </Tab>
             <Tab
               id="activity"
@@ -636,9 +668,8 @@ export default function EditSimulationPage() {
             {userRole && ['admin', 'super_admin', 'reviewer'].includes(userRole) && (
               <Link
                 href={`/admin/simulations/${slug}/reviews`}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-md text-slate-600 hover:text-slate-900 transition-colors"
+                className={tabClassName(false)}
               >
-                <MessageSquare size={13} />
                 Reviews
               </Link>
             )}
@@ -930,6 +961,16 @@ export default function EditSimulationPage() {
                     />
                   </div>
 
+                  <VideoProviderFields
+                    provider={watchedAll.video_provider}
+                    videoId={watchedAll.video_id}
+                    onProviderChange={v =>
+                      setValue('video_provider', v, { shouldValidate: true, shouldDirty: true })
+                    }
+                    videoIdInputProps={register('video_id')}
+                    error={errors.video_id?.message}
+                  />
+
                   {/* Scenario context (Spec 17) */}
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="scenario_context" className="text-slate-900 text-sm font-medium">
@@ -1014,7 +1055,11 @@ export default function EditSimulationPage() {
 
         {/* Video preview */}
         <TabPanel hidden={activeTab !== 'video'}>
-          <VideoPreviewPanel videoUrl={(simData?.video_url as string) || null} />
+          <VideoPreviewPanel
+            videoUrl={(simData?.video_url as string) || null}
+            videoProvider={(simData?.video_provider as string) || null}
+            videoId={(simData?.video_id as string) || null}
+          />
         </TabPanel>
 
         {/* Activity log */}
