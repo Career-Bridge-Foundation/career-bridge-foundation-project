@@ -84,6 +84,32 @@ async function resolvePartnerIdForUser(userId: string, metadata: Record<string, 
   return (data?.partner_id as string | null) ?? null;
 }
 
+/**
+ * Build the /auth/callback link for the email. redirect_to is the full
+ * callback URL the browser asked for (e.g. https://<partner>.evidentize.io
+ * /auth/callback?next=/accept-invite?token=…), so token_hash/type are merged
+ * into ITS query string — appending a second /auth/callback path to it used
+ * to swallow token_hash into `next`. Keeping redirect_to's origin is what
+ * keeps the user on their partner subdomain. site_url is only the fallback
+ * (Supabase substitutes it when redirect_to isn't allow-listed).
+ */
+function buildConfirmationUrl(emailData: HookPayload['email_data']): string | null {
+  if (!emailData.token_hash) return null;
+  const base =
+    emailData.redirect_to ||
+    (emailData.site_url ? `${emailData.site_url.replace(/\/+$/, '')}/auth/callback` : '');
+  let url: URL;
+  try {
+    url = new URL(base);
+  } catch {
+    return null;
+  }
+  if (url.pathname !== '/auth/callback') url.pathname = '/auth/callback';
+  url.searchParams.set('token_hash', emailData.token_hash);
+  url.searchParams.set('type', emailData.email_action_type);
+  return url.toString();
+}
+
 export async function POST(request: Request) {
   const secret = process.env.SUPABASE_AUTH_HOOK_SECRET;
   if (!secret) {
@@ -128,10 +154,7 @@ export async function POST(request: Request) {
     const sender = await resolvePartnerSender(partnerId);
 
     const actionType = emailData.email_action_type;
-    const siteUrl = emailData.redirect_to || emailData.site_url || '';
-    const confirmationUrl = emailData.token_hash
-      ? `${siteUrl}/auth/callback?token_hash=${emailData.token_hash}&type=${actionType}`
-      : null;
+    const confirmationUrl = buildConfirmationUrl(emailData);
 
     const html = renderAuthHookEmail({
       actionType,
