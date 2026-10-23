@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
 import { createClient as createSupabaseServerClient } from "@/lib/supabase/server";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { ROOT_DOMAIN, isValidSubdomainFormat } from "@/lib/partners/branding";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const ALLOWED_CORS_ORIGINS = [
@@ -16,8 +17,25 @@ const ALLOWED_CORS_ORIGINS = [
   .map((origin) => origin.trim())
   .filter((origin, index, origins) => origins.indexOf(origin) === index);
 
+// Any https://<label>.<ROOT_DOMAIN> (or the apex) is ours — partner
+// subdomains are added over time, so they're matched by pattern rather than
+// listed. Single label only, mirroring subdomainFromHost().
+function isRootDomainOrigin(origin: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port) return false;
+  const host = url.hostname.toLowerCase();
+  if (host === ROOT_DOMAIN) return true;
+  if (!host.endsWith(`.${ROOT_DOMAIN}`)) return false;
+  return isValidSubdomainFormat(host.slice(0, -(ROOT_DOMAIN.length + 1)));
+}
+
 function isAllowedOrigin(origin: string | null): origin is string {
-  return Boolean(origin && ALLOWED_CORS_ORIGINS.includes(origin));
+  return Boolean(origin && (ALLOWED_CORS_ORIGINS.includes(origin) || isRootDomainOrigin(origin)));
 }
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
