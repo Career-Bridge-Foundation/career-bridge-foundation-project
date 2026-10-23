@@ -70,6 +70,11 @@ export function isValidSubdomainFormat(s: string): boolean {
   return SUBDOMAIN_FORMAT.test(s)
 }
 
+/** A label that could name a partner subdomain: valid DNS format, not reserved. */
+export function isPartnerSubdomainLabel(s: string): boolean {
+  return isValidSubdomainFormat(s) && !RESERVED_SUBDOMAINS.has(s)
+}
+
 /**
  * Builds the URL a partner-scoped link (invite, redemption, notification)
  * should point at: the partner's own subdomain when they have one assigned,
