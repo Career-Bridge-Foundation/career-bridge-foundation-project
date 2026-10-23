@@ -90,9 +90,11 @@ export function ShareButton({ candidateName, slug }: Props) {
   useEffect(() => { setMounted(true); }, []);
 
   const portfolioUrl =
+    // origin + pathname, not href — the ?from= navigation hint (see
+    // middleware.ts) is about the sharer's partner, not the recipient's.
     typeof window !== 'undefined'
-      ? window.location.href
-      : `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'}/portfolio/${slug}`;
+      ? `${window.location.origin}${window.location.pathname}`
+      :`${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'}/portfolio/${slug}`;
 
   const encodedUrl   = encodeURIComponent(portfolioUrl);
   const tweetText    = encodeURIComponent(

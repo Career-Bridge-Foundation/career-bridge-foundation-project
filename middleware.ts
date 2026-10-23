@@ -51,6 +51,12 @@ export async function middleware(request: NextRequest) {
     if (subdomain && _p.startsWith('/portfolio/')) {
       const canonicalBase = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
       const canonicalUrl = new URL(_p + request.nextUrl.search, canonicalBase)
+      // Carry the subdomain the visitor came from, so the portfolio page's
+      // "Back to Home" (and Header nav) can send them back to it instead of
+      // stranding them on the canonical host. An explicit ?from= wins.
+      if (!canonicalUrl.searchParams.has('from')) {
+        canonicalUrl.searchParams.set('from', subdomain)
+      }
       return NextResponse.redirect(canonicalUrl, 308)
     }
 
