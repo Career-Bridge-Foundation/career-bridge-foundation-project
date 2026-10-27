@@ -288,7 +288,9 @@ export async function middleware(request: NextRequest) {
   // ── Partner routes ───────────────────────────────────────────────────────
   // Spec 18 acceptance criterion 7: /partner/* must be gated in middleware,
   // not only by the page-level requirePartner() check.
-  if (isPartnerPath) {
+  // The invite-accept endpoint is exempt: the invitee isn't a partner until
+  // it succeeds, and the route enforces its own token + email-binding checks.
+  if (isPartnerPath && !isAcceptInvitePath) {
     if (!user) {
       if (pathname.startsWith('/api/')) {
         return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {
