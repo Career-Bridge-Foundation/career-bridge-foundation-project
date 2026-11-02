@@ -39,6 +39,7 @@ const CODE_ERROR_MESSAGES: Record<string, string> = {
 
 const ACTIVATE_ERROR_MESSAGES: Record<string, string> = {
   insufficient_balance:  'You have no credits available.',
+  sponsored_not_allowed: 'Your programme’s credits don’t cover this discipline. You can buy a credit to continue.',
   practice_simulation:   'This simulation does not require a credit.',
   simulation_not_found:  'Simulation not found.',
 }
@@ -72,6 +73,10 @@ export function AssessmentPackModal({
 }: AssessmentPackModalProps) {
   const [mode, setMode]               = useState<Mode>('loading')
   const [balance, setBalance]         = useState<Balance | null>(null)
+  // Spec 20: false when this simulation's discipline isn't one the candidate's
+  // partner granted them — sponsored credits (and new codes) can't be used here.
+  const [sponsoredAllowed, setSponsoredAllowed] = useState(true)
+  const [sponsoredHeld, setSponsoredHeld]       = useState(0)
   const [termsChecked, setTerms]      = useState(false)
   const [consentChecked, setConsent]  = useState(false)
   const [code, setCode]               = useState('')
@@ -106,9 +111,11 @@ export function AssessmentPackModal({
   const fetchEntitlement = useCallback(async () => {
     setMode('loading')
     try {
-      const res  = await fetch('/api/candidate/entitlement')
+      const res  = await fetch(`/api/candidate/entitlement?simulation_id=${encodeURIComponent(simulationId)}`)
       const data = await res.json()
       setBalance(data.balance)
+      setSponsoredAllowed(data.sponsoredAllowed !== false)
+      setSponsoredHeld(data.sponsoredHeld ?? 0)
       if (!res.ok || data.balance.total === 0) {
         setMode('no_balance')
         fetchPacks()
@@ -119,7 +126,7 @@ export function AssessmentPackModal({
       setMode('no_balance') // fail-open: show code entry rather than a blank modal
       fetchPacks()
     }
-  }, [fetchPacks])
+  }, [fetchPacks, simulationId])
 
   useEffect(() => {
     if (open) {
@@ -221,7 +228,8 @@ export function AssessmentPackModal({
   }
 
   const isActivating    = mode === 'activating'
-  const showCodeEntry   = mode === 'no_balance' || mode === 'redeeming'
+  // A sponsor code can't help on a discipline the partner hasn't granted.
+  const showCodeEntry   = sponsoredAllowed && (mode === 'no_balance' || mode === 'redeeming')
   const showActions     = mode === 'balance_first' || mode === 'balance_repeat' || mode === 'activating'
   const canConfirm      = mode === 'balance_first' ? termsChecked && consentChecked : true
   const canPurchase     = !!selectedPack && purchaseTermsChecked && purchaseConsentChecked && !purchasing
@@ -275,6 +283,15 @@ export function AssessmentPackModal({
               )}
             </p>
 
+            {/* ── Sponsored credits don't cover this discipline (Spec 20) ── */}
+            {!sponsoredAllowed && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                This discipline isn&apos;t part of your programme, so your programme&apos;s credits
+                {sponsoredHeld > 0 ? ` (${sponsoredHeld} available)` : ''} and access codes can&apos;t be used
+                here. {mode === 'no_balance' ? 'You can buy a credit to continue.' : 'Only credits you bought yourself are used.'}
+              </div>
+            )}
+
             {/* ── Sponsor code entry (no-balance variant) ── */}
             {showCodeEntry && (
               <div className="space-y-3 rounded-lg border border-slate-200 p-4">
@@ -312,7 +329,9 @@ export function AssessmentPackModal({
             {/* ── Buy a credit pack (no-balance variant) ── */}
             {mode === 'no_balance' && (
               <div className="space-y-3 rounded-lg border border-slate-200 p-4">
-                <p className="text-sm font-medium text-slate-700">Or buy an Assessment Pack:</p>
+                <p className="text-sm font-medium text-slate-700">
+                  {sponsoredAllowed ? 'Or buy an Assessment Pack:' : 'Buy an Assessment Pack:'}
+                </p>
 
                 {packsError && (
                   <p className="text-xs text-red-600">{packsError}</p>

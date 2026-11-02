@@ -59,7 +59,7 @@ export default async function MentorDashboardPage({
           No candidates assigned to you yet.
         </div>
       ) : (
-        <CandidatesPanel candidates={candidates} linkDetail={false} />
+        <CandidatesPanel candidates={candidates} linkDetail={false} disciplineApiBase="/api/mentor" />
       )}
     </div>
   )

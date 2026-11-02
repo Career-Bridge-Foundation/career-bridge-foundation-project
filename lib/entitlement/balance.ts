@@ -45,6 +45,31 @@ export async function getCandidateBalance(candidateId: string): Promise<CreditBa
   }
 }
 
+/**
+ * Credits the candidate bought themselves (Spec 16) and hasn't spent yet —
+ * purchase grants minus activation debits attributed to 'purchase'. Mirrors
+ * step 1c of activate_simulation() (schema-reference/spec-20-activate-rpc-
+ * sponsored-disciplines.sql): the only credits usable on a discipline the
+ * candidate's partner hasn't granted them (Spec 20).
+ */
+export async function getPurchasedBalance(candidateId: string): Promise<number> {
+  const { data, error } = await supabaseServer
+    .from('credit_ledger')
+    .select('delta, reason, debited_reason')
+    .eq('candidate_id', candidateId)
+    .is('cohort_id', null)
+    .or('reason.eq.purchase,debited_reason.eq.purchase')
+
+  if (error) throw new Error(`credit_ledger query failed: ${error.message}`)
+
+  let left = 0
+  for (const row of data ?? []) {
+    if (row.reason === 'purchase') left += row.delta as number
+    else if (row.reason === 'activation' && row.debited_reason === 'purchase') left += row.delta as number
+  }
+  return Math.max(left, 0)
+}
+
 export type SpendSource =
   | { type: 'cohort'; cohortId: string }
   | { type: 'fungible' }

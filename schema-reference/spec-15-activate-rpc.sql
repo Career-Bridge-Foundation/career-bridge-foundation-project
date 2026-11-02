@@ -1,6 +1,9 @@
 -- ============================================================
 -- SCHEMA REFERENCE — Spec 15: Atomic Activation RPC
 -- ============================================================
+-- SUPERSEDED by spec-20-activate-rpc-sponsored-disciplines.sql (adds
+-- p_allow_sponsored). Kept for history — do not re-apply this one.
+--
 -- NOT EXECUTED BY ANY MIGRATION TOOL. Applied manually via the
 -- Supabase Dashboard SQL Editor. Run as a single statement.
 --

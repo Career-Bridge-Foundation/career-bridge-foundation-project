@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ROOT_DOMAIN } from '@/lib/partners/branding'
 import { SenderEditor } from './_sender-editor'
 import { SubdomainEditor } from './_subdomain-editor'
 import { AllocationEditor } from './_allocation-editor'
+import { DisciplineEditor } from './_discipline-editor'
 
 type Partner = {
   id: string
@@ -15,6 +16,8 @@ type Partner = {
   email_sender_name: string | null
   email_sender_domain: string | null
   created_at: string
+  /** Active partner_disciplines slugs — empty means unrestricted (Spec 20). */
+  disciplines: string[]
 }
 
 const STATUS_STYLE: Record<string, string> = {
@@ -23,20 +26,35 @@ const STATUS_STYLE: Record<string, string> = {
   suspended: 'bg-red-50 border-red-200 text-red-700',
 }
 
-type DetailTab = 'sender' | 'subdomain' | 'allocation'
+export type DetailTab = 'sender' | 'subdomain' | 'allocation' | 'disciplines'
 
 const DETAIL_TABS: { key: DetailTab; label: string }[] = [
   { key: 'sender', label: 'Email sender' },
   { key: 'subdomain', label: 'Subdomain' },
   { key: 'allocation', label: 'Credit allocation' },
+  { key: 'disciplines', label: 'Disciplines' },
 ]
 
-export function PartnerRow({ partner }: { partner: Partner }) {
-  const [expanded, setExpanded] = useState(false)
-  const [tab, setTab] = useState<DetailTab>('sender')
+export function PartnerRow({
+  partner,
+  focusTab,
+}: {
+  partner: Partner
+  /** Set right after this partner is created — opens straight onto that tab (Spec 20 nudge). */
+  focusTab?: DetailTab
+}) {
+  const [expanded, setExpanded] = useState(!!focusTab)
+  const [tab, setTab] = useState<DetailTab>(focusTab ?? 'sender')
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  // The new partner's row first mounts after router.refresh(), so the
+  // useState initialisers above already open it — this only scrolls to it.
+  useEffect(() => {
+    if (focusTab) rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [focusTab])
 
   return (
-    <div>
+    <div ref={rowRef}>
       <div className="px-6 py-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
           <div className="text-sm font-medium text-slate-900 truncate">{partner.name}</div>
@@ -45,6 +63,16 @@ export function PartnerRow({ partner }: { partner: Partner }) {
           </div>
         </div>
         <div className="shrink-0 flex items-center gap-3">
+          {partner.disciplines.length === 0 && (
+            <button
+              type="button"
+              onClick={() => { setExpanded(true); setTab('disciplines') }}
+              title="This partner can invite candidates into every discipline"
+              className="text-xs font-medium px-2 py-1 rounded-full border border-dashed border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              No discipline limit set
+            </button>
+          )}
           <span
             className={`text-xs font-medium px-2 py-1 rounded-full border ${
               STATUS_STYLE[partner.status] ?? 'bg-slate-50 border-slate-200 text-slate-600'
@@ -107,6 +135,9 @@ export function PartnerRow({ partner }: { partner: Partner }) {
           )}
           {tab === 'allocation' && (
             <AllocationEditor partnerId={partner.id} partnerName={partner.name} />
+          )}
+          {tab === 'disciplines' && (
+            <DisciplineEditor partnerId={partner.id} initialDisciplines={partner.disciplines} />
           )}
         </div>
       )}

@@ -2,6 +2,7 @@ import { signPartnerToken, hashPartnerToken } from '@/lib/partners/token'
 import { supabaseServer } from '@/lib/supabase/server'
 import { disciplines } from '@/lib/disciplines-data'
 import { partnerAppUrl } from '@/lib/partners/branding'
+import { getPartnerDisciplineRange, isInRange } from '@/lib/partners/disciplineRange'
 
 const DISCIPLINE_NAME_TO_SLUG = new Map(
   disciplines.map((d) => [d.name, d.slug] as const)
@@ -9,7 +10,7 @@ const DISCIPLINE_NAME_TO_SLUG = new Map(
 
 export class MintError extends Error {
   constructor(
-    public code: 'unknown_discipline' | 'persist_failed' | 'terms_not_published',
+    public code: 'unknown_discipline' | 'discipline_not_allowed' | 'persist_failed' | 'terms_not_published',
     message: string
   ) {
     super(message)
@@ -76,6 +77,16 @@ export async function mintRedemptionToken(params: MintParams): Promise<MintResul
       throw new MintError('unknown_discipline', `no slug for discipline: ${name}`)
     }
     disciplineSlugs.push(slug)
+  }
+
+  // Spec 20: the partner may only invite into its admin-assigned range.
+  const range = await getPartnerDisciplineRange(partnerId)
+  const outOfRange = disciplineSlugs.filter((s) => !isInRange(range, s))
+  if (outOfRange.length) {
+    throw new MintError(
+      'discipline_not_allowed',
+      `Your organisation isn't set up for: ${outOfRange.join(', ')}. Contact Evidentize to add it.`
+    )
   }
 
   // Sign

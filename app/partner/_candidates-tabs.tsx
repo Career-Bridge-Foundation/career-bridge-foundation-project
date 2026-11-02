@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { PartnerCandidateWithProgress } from '@/lib/partners/candidateProgress'
 import { CandidatesPanel } from './_candidates-panel'
 import { MintForm } from './_mint-form'
+import type { Discipline } from '@/types'
 
 type TabKey = 'candidates' | 'provision'
 
@@ -17,10 +18,12 @@ export function CandidatesTabs({
   candidates,
   loadError,
   hasActiveProgrammeTerms,
+  offeredDisciplines,
 }: {
   candidates: PartnerCandidateWithProgress[]
   loadError: boolean
   hasActiveProgrammeTerms: boolean
+  offeredDisciplines: Discipline[]
 }) {
   const [tab, setTab] = useState<TabKey>('candidates')
 
@@ -61,11 +64,11 @@ export function CandidatesTabs({
             </button>
           </div>
         ) : (
-          <CandidatesPanel candidates={candidates} showAdminColumns />
+          <CandidatesPanel candidates={candidates} showAdminColumns disciplineApiBase="/api/partner" />
         )
       )}
 
-      {tab === 'provision' && <MintForm hasActiveProgrammeTerms={hasActiveProgrammeTerms} />}
+      {tab === 'provision' && <MintForm hasActiveProgrammeTerms={hasActiveProgrammeTerms} offeredDisciplines={offeredDisciplines} />}
     </div>
   )
 }
