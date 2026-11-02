@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { checkSimulationAccess } from "@/lib/access-control";
 
 type SimulationListItem = {
-  id: number;
+  id: string | number;
   slug: string;
   title: string;
   company: string;
@@ -18,6 +18,8 @@ type SimulationListItem = {
   difficulty: "Foundation" | "Practitioner" | "Advanced";
   time: string;
   description: string;
+  simulation_uuid?: string;
+  simulation_type?: string;
 };
 
 // Canonical tier order — never sort difficulty alphabetically, that yields
@@ -64,7 +66,16 @@ export default function VirtualAssistantPage() {
         console.error("Error message:", error.message);
       }
 
-      setSimsList(data ?? []);
+      // Same mapping as the other discipline pages. Without simulation_type
+      // the card treated every Virtual Assistant simulation as Free Practice,
+      // skipping the access check and the Assessment Pack modal entirely.
+      const list: SimulationListItem[] = (data ?? []).map((s) => ({
+        ...s,
+        simulation_uuid: s.id,
+        simulation_type: s.simulation_type ?? 'assessed',
+      }));
+
+      setSimsList(list);
       setIsLoading(false);
     }
     load();
