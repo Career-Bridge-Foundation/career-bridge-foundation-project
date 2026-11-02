@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Simulation } from "@/types";
 import { AssessmentPackModal } from "@/components/simulation/AssessmentPackModal";
+import { NoAccessModal } from "@/components/simulation/NoAccessModal";
 import { hasIncompleteActivation } from "@/lib/access-control";
 
 interface SimulationCardProps {
@@ -14,6 +15,7 @@ interface SimulationCardProps {
 export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardProps) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
+  const [noAccessOpen, setNoAccessOpen] = useState(false);
 
   const isAssessed = sim.simulation_type === "assessed";
   const [checkingResume, setCheckingResume] = useState(false);
@@ -31,6 +33,15 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
       setCheckingResume(false);
       if (resumable) {
         router.push(`/simulations/${sim.discipline}/${sim.slug}`);
+        return;
+      }
+
+      // No discipline access from their programme (Spec 20): explain that,
+      // rather than offering codes or a purchase. Checked after the resume
+      // path above so an attempt started before access was removed can still
+      // be finished.
+      if (!hasAccess) {
+        setNoAccessOpen(true);
         return;
       }
 
@@ -97,6 +108,15 @@ export function SimulationCard({ simulation: sim, hasAccess }: SimulationCardPro
           </button>
         </div>
       </div>
+
+      {isAssessed && (
+        <NoAccessModal
+          open={noAccessOpen}
+          onClose={() => setNoAccessOpen(false)}
+          simulationTitle={sim.title}
+          discipline={sim.discipline}
+        />
+      )}
 
       {/* Assessment Pack modal — only rendered for assessed simulations with a resolved UUID */}
       {isAssessed && sim.simulation_uuid && (
