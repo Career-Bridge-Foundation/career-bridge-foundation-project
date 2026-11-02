@@ -24,6 +24,7 @@ import {
 } from '@/lib/partners/token'
 import { ensurePortfolioProfile } from '@/lib/portfolio/ensureProfile'
 import { recordAcceptanceForActiveVersions } from '@/lib/terms/recordAcceptanceForActiveVersions'
+import { getPartnerDisciplineRange, isInRange } from '@/lib/partners/disciplineRange'
 
 export const runtime = 'nodejs'
 
@@ -163,7 +164,18 @@ export async function POST(request: Request) {
     }
 
     // 8. PROVISION ENTITLEMENTS (idempotent via the unique constraint)
-    const rows = row.disciplines.map((discipline: string) => ({
+    // Spec 20: only grant disciplines still inside the partner's range — an
+    // admin may have narrowed it between mint and redemption.
+    const range = await getPartnerDisciplineRange(row.partner_id as string)
+    const grantable = (row.disciplines as string[]).filter((d) => isInRange(range, d))
+    if (grantable.length === 0) {
+      return NextResponse.json(
+        { error: 'this invite is no longer valid — ask your programme to send a new one' },
+        { status: 403 }
+      )
+    }
+
+    const rows = grantable.map((discipline: string) => ({
       candidate_id: portfolioId,
       discipline,
       granted_by_partner: row.partner_id,
@@ -215,7 +227,7 @@ export async function POST(request: Request) {
     // 11. SUCCESS
     return NextResponse.json({
       ok: true,
-      disciplines: row.disciplines,
+      disciplines: grantable,
       portfolio_id: portfolioId,
     })
   } catch (err) {

@@ -15,6 +15,7 @@ type Partner = {
   email_sender_name: string | null
   email_sender_domain: string | null
   created_at: string
+  disciplines: string[]
 }
 
 type TabKey = 'organisations' | 'terms'
@@ -28,6 +29,9 @@ type TabKey = 'organisations' | 'terms'
  */
 export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; termsDocs: TermsDoc[] }) {
   const [tab, setTab] = useState<TabKey>('organisations')
+  // The partner just created via the invite form — its row opens on the
+  // Disciplines tab so the admin is nudged to set a range (Spec 20).
+  const [newPartnerId, setNewPartnerId] = useState<string | null>(null)
 
   function tabClass(key: TabKey) {
     return `rounded-md px-4 py-2 text-sm font-medium transition-colors ${
@@ -48,7 +52,7 @@ export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; ter
 
       {tab === 'organisations' && (
         <div className="space-y-6">
-          <PartnerInviteForm />
+          <PartnerInviteForm onCreated={setNewPartnerId} />
 
           <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-200">
@@ -61,7 +65,11 @@ export function PartnersTabs({ partners, termsDocs }: { partners: Partner[]; ter
             ) : (
               <div className="divide-y divide-slate-100">
                 {partners.map((partner) => (
-                  <PartnerRow key={partner.id} partner={partner} />
+                  <PartnerRow
+                    key={partner.id}
+                    partner={partner}
+                    focusTab={partner.id === newPartnerId ? 'disciplines' : undefined}
+                  />
                 ))}
               </div>
             )}

@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export function PartnerInviteForm() {
+export function PartnerInviteForm({ onCreated }: { onCreated?: (partnerId: string) => void }) {
   const router = useRouter()
   const [orgName, setOrgName] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
@@ -26,7 +26,11 @@ export function PartnerInviteForm() {
       if (!res.ok) {
         throw new Error(body.error ?? 'Failed to create organisation')
       }
-      setSuccessMsg(`"${body.partnerName}" created — invite sent to ${body.invitedEmail}.`)
+      setSuccessMsg(
+        `"${body.partnerName}" created — invite sent to ${body.invitedEmail}. ` +
+        `Next: choose which disciplines they can offer (opened below). Until you do, they can invite into every discipline.`
+      )
+      if (body.partnerId) onCreated?.(body.partnerId)
       setOrgName('')
       setAdminEmail('')
       router.refresh()
