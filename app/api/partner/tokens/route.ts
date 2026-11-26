@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       })
     } catch (err) {
       if (err instanceof MintError) {
-        if (err.code === 'terms_not_published') {
+        if (err.code === 'terms_not_published' || err.code === 'discipline_not_allowed') {
           return NextResponse.json({ error: err.message }, { status: 400 })
         }
         const status = err.code === 'persist_failed' ? 500 : 500

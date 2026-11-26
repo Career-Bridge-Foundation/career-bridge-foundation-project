@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePartner } from '@/lib/auth/permissions'
 import { supabaseServer } from '@/lib/supabase/server'
 import { verifyMentorBelongsToPartner } from '@/lib/partners/mentorScope'
-import { availableDisciplineNames } from '@/lib/disciplines-data'
+import { availableDisciplineNames, disciplines } from '@/lib/disciplines-data'
+import { getPartnerDisciplineRange, isInRange } from '@/lib/partners/disciplineRange'
 
 export const runtime = 'nodejs'
 
@@ -35,6 +36,16 @@ export async function POST(
     if (!discipline) return NextResponse.json({ error: 'discipline is required' }, { status: 400 })
     if (!availableDisciplineNames.includes(discipline)) {
       return NextResponse.json({ error: 'unknown or unavailable discipline' }, { status: 400 })
+    }
+    // Spec 20: mentor preview grants stay inside the partner's range too.
+    // mentor_disciplines stores NAMES; the range is in slugs.
+    const range = await getPartnerDisciplineRange(ctx.partnerId!)
+    const slug = disciplines.find((d) => d.name === discipline)?.slug
+    if (!slug || !isInRange(range, slug)) {
+      return NextResponse.json(
+        { error: "your organisation isn't set up for this discipline" },
+        { status: 400 }
+      )
     }
 
     // ISOLATION: the mentor must belong to THIS partner.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, supabaseServer } from '@/lib/supabase/server'
 import { CURRENT_TERMS_VERSION } from '@/lib/entitlement/constants'
+import { canUseSponsoredCredits } from '@/lib/entitlement/sponsoredAccess'
 
 export const runtime = 'nodejs'
 
@@ -22,6 +23,8 @@ export const runtime = 'nodejs'
  *   simulation_not_found       — simulation_id does not exist
  *   practice_simulation        — Practice Trials are never activated
  *   insufficient_balance       — no credits; show sponsor code entry
+ *   sponsored_not_allowed      — Spec 20: only sponsored credits left, and they
+ *                                don't cover this discipline; offer a purchase
  *   already_activated          — concurrent double-click; treat as success
  */
 export async function POST(request: Request) {
@@ -68,6 +71,15 @@ export async function POST(request: Request) {
       )
     }
 
+    // 3b. SPONSORED-CREDIT SCOPE (Spec 20) — sponsor-code credits only cover
+    // disciplines the provisioning partner has granted this candidate.
+    // Purchased credits are spendable on anything (enforced in the RPC).
+    const allowSponsored = await canUseSponsoredCredits(
+      portfolio.id,
+      portfolio.provisioned_by_partner,
+      simulation_id,
+    )
+
     // 4. IP ADDRESS + USER AGENT (for terms acceptance record)
     const forwarded = request.headers.get('x-forwarded-for')
     const ipAddress = forwarded ? forwarded.split(',')[0].trim() : null
@@ -85,6 +97,7 @@ export async function POST(request: Request) {
         p_ip_address:        ipAddress,
         p_immediate_consent: immediate_performance_consent === true,
         p_user_agent:        userAgent,
+        p_allow_sponsored:   allowSponsored,
       },
     )
 
@@ -112,6 +125,7 @@ export async function POST(request: Request) {
         simulation_not_found: 404,
         practice_simulation:  422,
         insufficient_balance: 402,
+        sponsored_not_allowed: 402,
       }
 
       return NextResponse.json(

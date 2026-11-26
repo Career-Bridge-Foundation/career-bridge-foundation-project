@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { getPortfolioBySlug } from '@/lib/portfolio/getPortfolioBySlug';
 import { createClient } from '@/lib/supabase/server';
 import { getCandidateHomeSubdomain } from '@/lib/partners/candidateHomeSubdomain';
-import { ROOT_DOMAIN } from '@/lib/partners/branding';
+import { ROOT_DOMAIN, isPartnerSubdomainLabel, resolvePartnerBranding } from '@/lib/partners/branding';
 import { EditPortfolioButton } from './EditPortfolioButton';
 import { ShareButton } from './ShareButton';
 import { TemplateRenderer } from './templates/TemplateRenderer';
@@ -45,12 +45,26 @@ export async function generateMetadata({
 
 export default async function PortfolioPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { slug } = await params;
   const data = await getPortfolioBySlug(slug);
   if (!data) notFound();
+
+  // ?from= is the partner subdomain the visitor actually arrived from, set by
+  // middleware's canonical-host redirect. It beats the entitlement lookup
+  // below (it works for logged-out visitors and candidates with no
+  // entitlement yet), but only for a live, approved partner — a stale or
+  // hand-edited value can't send anyone to a dead host.
+  const fromParam = (await searchParams).from;
+  const fromLabel = typeof fromParam === 'string' ? fromParam.toLowerCase() : null;
+  const fromSubdomain =
+    fromLabel && isPartnerSubdomainLabel(fromLabel) && (await resolvePartnerBranding(fromLabel))
+      ? fromLabel
+      : null;
 
   // Ownership detection — done separately so getPortfolioBySlug stays
   // privacy-gated and never exposes user_id in its return type. The query
@@ -62,7 +76,7 @@ export default async function PortfolioPage({
   // whoever owns this portfolio. A candidate looking at someone else's
   // portfolio should still land back on their OWN partner's subdomain, not
   // the portfolio owner's.
-  let homeSubdomain: string | null = null;
+  let homeSubdomain: string | null = fromSubdomain;
   if (user) {
     const { data: ownerRow } = await supabase
       .from('portfolio_profiles')
@@ -72,7 +86,7 @@ export default async function PortfolioPage({
       .limit(1)
       .maybeSingle();
     isOwner = !!ownerRow;
-    homeSubdomain = await getCandidateHomeSubdomain(user.id);
+    homeSubdomain ??= await getCandidateHomeSubdomain(user.id);
   }
   const backToHomeHref = homeSubdomain ? `https://${homeSubdomain}.${ROOT_DOMAIN}/` : '/';
 

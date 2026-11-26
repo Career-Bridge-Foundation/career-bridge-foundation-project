@@ -51,6 +51,12 @@ export async function middleware(request: NextRequest) {
     if (subdomain && _p.startsWith('/portfolio/')) {
       const canonicalBase = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
       const canonicalUrl = new URL(_p + request.nextUrl.search, canonicalBase)
+      // Carry the subdomain the visitor came from, so the portfolio page's
+      // "Back to Home" (and Header nav) can send them back to it instead of
+      // stranding them on the canonical host. An explicit ?from= wins.
+      if (!canonicalUrl.searchParams.has('from')) {
+        canonicalUrl.searchParams.set('from', subdomain)
+      }
       return NextResponse.redirect(canonicalUrl, 308)
     }
 
@@ -163,14 +169,17 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/accept-terms') ||
     pathname.startsWith('/api/candidate/accept') ||
     pathname.startsWith('/api/candidate/acceptance-status')
-  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath
+  // Public legal pages (e.g. /legal/terms) must be readable by every role and
+  // by a candidate who has not yet accepted — they are the text being accepted.
+  const isLegalPath = pathname.startsWith('/legal')
+  const isSharedPath = isAuthPath || isAccountPath || isAcceptInvitePath || isAcceptTermsPath || isLegalPath
   // Deliberately narrower than isSharedPath: /account is NOT exempt from the
   // candidate acceptance gate below. Spec 19 requires "no catalogue, practice
   // OR PROFILE data from any route" until both documents are accepted — the
   // broader isSharedPath (built for the dashboard-isolation guard above,
   // where /account legitimately needs to stay reachable for every role) would
   // have let a gated candidate keep reading/editing /account/profile.
-  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath
+  const isAcceptanceGateExempt = isAuthPath || isAcceptInvitePath || isAcceptTermsPath || isLegalPath
 
   const DASHBOARD_ONLY_PATHS: Record<string, string> = {
     reviewer: '/reviewer',
@@ -288,7 +297,9 @@ export async function middleware(request: NextRequest) {
   // ── Partner routes ───────────────────────────────────────────────────────
   // Spec 18 acceptance criterion 7: /partner/* must be gated in middleware,
   // not only by the page-level requirePartner() check.
-  if (isPartnerPath) {
+  // The invite-accept endpoint is exempt: the invitee isn't a partner until
+  // it succeeds, and the route enforces its own token + email-binding checks.
+  if (isPartnerPath && !isAcceptInvitePath) {
     if (!user) {
       if (pathname.startsWith('/api/')) {
         return new NextResponse(JSON.stringify({ error: 'Unauthorized' }), {

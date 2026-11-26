@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { VerdictChip } from '../[slug]/VerdictChip';
+import { CvLinkedInPanel, type CvScriptRow } from '@/components/cv-scripts/CvLinkedInPanel';
 
 const NAVY = '#003359';
 const TEAL = '#4DC5D2';
@@ -94,6 +95,8 @@ type Props = {
     simulations:    EditableSimulation[];
     template:       PortfolioTemplate;
     slug:           string;
+    cvScripts:        CvScriptRow[];
+    simulationTitles: Record<string, string>;
   };
 };
 
@@ -670,6 +673,11 @@ export function PortfolioEditPageContent({ initial }: Props) {
         )}
       </div>
     </form>
+
+    <div style={{ marginTop: '40px', paddingTop: '32px', borderTop: '1px solid #E5E9F0' }}>
+      <CvLinkedInPanel scripts={initial.cvScripts} simulationTitles={initial.simulationTitles} />
+    </div>
+
     {previewTemplate !== null && (
       <TemplatePreviewModal
         template={previewTemplate}

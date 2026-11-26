@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
@@ -14,7 +13,6 @@ const TEAL = '#4DC5D2'
 // tied to whichever partner subdomain they happen to be browsing from (that
 // subdomain can disappear if the partner leaves). Same pattern as
 // app/portfolio/[slug]/ShareButton.tsx and app/partner/_candidates-table.tsx.
-const PORTFOLIO_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://app.evidentize.io'
 
 type ExternalLink = { label: string; url: string }
 
@@ -319,13 +317,17 @@ export function ProfilePageContent({ initial }: { initial: InitialData }) {
                   evidentize.io/portfolio/{initial.portfolio_slug}
                 </p>
               </div>
-              <Link
-                href={`${PORTFOLIO_BASE_URL}/portfolio/${initial.portfolio_slug}`}
+              {/* Relative on purpose: from a partner subdomain, middleware
+                  308s this to the canonical host with ?from=<subdomain>, so
+                  the portfolio's "Back to Home" returns to that subdomain. */}
+              <a
+                href={`/portfolio/${initial.portfolio_slug}`}
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-xs font-semibold uppercase tracking-widest px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors whitespace-nowrap"
               >
                 View →
-              </Link>
+              </a>
             </div>
           )}
 

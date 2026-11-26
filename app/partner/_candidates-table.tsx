@@ -9,6 +9,7 @@ import { partnerVerdictStyle } from '@/lib/verdict-bands'
 import { COUNTRIES } from '@/lib/countries'
 import { getPricingRegion } from '@/lib/entitlement/pricingRegion'
 import { PRICING_REGION_LABEL } from '@/lib/entitlement/foundingCohortPricing'
+import { CandidateDisciplinesEditor } from './_candidate-disciplines-editor'
 
 const DISCIPLINE_NAME = new Map(disciplines.map((d) => [d.slug, d.name] as const))
 
@@ -121,15 +122,27 @@ export function CandidatesTable({
   onSort,
   linkDetail = true,
   showAdminColumns = false,
+  disciplineApiBase,
 }: {
   candidates: PartnerCandidateWithProgress[]
   sort?: SortState
   onSort?: (k: SortKey) => void
   linkDetail?: boolean // false (mentor) → name is plain text, no link to the raw-submission detail
   showAdminColumns?: boolean // Terms column — partner-only administrative concern, not shown to mentors
+  disciplineApiBase?: '/api/partner' | '/api/mentor' // set → per-row "Edit" disciplines action (Spec 20)
 }) {
+  const [editing, setEditing] = useState<PartnerCandidateWithProgress | null>(null)
+
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      {editing && disciplineApiBase && (
+        <CandidateDisciplinesEditor
+          candidateId={editing.candidateId}
+          candidateName={editing.fullName ?? editing.email ?? 'Unnamed candidate'}
+          apiBase={disciplineApiBase}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -170,6 +183,15 @@ export function CandidatesTable({
                       </span>
                     ))}
                   </div>
+                  {disciplineApiBase && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(c)}
+                      className="mt-1 text-xs font-medium text-teal hover:underline"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
                 <td className="px-4 py-3 align-top">
                   <CountryCell candidate={c} />

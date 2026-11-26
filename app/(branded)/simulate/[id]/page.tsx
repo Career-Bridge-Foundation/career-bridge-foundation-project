@@ -20,7 +20,7 @@ import { ChatWidget } from "@/components/simulation/ChatWidget";
 import { collectSubmitWarnings } from "@/lib/simulation/submitWarnings";
 import type { SubmitWarning } from "@/lib/simulation/submitWarnings";
 import { createClient } from "@/lib/supabase/client";
-import { checkSimulationAccess, checkActivationAccess } from "@/lib/access-control";
+import { checkSimulationAccess, checkActivationAccess, hasInProgressSession } from "@/lib/access-control";
 import type { StepResponse } from "@/types";
 
 // ── Access gate states ────────────────────────────────────────
@@ -152,7 +152,15 @@ export default function SimulationExecutionPage() {
         viaActivation = await checkActivationAccess(data.user.id, content.simulationUuid);
       }
 
+      // Spec 20: entitlement revoked mid-attempt — let the candidate finish the
+      // attempt they already started, but never begin a new one (a submitted
+      // session doesn't count, so no retry).
+      let viaInProgress = false;
       if (!hasAccess && !viaActivation) {
+        viaInProgress = await hasInProgressSession(simulationId);
+      }
+
+      if (!hasAccess && !viaActivation && !viaInProgress) {
         window.location.replace("/no-access");
         return;
       }

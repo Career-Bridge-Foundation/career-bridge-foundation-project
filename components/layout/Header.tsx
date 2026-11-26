@@ -7,6 +7,7 @@ import { useScrolled } from "@/hooks/useScrolled";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { useBranding } from "@/components/branding/BrandingProvider";
+import { isPartnerSubdomainLabel } from "@/lib/partners/branding";
 import type { User } from "@supabase/supabase-js";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "evidentize.io";
@@ -82,7 +83,18 @@ export function Header({
   }, []);
 
   useEffect(() => {
-    if (!user || !pathname?.startsWith("/portfolio")) {
+    if (!pathname?.startsWith("/portfolio")) {
+      setHomeSubdomain(null);
+      return;
+    }
+    // ?from= (set by middleware's canonical-host redirect) is where the
+    // visitor actually came from — prefer it, logged in or not.
+    const from = new URLSearchParams(window.location.search).get("from")?.toLowerCase();
+    if (from && isPartnerSubdomainLabel(from)) {
+      setHomeSubdomain(from);
+      return;
+    }
+    if (!user) {
       setHomeSubdomain(null);
       return;
     }

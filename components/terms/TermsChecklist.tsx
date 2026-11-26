@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export type ChecklistDoc = {
   document_type: 'platform_terms' | 'partner_programme_terms'
@@ -34,12 +34,23 @@ function DocumentPanel({
   reachedEnd: boolean
   onReachEnd: () => void
 }) {
+  const bodyRef = useRef<HTMLDivElement>(null)
+
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const el = e.currentTarget
     if (el.scrollHeight - el.scrollTop - el.clientHeight <= SCROLL_THRESHOLD_PX) {
       onReachEnd()
     }
   }
+
+  // A body short enough to fit without scrolling never fires onScroll, which
+  // left its checkbox permanently disabled — the whole text is already on
+  // screen, so treat it as read.
+  useEffect(() => {
+    const el = bodyRef.current
+    if (el && el.scrollHeight - el.clientHeight <= SCROLL_THRESHOLD_PX) onReachEnd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc.body])
 
   const isFile = !!doc.source_file_type
 
@@ -68,6 +79,7 @@ function DocumentPanel({
       ) : (
         <>
           <div
+            ref={bodyRef}
             onScroll={handleScroll}
             className="max-h-72 overflow-y-auto whitespace-pre-wrap px-5 py-4 text-sm leading-relaxed text-slate-700"
           >

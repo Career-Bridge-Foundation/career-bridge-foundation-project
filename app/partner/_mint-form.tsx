@@ -1,18 +1,23 @@
 'use client'
 import React, { useState } from 'react'
-import { grantableDisciplines } from '@/lib/disciplines-data'
 import { COUNTRIES } from '@/lib/countries'
 import { getPricingRegion, getPresentmentCurrency } from '@/lib/entitlement/pricingRegion'
 import { FOUNDING_COHORT_PER_CREDIT, PRICING_REGION_LABEL } from '@/lib/entitlement/foundingCohortPricing'
-
-const AVAILABLE = grantableDisciplines
+import type { Discipline } from '@/types'
 
 type Result = {
   redemption_url: string
   expires_at: string
 }
 
-export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms: boolean }) {
+export function MintForm({
+  hasActiveProgrammeTerms,
+  offeredDisciplines,
+}: {
+  hasActiveProgrammeTerms: boolean
+  /** The partner's admin-assigned range (Spec 20) — every grantable discipline when unrestricted. */
+  offeredDisciplines: Discipline[]
+}) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [country, setCountry] = useState('')
@@ -198,7 +203,12 @@ export function MintForm({ hasActiveProgrammeTerms }: { hasActiveProgrammeTerms:
         Disciplines
       </label>
       <div className="space-y-2 mb-4">
-        {AVAILABLE.map((d) => (
+        {offeredDisciplines.length === 0 && (
+          <p className="text-xs text-slate-500">
+            No disciplines are set up for your organisation yet. Contact Evidentize to add some.
+          </p>
+        )}
+        {offeredDisciplines.map((d) => (
           <label key={d.slug} className="flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"

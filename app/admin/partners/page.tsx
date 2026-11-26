@@ -26,7 +26,21 @@ export default async function PartnersPage() {
     .eq('document_type', 'platform_terms')
     .order('published_at', { ascending: false })
 
-  const error = partnersError ?? termsError
+  // Spec 20 — each partner's active discipline range (empty = unrestricted).
+  const { data: rangeRows, error: rangeError } = await supabaseServer
+    .from('partner_disciplines')
+    .select('partner_id, discipline')
+    .is('revoked_at', null)
+
+  const rangeByPartner = new Map<string, string[]>()
+  for (const r of rangeRows ?? []) {
+    const list = rangeByPartner.get(r.partner_id as string) ?? []
+    list.push(r.discipline as string)
+    rangeByPartner.set(r.partner_id as string, list)
+  }
+  const partnersWithRange = (partners ?? []).map((p) => ({ ...p, disciplines: rangeByPartner.get(p.id) ?? [] }))
+
+  const error = partnersError ?? termsError ?? rangeError
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -42,7 +56,7 @@ export default async function PartnersPage() {
           Couldn&apos;t load this page: <span className="font-mono">{error.message}</span>.
         </div>
       ) : (
-        <PartnersTabs partners={partners ?? []} termsDocs={termsDocs ?? []} />
+        <PartnersTabs partners={partnersWithRange} termsDocs={termsDocs ?? []} />
       )}
     </div>
   )

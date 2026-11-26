@@ -69,6 +69,29 @@ export async function checkActivationAccess(
 }
 
 /**
+ * Returns true if the authenticated candidate has an unsubmitted
+ * (status = 'in_progress') session on this simulation. Spec 20: when a
+ * partner or admin revokes a discipline mid-attempt, this lets the candidate
+ * finish and submit that attempt — but a submitted session doesn't count, so
+ * they can't start over. RLS scopes simulation_sessions to the user's own rows.
+ */
+export async function hasInProgressSession(simulationSlug: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: sessions } = await supabase
+    .from("simulation_sessions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("simulation_slug", simulationSlug)
+    .eq("status", "in_progress")
+    .limit(1);
+
+  return !!sessions && sessions.length > 0;
+}
+
+/**
  * Returns true if the authenticated candidate already spent a credit on
  * this simulation but never submitted it — a simulation_activations row
  * exists with completed_at still null (Spec 15 credit model). SimulationCard

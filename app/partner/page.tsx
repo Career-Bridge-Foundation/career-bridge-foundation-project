@@ -5,6 +5,9 @@ import { getPartnerCandidateAcceptanceStatus } from '@/lib/partners/candidateAcc
 import { supabaseServer } from '@/lib/supabase/server'
 import { SecureAccountBanner } from '@/components/ui/SecureAccountBanner'
 import { CandidatesTabs } from './_candidates-tabs'
+import { getPartnerDisciplineRange, disciplinesInRange } from '@/lib/partners/disciplineRange'
+import { grantableDisciplines } from '@/lib/disciplines-data'
+import type { Discipline } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +27,7 @@ export default async function PartnerCandidatesPage({
   let candidates: PartnerCandidateWithProgress[] = []
   let loadError = false
   let hasActiveProgrammeTerms = false
+  let offeredDisciplines: Discipline[] = grantableDisciplines
   try {
     // requirePartner guarantees a non-null partnerId.
     candidates = await getPartnerCandidateProgress(ctx.partnerId!)
@@ -48,6 +52,9 @@ export default async function PartnerCandidatesPage({
       .eq('is_active', true)
       .maybeSingle()
     hasActiveProgrammeTerms = !!activeDoc
+
+    // Spec 20 — the invite form only offers the partner's admin-assigned range.
+    offeredDisciplines = disciplinesInRange(await getPartnerDisciplineRange(ctx.partnerId!))
   } catch {
     loadError = true
   }
@@ -63,7 +70,7 @@ export default async function PartnerCandidatesPage({
         </p>
       </header>
 
-      <CandidatesTabs candidates={candidates} loadError={loadError} hasActiveProgrammeTerms={hasActiveProgrammeTerms} />
+      <CandidatesTabs candidates={candidates} loadError={loadError} hasActiveProgrammeTerms={hasActiveProgrammeTerms} offeredDisciplines={offeredDisciplines} />
     </div>
   )
 }
