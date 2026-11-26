@@ -12,6 +12,7 @@ const NAV: { label: string; href?: string; live: boolean }[] = [
   { label: 'Branding', href: '/partner/branding', live: true },
   { label: 'Programme Terms', href: '/partner/terms', live: true },
   { label: 'Account Settings', href: '/account/settings', live: true },
+  { label: 'Help & Support', href: '/account/support', live: true },
 ]
 
 export function ConsoleNav() {
